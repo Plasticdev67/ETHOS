@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 52" width="260" height="52">
+  <!-- MM Chevron mark — matches building signage -->
+  <!-- Outer chevron (larger) -->
+  <path d="M6 36 L22 8 L38 36" stroke="#5BB8F5" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <!-- Inner chevron (smaller, nested) -->
+  <path d="M12 36 L22 16 L32 36" stroke="#FFFFFF" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+
+  <!-- MM text -->
+  <text x="52" y="32" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
+        font-size="26" font-weight="700" letter-spacing="1" fill="#FFFFFF">
+    MM
+  </text>
+  <!-- engineering text -->
+  <text x="96" y="32" font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
+        font-size="26" font-weight="300" letter-spacing="0.5" fill="rgba(255,255,255,0.85)">
+    engineering
+  </text>
+</svg>

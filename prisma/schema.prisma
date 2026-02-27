@@ -1,0 +1,2039 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================================
+// USERS & AUTH
+// ============================================================
+
+model User {
+  id                 String          @id @default(cuid())
+  name               String
+  email              String          @unique
+  passwordHash       String
+  role               UserRole        @default(STAFF)
+  department         UserDepartment?
+  mustChangePassword Boolean         @default(false)
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  // Relations
+  coordinatedProjects  Project[]  @relation("ProjectCoordinator")
+  managedProjects      Project[]  @relation("ProjectManager")
+  installManagedProjects Project[] @relation("InstallManager")
+  coordinatedProducts  Product[]  @relation("ProductCoordinator")
+  designedProducts     Product[]  @relation("ProductDesigner")
+  createdQuotes        Quote[]    @relation("QuoteCreator")
+
+  // Design module relations
+  designCards          ProductDesignCard[] @relation("DesignCardDesigner")
+  assignedJobCards     DesignJobCard[]     @relation("JobCardAssignee")
+  reviewedJobCards     DesignJobCard[]     @relation("JobCardReviewer")
+  initiatedHandovers   DesignHandover[]    @relation("HandoverInitiator")
+  receivedHandovers    DesignHandover[]    @relation("HandoverReceiver")
+
+  @@map("users")
+}
+
+enum UserRole {
+  MANAGING_DIRECTOR
+  TECHNICAL_DIRECTOR
+  SALES_DIRECTOR
+  DIRECTOR
+  ENGINEERING_MANAGER
+  PRODUCTION_MANAGER
+  PROJECT_MANAGER
+  R_AND_D_MANAGER
+  DESIGN_ENGINEER
+  SITE_MANAGER
+  SITE_SUPERVISOR
+  BUSINESS_DEVELOPMENT
+  HEAD_OF_FINANCE_IT_PROCUREMENT
+  FINANCE_MANAGER
+  PROJECT_COORDINATOR
+  PROJECT_ADMINISTRATOR
+  PRODUCTION_SUPERVISOR
+  SURVEYOR
+  STAFF
+  ADMIN
+}
+
+enum UserDepartment {
+  DIRECTORS
+  ENGINEERING
+  PRODUCTION
+  SALES
+  PROJECTS
+  R_AND_D
+  SITE
+  FINANCE_IT_PROCUREMENT
+}
+
+// ============================================================
+// CUSTOMERS
+// ============================================================
+
+model Customer {
+  id            String       @id @default(cuid())
+  name          String
+  customerType  CustomerType @default(OTHER)
+  address       String?
+  phone         String?
+  email         String?
+  paymentTerms  String?
+  notes         String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  // Relations
+  contacts      CustomerContact[]
+  projects      Project[]
+  quotes        Quote[]
+  portalTokens  CustomerPortalToken[]
+  convertedFrom Prospect[]        @relation("ConvertedProspect")
+
+  @@map("customers")
+}
+
+enum CustomerType {
+  MAIN_CONTRACTOR
+  UTILITY
+  COUNCIL
+  DIRECT
+  DEFENCE
+  OTHER
+}
+
+model CustomerContact {
+  id         String   @id @default(cuid())
+  customerId String
+  name       String
+  role       String?
+  phone      String?
+  email      String?
+  isPrimary  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@map("customer_contacts")
+}
+
+// ============================================================
+// CRM — PROSPECTS & OPPORTUNITIES
+// ============================================================
+
+model Prospect {
+  id                  String         @id @default(cuid())
+  companyName         String
+  contactName         String?
+  contactEmail        String?
+  contactPhone        String?
+  address             String?
+  sector              String?
+  source              LeadSource     @default(OTHER)
+  status              ProspectStatus @default(ACTIVE)
+  notes               String?
+  convertedCustomerId String?
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+
+  // Relations
+  convertedCustomer Customer?     @relation("ConvertedProspect", fields: [convertedCustomerId], references: [id])
+  opportunities     Opportunity[]
+
+  @@map("prospects")
+}
+
+model Opportunity {
+  id                String            @id @default(cuid())
+  prospectId        String
+  name              String
+  description       String?
+  estimatedValue    Decimal?          @db.Decimal(12, 2)
+  contactPerson     String?
+  leadSource        LeadSource        @default(OTHER)
+  status            OpportunityStatus @default(ACTIVE_LEAD)
+  expectedCloseDate DateTime?
+  notes             String?
+  sortOrder         Int               @default(0)
+  convertedProjectId String?
+  convertedAt       DateTime?
+
+  // Quoting fields
+  quoteNumber       String?           @unique     // QUO-2026-0001 format
+  rdCost            Decimal?          @db.Decimal(12, 2)
+  riskCost          Decimal?          @db.Decimal(12, 2)
+  marginPercent     Decimal?          @db.Decimal(5, 2)
+  quotedPrice       Decimal?          @db.Decimal(12, 2)
+  quoteApproval     QuoteApprovalStatus @default(DRAFT)
+  hasItoLines       Boolean             @default(false)
+  quoteSentAt       DateTime?
+  quoteSentTo       String?
+
+  // Dead lead fields
+  deadReason        String?
+  deadNotes         String?
+  deadAt            DateTime?
+  revivedAt         DateTime?
+  revivedFrom       String?
+  deadHistory       Json?             // Array of {reason, deadAt, revivedAt} for multiple dead/revive cycles
+
+  // Lifting plan (opportunity-level summary)
+  liftingPlanRequired Boolean          @default(false)
+  liftingPlanStatus   String?          @default("TBC")    // YES | NO | TBC
+  liftingPlanNotes    String?
+  estimatedWeight     Decimal?         @db.Decimal(8, 2)  // kg — auto-calculated
+  maxLiftHeight       Decimal?         @db.Decimal(8, 2)  // metres
+  craneRequired       String?          @default("TBC")    // YES | NO | TBC
+  siteAccessNotes     String?
+  liftingPlanCost     Decimal?         @db.Decimal(12, 2)
+  deliveryNotes       String?
+
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  // Relations
+  prospect         Prospect @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+  convertedProject Project? @relation("ConvertedOpportunity", fields: [convertedProjectId], references: [id])
+  quoteLines       OpportunityQuoteLine[]
+
+  @@index([prospectId])
+  @@index([status])
+  @@map("opportunities")
+}
+
+model OpportunityQuoteLine {
+  id              String              @id @default(cuid())
+  opportunityId   String
+  description     String
+  type            OpportunityLineType @default(PRODUCT)
+  quantity        Int                 @default(1)
+  unitCost        Decimal             @db.Decimal(12, 2)
+  totalCost       Decimal             @db.Decimal(12, 2)
+  sortOrder       Int                 @default(0)
+
+  // Product catalogue link and classification
+  classification  QuoteLineClassification @default(STANDARD)
+  variantId       String?
+  width           Int?
+  height          Int?
+  specSelections  Json?
+  computedBom     Json?
+  computedCost    Decimal?            @db.Decimal(12, 2)
+
+  // Enhanced dimensions (Amendment 5)
+  depth            Int?
+  leafCount        Int?                @default(1)
+  openingDirection String?
+  clearOpening     Int?
+  structuralOpening Int?               // Builder's opening (mm)
+  estimatedWeight  Decimal?            @db.Decimal(8, 2)
+
+  // Feature tags (Amendment 4)
+  featureTags      Json?               // Array of {tagId, quantity, unitCost, totalCost}
+
+  // Product configuration (Amendments 3, 7, 8, 6)
+  transomeConfig   Json?               // {enabled, type, position, height, material}
+  ventConfig       Json?               // {enabled, type, size, customWidth, customHeight, position, quantity, fireRated}
+  lockConfig       Json?               // {lockType, lockBrand, lockModel, cylinderType, handleType, keyedAlike, keyedAlikeGroup, lockNotes, unitCost}
+  finishConfig     Json?               // {coatingStandard, paintSystem, ralColour, bsColour, customColour, finishType, galvanised, galvType, dft, coatingNotes, surfaceArea, coatingCost}
+  liftingConfig    Json?               // {required, estimatedWeight, maxLiftHeight, craneRequired, siteAccessNotes, liftingPlanCost, deliveryNotes}
+
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  opportunity Opportunity     @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  variant     ProductVariant? @relation(fields: [variantId], references: [id])
+
+  @@index([opportunityId])
+  @@map("opportunity_quote_lines")
+}
+
+enum OpportunityLineType {
+  PRODUCT
+  ACTIVITY
+  MANUAL
+}
+
+enum QuoteLineClassification {
+  STANDARD
+  INNOVATE_TO_ORDER
+}
+
+enum QuoteApprovalStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+}
+
+enum LeadSource {
+  REFERRAL
+  WEBSITE
+  TRADE_SHOW
+  COLD_CALL
+  REPEAT_BUSINESS
+  TENDER_PORTAL
+  OTHER
+}
+
+enum ProspectStatus {
+  ACTIVE
+  INACTIVE
+  CONVERTED
+  DISQUALIFIED
+}
+
+enum OpportunityStatus {
+  DEAD_LEAD
+  ACTIVE_LEAD
+  PENDING_APPROVAL
+  QUOTED
+  WON
+  LOST
+}
+
+// ============================================================
+// SUPPLIERS
+// ============================================================
+
+model Supplier {
+  id              String   @id @default(cuid())
+  name            String
+  address         String?
+  phone           String?
+  email           String?
+  whatTheySupply  String?
+  paymentTerms    String?
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  contacts       SupplierContact[]
+  purchaseOrders PurchaseOrder[]
+  plantHires     PlantHire[]
+  subContracts   SubContractorWork[]
+
+  @@map("suppliers")
+}
+
+model SupplierContact {
+  id         String   @id @default(cuid())
+  supplierId String
+  name       String
+  role       String?
+  phone      String?
+  email      String?
+  isPrimary  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@map("supplier_contacts")
+}
+
+// ============================================================
+// PROJECTS (Central Hub)
+// ============================================================
+
+model Project {
+  id              String   @id @default(cuid())
+  projectNumber   String   @unique
+  name            String
+  customerId      String?
+  coordinatorId   String?
+  projectManagerId  String?
+  installManagerId  String?
+
+  projectType     ProjectType     @default(STANDARD)
+  workStream      WorkStream      @default(ADHOC)
+  salesStage      SalesStage      @default(OPPORTUNITY)
+  projectStatus   ProjectStatus   @default(OPPORTUNITY)
+  contractType    ContractType    @default(STANDARD)
+
+  // Lifecycle gates (P0-P5)
+  lifecycleStage  LifecycleStage @default(P0)
+  p0Date          DateTime?
+  p1Date          DateTime?
+  p2Date          DateTime?
+  p3Date          DateTime?
+  p4Date          DateTime?
+  p5Date          DateTime?
+
+  // Department sub-status for department boards
+  departmentStatus DepartmentStatus @default(TODO)
+
+  // Sprint 2: Board / Kanban fields
+  priority        ProjectPriority        @default(NORMAL)
+  isICUFlag       Boolean                @default(false)
+  classification  ProjectClassification  @default(NORMAL)
+  ragStatus       RagStatus?
+  projectSubStatus String?
+
+  // Financial values
+  estimatedValue  Decimal? @db.Decimal(12, 2)
+  contractValue   Decimal? @db.Decimal(12, 2)
+  currentCost     Decimal? @db.Decimal(12, 2)
+  ncrCost         Decimal? @db.Decimal(12, 2)
+
+  // Location / delivery
+  siteLocation    String?
+  deliveryType    String?
+  projectRegion   String?
+  notes           String?
+
+  // Key dates
+  enquiryReceived   DateTime?
+  quoteSubmitted    DateTime?
+  orderReceived     DateTime?
+  targetCompletion  DateTime?
+  actualCompletion  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  customer        Customer?       @relation(fields: [customerId], references: [id])
+  coordinator     User?           @relation("ProjectCoordinator", fields: [coordinatorId], references: [id])
+  projectManager  User?           @relation("ProjectManager", fields: [projectManagerId], references: [id])
+  installManager  User?           @relation("InstallManager", fields: [installManagerId], references: [id])
+  products        Product[]
+  quotes          Quote[]
+  purchaseOrders  PurchaseOrder[]
+  documents       Document[]
+  ncrs            NonConformanceReport[]
+  retentions      RetentionHoldback[]
+  plantHires      PlantHire[]
+  subContracts    SubContractorWork[]
+  costCategories  ProjectCostCategory[]
+  salesInvoices   SalesInvoice[]
+  variations      Variation[]
+  portalTokens    CustomerPortalToken[]
+  resourceEstimates ProjectResourceEstimate[]
+  convertedFromOpportunity Opportunity[] @relation("ConvertedOpportunity")
+
+  // Design module relations
+  designCards     ProductDesignCard[]
+  designHandover  DesignHandover?
+
+  // Production module relations
+  productionTasks ProductionTask[]
+
+  // Activity log
+  projectNotes ProjectNote[]
+
+  @@index([projectStatus])
+  @@index([salesStage])
+  @@index([priority])
+  @@index([isICUFlag])
+  @@index([customerId])
+  @@index([targetCompletion])
+  @@index([updatedAt])
+  @@map("projects")
+}
+
+enum ProjectType {
+  STANDARD
+  BESPOKE_MAJOR
+}
+
+enum WorkStream {
+  COMMUNITY
+  UTILITIES
+  BESPOKE
+  BLAST
+  BUND_CONTAINMENT
+  REFURBISHMENT
+  ADHOC
+}
+
+enum SalesStage {
+  OPPORTUNITY
+  QUOTED
+  ORDER
+}
+
+enum ProjectStatus {
+  OPPORTUNITY
+  QUOTATION
+  DESIGN
+  DESIGN_FREEZE
+  MANUFACTURE
+  INSTALLATION
+  REVIEW
+  COMPLETE
+}
+
+enum ContractType {
+  NEC
+  STANDARD
+  FRAMEWORK_CALLOFF
+  OTHER
+}
+
+enum DepartmentStatus {
+  TODO
+  ONGOING
+  REVIEW
+  DONE
+}
+
+enum ProjectPriority {
+  NORMAL
+  HIGH
+  CRITICAL
+}
+
+enum ProjectClassification {
+  NORMAL
+  MEGA
+  SUB_CONTRACT
+}
+
+enum RagStatus {
+  GREEN
+  AMBER
+  RED
+}
+
+enum LifecycleStage {
+  P0 // Enquiry
+  P1 // Quotation
+  P2 // Order Handover
+  P3 // Design Review
+  P4 // Production Complete
+  P5 // Handover / Close
+}
+
+// ============================================================
+// NON-CONFORMANCE REPORTS (NCRs)
+// ============================================================
+
+model NonConformanceReport {
+  id           String      @id @default(cuid())
+  ncrNumber    String      @unique
+  projectId    String
+  productId    String?
+  title        String
+  description  String?
+  severity     NcrSeverity @default(MINOR)
+  status       NcrStatus   @default(OPEN)
+  costImpact   Decimal?    @db.Decimal(12, 2)
+  raisedDate   DateTime    @default(now())
+  closedDate   DateTime?
+
+  // Production NCR fields
+  rootCause     NcrRootCause?
+  originStage   ProductionStage?
+  returnToStage ProductionStage?
+
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  project Product? @relation("NcrProduct", fields: [productId], references: [id])
+  parentProject Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([status])
+  @@index([productId])
+  @@map("non_conformance_reports")
+}
+
+enum NcrRootCause {
+  DESIGN_ERROR
+  PRODUCTION_ERROR
+  MATERIAL_DEFECT
+  OTHER
+}
+
+enum NcrSeverity {
+  MINOR
+  MAJOR
+  CRITICAL
+}
+
+enum NcrStatus {
+  OPEN
+  INVESTIGATING
+  RESOLVED
+  CLOSED
+}
+
+// ============================================================
+// PRODUCT CATALOGUE (Reference data)
+// ============================================================
+
+model ProductCatalogue {
+  id           String  @id @default(cuid())
+  partCode     String  @unique
+  description  String
+  classId      String  @default("PROD")
+  active       Boolean @default(true)
+
+  // Guide pricing (pre-fill when quoting)
+  guideUnitCost      Decimal? @db.Decimal(12, 2)
+  guideMarginPercent Decimal? @db.Decimal(5, 2)
+  defaultUnits       String?
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Products using this catalogue entry
+  products   Product[]
+  quoteLines QuoteLine[]
+  variants   ProductVariant[]
+
+  @@map("product_catalogue")
+}
+
+// ============================================================
+// HIERARCHICAL PRODUCT CATALOGUE
+// ============================================================
+
+enum SpecFieldType {
+  SELECT
+  NUMBER
+  TEXT
+  BOOLEAN
+}
+
+model ProductFamily {
+  id              String  @id @default(cuid())
+  name            String
+  code            String  @unique
+  sortOrder       Int     @default(0)
+  active          Boolean @default(true)
+  sageProductGroup String? // e.g. "FG-FD" — set by sync from Sage BOM library
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  types ProductType[]
+
+  @@map("product_families")
+}
+
+model ProductType {
+  id             String  @id @default(cuid())
+  familyId       String
+  name           String
+  code           String  @unique
+  sortOrder      Int     @default(0)
+  active         Boolean @default(true)
+  sageTypePrefix String? // e.g. "SFD" — set by sync from Sage BOM library
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  family    ProductFamily    @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  variants  ProductVariant[]
+  specFields SpecField[]
+
+  @@index([familyId])
+  @@map("product_types")
+}
+
+model ProductVariant {
+  id               String  @id @default(cuid())
+  typeId           String
+  name             String
+  code             String  @unique
+  defaultWidth     Int?
+  defaultHeight    Int?
+  catalogueItemId  String?
+  sageStockCode    String? @unique // e.g. "SFD-900x1200" — set by sync from Sage BOM library
+  sortOrder        Int     @default(0)
+  active           Boolean @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  type          ProductType       @relation(fields: [typeId], references: [id], onDelete: Cascade)
+  catalogueItem ProductCatalogue? @relation(fields: [catalogueItemId], references: [id])
+  baseBomItems  BaseBomItem[]
+  quoteLineSpecs QuoteLineSpec[]
+  opportunityQuoteLines OpportunityQuoteLine[]
+
+  @@index([typeId])
+  @@map("product_variants")
+}
+
+model SpecField {
+  id        String        @id @default(cuid())
+  typeId    String
+  name      String
+  code      String
+  fieldType SpecFieldType @default(SELECT)
+  required  Boolean       @default(false)
+  sortOrder Int           @default(0)
+  helpText  String?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  type         ProductType      @relation(fields: [typeId], references: [id], onDelete: Cascade)
+  choices      SpecChoice[]
+  dependencies SpecDependency[]
+
+  @@unique([typeId, code])
+  @@map("spec_fields")
+}
+
+model SpecChoice {
+  id             String  @id @default(cuid())
+  fieldId        String
+  label          String
+  value          String
+  isDefault      Boolean @default(false)
+  costModifier   Decimal @default(0) @db.Decimal(12, 2)
+  costMultiplier Decimal @default(1) @db.Decimal(8, 4)
+  sortOrder      Int     @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  field        SpecField        @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  dependencies SpecDependency[] @relation("TriggerChoice")
+  bomModifiers SpecBomModifier[]
+
+  @@index([fieldId])
+  @@map("spec_choices")
+}
+
+model SpecDependency {
+  id               String @id @default(cuid())
+  dependentFieldId String
+  triggerChoiceId  String
+  action           String @default("SHOW") // SHOW or HIDE
+
+  dependentField SpecField  @relation(fields: [dependentFieldId], references: [id], onDelete: Cascade)
+  triggerChoice  SpecChoice @relation("TriggerChoice", fields: [triggerChoiceId], references: [id], onDelete: Cascade)
+
+  @@map("spec_dependencies")
+}
+
+model BaseBomItem {
+  id          String  @id @default(cuid())
+  variantId   String
+  description String
+  category    String  @default("MATERIALS") // MATERIALS, LABOUR, HARDWARE, SEALS, FINISH
+  stockCode   String? // Link back to SageStockItem for price propagation
+  unitCost    Decimal @db.Decimal(12, 2)
+  quantity    Decimal @default(1) @db.Decimal(8, 2)
+  scalesWithSize Boolean @default(false)
+  sortOrder   Int     @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  variant   ProductVariant   @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  modifiers SpecBomModifier[]
+
+  @@index([variantId])
+  @@index([stockCode])
+  @@map("base_bom_items")
+}
+
+model SpecBomModifier {
+  id          String  @id @default(cuid())
+  bomItemId   String
+  choiceId    String
+  action      String  // REPLACE_COST, ADD_COST, MULTIPLY_COST, ADD_ITEM, REMOVE_ITEM
+  value       Decimal @default(0) @db.Decimal(12, 2)
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  bomItem BaseBomItem @relation(fields: [bomItemId], references: [id], onDelete: Cascade)
+  choice  SpecChoice  @relation(fields: [choiceId], references: [id], onDelete: Cascade)
+
+  @@index([bomItemId])
+  @@index([choiceId])
+  @@map("spec_bom_modifiers")
+}
+
+model QuoteLineSpec {
+  id              String  @id @default(cuid())
+  quoteLineId     String  @unique
+  variantId       String
+  width           Int?
+  height          Int?
+  specSelections  Json    @default("{}")
+  computedBom     Json    @default("[]")
+  computedCost    Decimal @default(0) @db.Decimal(12, 2)
+  includesRd      Boolean @default(false)
+  rdCostAmount    Decimal @default(0) @db.Decimal(12, 2)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  quoteLine QuoteLine      @relation(fields: [quoteLineId], references: [id], onDelete: Cascade)
+  variant   ProductVariant @relation(fields: [variantId], references: [id])
+
+  @@map("quote_line_specs")
+}
+
+// ============================================================
+// PRODUCTS (Line items within a project - THE TRACKER)
+// ============================================================
+
+model Product {
+  id                String  @id @default(cuid())
+  projectId         String
+  catalogueItemId   String?
+  partCode          String
+  description       String
+  additionalDetails String?
+  quantity          Int     @default(1)
+  productJobNumber  String?
+
+  // Assignment
+  allocatedDesignerId String?
+  coordinatorId       String?
+
+  // Current status tracking (maps to Excel tracker columns)
+  currentDepartment       Department       @default(PLANNING)
+  currentOperationalStatus String?
+  progressMonitor         String?
+
+  // Appraisal stage
+  appraisalTargetDate     DateTime?
+  appraisalFinishDate     DateTime?
+  appraisalStatus         String?
+
+  // Drawing
+  drawingNumber           String?
+
+  // Design stage
+  designPlannedStart      DateTime?
+  designTargetDate        DateTime?
+  designCompletionDate    DateTime?
+  designStatus            String?
+
+  // Production stage
+  productionPlannedStart  DateTime?
+  productionTargetDate    DateTime?
+  productionCompletionDate DateTime?
+  productionStatus        ProductionStage?
+
+  // Installation stage
+  installPlannedStart     DateTime?
+  installTargetDate       DateTime?
+  installCompletionDate   DateTime?
+  installStatus           String?
+
+  // Estimated hours per stage (drives capacity planning)
+  designEstimatedHours      Decimal? @db.Decimal(8, 1)
+  productionEstimatedHours  Decimal? @db.Decimal(8, 1)
+  installEstimatedHours     Decimal? @db.Decimal(8, 1)
+  opsEstimatedHours         Decimal? @db.Decimal(8, 1)
+
+  // Per-stage production hours (set by production manager)
+  productionCuttingHours      Decimal? @db.Decimal(8, 1)
+  productionFabricationHours  Decimal? @db.Decimal(8, 1)
+  productionFittingHours      Decimal? @db.Decimal(8, 1)
+  productionShotblastingHours Decimal? @db.Decimal(8, 1)
+  productionPaintingHours     Decimal? @db.Decimal(8, 1)
+  productionPackingHours      Decimal? @db.Decimal(8, 1)
+
+  // Ops / Pre-production planning stage
+  opsPlannedStart           DateTime?
+  opsTargetDate             DateTime?
+  opsCompletionDate         DateTime?
+  opsStatus                 String?
+
+  // Review
+  asBuiltComplete         Boolean  @default(false)
+  reviewCompletedDate     DateTime?
+
+  // Required completion
+  requiredCompletionDate  DateTime?
+
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  project       Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  catalogueItem ProductCatalogue? @relation(fields: [catalogueItemId], references: [id])
+  designer      User?            @relation("ProductDesigner", fields: [allocatedDesignerId], references: [id])
+  coordinator   User?            @relation("ProductCoordinator", fields: [coordinatorId], references: [id])
+  quoteLines    QuoteLine[]
+  poLines       PurchaseOrderLine[]
+  documents     Document[]
+  ncrs          NonConformanceReport[] @relation("NcrProduct")
+  subContracts  SubContractorWork[]
+
+  // Design module relation
+  designCard    ProductDesignCard?
+
+  // Production module relation
+  productionTasks ProductionTask[]
+
+  @@index([projectId])
+  @@index([currentDepartment])
+  @@index([productionStatus])
+  @@index([requiredCompletionDate])
+  @@index([projectId, productionStatus])
+  @@map("products")
+}
+
+enum Department {
+  PLANNING
+  DESIGN
+  PRODUCTION
+  INSTALLATION
+  REVIEW
+  COMPLETE
+}
+
+enum ProductionStage {
+  AWAITING
+  CUTTING
+  FABRICATION
+  FITTING
+  SHOTBLASTING
+  PAINTING
+  PACKING
+  DISPATCHED
+  STORAGE
+  REWORK
+  SUB_CONTRACT
+  COMPLETED
+  N_A
+}
+
+// ============================================================
+// QUOTES
+// ============================================================
+
+model Quote {
+  id              String      @id @default(cuid())
+  customerId      String
+  projectId       String?
+  quoteNumber     String      @unique
+  revisionNumber  Int         @default(1)
+  status          QuoteStatus @default(DRAFT)
+  subject         String?
+  dateCreated     DateTime    @default(now())
+  dateSubmitted   DateTime?
+  validUntil      DateTime?
+  totalCost       Decimal?    @db.Decimal(12, 2)
+  totalSell       Decimal?    @db.Decimal(12, 2)
+  overallMargin   Decimal?    @db.Decimal(5, 2)
+  notes           String?
+  createdById     String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  // Relations
+  customer   Customer    @relation(fields: [customerId], references: [id])
+  project    Project?    @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  createdBy  User?       @relation("QuoteCreator", fields: [createdById], references: [id])
+  quoteLines QuoteLine[]
+
+  @@index([customerId])
+  @@index([projectId])
+  @@index([status])
+  @@index([updatedAt])
+  @@map("quotes")
+}
+
+enum QuoteStatus {
+  DRAFT
+  SUBMITTED
+  ACCEPTED
+  DECLINED
+  REVISED
+}
+
+model QuoteLine {
+  id              String  @id @default(cuid())
+  quoteId         String
+  productId       String?
+  catalogueItemId String?
+  description     String
+  dimensions      String?
+  quantity        Int     @default(1)
+  units           String?
+
+  // Pricing
+  unitCost       Decimal? @db.Decimal(12, 2)
+  costTotal      Decimal? @db.Decimal(12, 2)
+  marginPercent  Decimal? @db.Decimal(5, 2)
+  sellPrice      Decimal? @db.Decimal(12, 2)
+
+  // Flags
+  isOptional      Boolean @default(false)
+  sortOrder       Int     @default(0)
+  marginOverride  Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  quote         Quote             @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  product       Product?          @relation(fields: [productId], references: [id])
+  catalogueItem ProductCatalogue? @relation(fields: [catalogueItemId], references: [id])
+  spec          QuoteLineSpec?
+
+  @@map("quote_lines")
+}
+
+// ============================================================
+// PURCHASE ORDERS
+// ============================================================
+
+model PurchaseOrder {
+  id               String   @id @default(cuid())
+  poNumber         String   @unique
+  projectId        String
+  supplierId       String?
+  status           POStatus @default(DRAFT)
+  dateRaised       DateTime @default(now())
+  dateSent         DateTime?
+  expectedDelivery DateTime?
+  totalValue       Decimal? @db.Decimal(12, 2)
+  notes            String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Relations
+  project  Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  supplier Supplier?          @relation(fields: [supplierId], references: [id])
+  poLines  PurchaseOrderLine[]
+
+  @@index([projectId])
+  @@index([supplierId])
+  @@index([status])
+  @@map("purchase_orders")
+}
+
+enum POStatus {
+  DRAFT
+  SENT
+  PARTIALLY_RECEIVED
+  COMPLETE
+  CANCELLED
+}
+
+model PurchaseOrderLine {
+  id             String  @id @default(cuid())
+  poId           String
+  productId      String?
+  nominalCodeId  String?
+  description    String
+  quantity       Int     @default(1)
+  unitCost       Decimal? @db.Decimal(12, 2)
+  totalCost      Decimal? @db.Decimal(12, 2)
+  received       Boolean   @default(false)
+  receivedQty    Int       @default(0)
+  receivedDate   DateTime?
+  receivedNotes  String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  // Relations
+  purchaseOrder PurchaseOrder @relation(fields: [poId], references: [id], onDelete: Cascade)
+  product       Product?      @relation(fields: [productId], references: [id])
+  nominalCode   NominalCode?  @relation(fields: [nominalCodeId], references: [id])
+
+  @@map("purchase_order_lines")
+}
+
+// ============================================================
+// DOCUMENTS
+// ============================================================
+
+model Document {
+  id            String       @id @default(cuid())
+  projectId     String
+  productId     String?
+  filename      String
+  filePath      String
+  fileSize      Int?
+  documentType  DocumentType @default(OTHER)
+  description   String?
+  uploadedBy    String?
+  uploadedAt    DateTime     @default(now())
+
+  // Relations
+  project Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id])
+
+  @@index([projectId])
+  @@index([productId])
+  @@index([documentType])
+  @@map("documents")
+}
+
+enum DocumentType {
+  DRAWING
+  SPECIFICATION
+  CERTIFICATE
+  TEST_REPORT
+  PHOTO
+  CORRESPONDENCE
+  OTHER
+}
+
+// ============================================================
+// RETENTION HOLDBACKS
+// ============================================================
+
+model RetentionHoldback {
+  id                String          @id @default(cuid())
+  projectId         String
+  retentionPercent  Decimal?        @db.Decimal(5, 2)
+  retentionAmount   Decimal?        @db.Decimal(12, 2)
+  releaseDate       DateTime?
+  status            RetentionStatus @default(HELD)
+  notes             String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("retention_holdbacks")
+}
+
+enum RetentionStatus {
+  HELD
+  PARTIALLY_RELEASED
+  RELEASED
+}
+
+// ============================================================
+// PLANT HIRE
+// ============================================================
+
+model PlantHire {
+  id             String          @id @default(cuid())
+  projectId      String
+  supplierId     String?
+  nominalCodeId  String?
+  description    String
+  hireStart      DateTime?
+  hireEnd        DateTime?
+  weeklyRate     Decimal?        @db.Decimal(12, 2)
+  totalCost      Decimal?        @db.Decimal(12, 2)
+  status         PlantHireStatus @default(ON_HIRE)
+  notes          String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  project     Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  supplier    Supplier?        @relation(fields: [supplierId], references: [id])
+  nominalCode NominalCode? @relation(fields: [nominalCodeId], references: [id])
+
+  @@map("plant_hires")
+}
+
+enum PlantHireStatus {
+  ON_HIRE
+  OFF_HIRE
+  RETURNED
+}
+
+// ============================================================
+// SUB-CONTRACTOR WORK
+// ============================================================
+
+model SubContractorWork {
+  id             String             @id @default(cuid())
+  projectId      String
+  supplierId     String?
+  productId      String?
+  nominalCodeId  String?
+  description    String
+  agreedValue    Decimal?           @db.Decimal(12, 2)
+  invoicedToDate Decimal?           @db.Decimal(12, 2)
+  status         SubContractStatus  @default(IN_PROGRESS)
+  notes          String?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  project     Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  supplier    Supplier?        @relation(fields: [supplierId], references: [id])
+  product     Product?         @relation(fields: [productId], references: [id])
+  nominalCode NominalCode? @relation(fields: [nominalCodeId], references: [id])
+
+  @@map("sub_contractor_works")
+}
+
+enum SubContractStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETE
+  DISPUTED
+}
+
+// ============================================================
+// NOMINAL CODES (Master cost code list — mirrors Sage format)
+// ============================================================
+
+model NominalCode {
+  id          String            @id @default(cuid())
+  code        String            @unique
+  description String
+  category    CostCategory      @default(MATERIALS)
+  active      Boolean           @default(true)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  // Relations — everything cost-coded points here
+  projectCostCategories ProjectCostCategory[]
+  purchaseOrderLines    PurchaseOrderLine[]
+  plantHires            PlantHire[]
+  subContracts          SubContractorWork[]
+
+  @@map("nominal_codes")
+}
+
+enum CostCategory {
+  MATERIALS
+  LABOUR
+  PLANT_HIRE
+  SUB_CONTRACT
+  TRANSPORT
+  OVERHEADS
+  PRELIMS
+  DESIGN
+  OTHER
+}
+
+// ============================================================
+// PROJECT COST CATEGORIES (Sage integration per project)
+// ============================================================
+
+model ProjectCostCategory {
+  id               String  @id @default(cuid())
+  projectId        String
+  nominalCodeId    String?
+  costCode         String
+  description      String
+  budgetAmount     Decimal? @db.Decimal(12, 2)
+  actualAmount     Decimal? @db.Decimal(12, 2)
+  committedAmount  Decimal? @db.Decimal(12, 2)
+  notes            String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  project     Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  nominalCode NominalCode? @relation(fields: [nominalCodeId], references: [id])
+
+  @@unique([projectId, costCode])
+  @@map("project_cost_categories")
+}
+
+// ============================================================
+// SALES INVOICING / APPLICATIONS FOR PAYMENT
+// ============================================================
+
+model SalesInvoice {
+  id               String        @id @default(cuid())
+  invoiceNumber    String        @unique
+  projectId        String
+  type             InvoiceType   @default(APPLICATION)
+  status           InvoiceStatus @default(DRAFT)
+
+  // Amounts
+  applicationAmount  Decimal?  @db.Decimal(12, 2)
+  certifiedAmount    Decimal?  @db.Decimal(12, 2)
+  retentionHeld      Decimal?  @db.Decimal(12, 2)
+  cisDeduction       Decimal?  @db.Decimal(12, 2)
+  netPayable         Decimal?  @db.Decimal(12, 2)
+  paidAmount         Decimal?  @db.Decimal(12, 2)
+
+  // Period / dates
+  periodFrom       DateTime?
+  periodTo         DateTime?
+  dateSubmitted    DateTime?
+  dateCertified    DateTime?
+  dateDue          DateTime?
+  datePaid         DateTime?
+
+  // References
+  certRef          String?
+  notes            String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("sales_invoices")
+}
+
+enum InvoiceType {
+  APPLICATION
+  INTERIM_INVOICE
+  FINAL_ACCOUNT
+  RETENTION_RELEASE
+  VARIATION
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SUBMITTED
+  CERTIFIED
+  OVERDUE
+  PAID
+  DISPUTED
+}
+
+// ============================================================
+// VARIATIONS / CHANGE ORDERS
+// ============================================================
+
+model Variation {
+  id              String          @id @default(cuid())
+  variationNumber String          @unique
+  projectId       String
+  title           String
+  description     String?
+  status          VariationStatus @default(PENDING)
+  type            VariationType   @default(CLIENT_INSTRUCTION)
+  costImpact      Decimal?        @db.Decimal(12, 2)
+  valueImpact     Decimal?        @db.Decimal(12, 2)
+  dateRaised      DateTime        @default(now())
+  dateApproved    DateTime?
+  dateClosed      DateTime?
+  raisedBy        String?
+  approvedBy      String?
+  notes           String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("variations")
+}
+
+enum VariationStatus {
+  PENDING
+  SUBMITTED
+  APPROVED
+  REJECTED
+  IMPLEMENTED
+}
+
+enum VariationType {
+  CLIENT_INSTRUCTION
+  DESIGN_CHANGE
+  SITE_CONDITION
+  SCOPE_CHANGE
+  OMISSION
+  ADDITION
+}
+
+// ============================================================
+// AUDIT TRAIL
+// ============================================================
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  userName  String?
+  action    String   // CREATE, UPDATE, DELETE
+  entity    String   // Project, Quote, Product, etc.
+  entityId  String
+  field     String?
+  oldValue  String?
+  newValue  String?
+  metadata  String?
+  createdAt DateTime @default(now())
+
+  @@index([entity, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ============================================================
+// SUGGESTIONS / LOGBOOK
+// ============================================================
+
+model Suggestion {
+  id        String   @id @default(cuid())
+  userId    String?
+  userName  String
+  category  String   @default("General") // General, Improvement, Issue, Idea
+  message   String
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@map("suggestions")
+}
+
+// ============================================================
+// PROJECT NOTES / ACTIVITY LOG
+// ============================================================
+
+model ProjectNote {
+  id        String   @id @default(cuid())
+  projectId String
+  userId    String?
+  userName  String
+  message   String
+  category  String   @default("NOTE") // NOTE, MILESTONE, DECISION, ISSUE
+  pinned    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id])
+
+  @@index([projectId, createdAt])
+  @@map("project_notes")
+}
+
+// ============================================================
+// CAPACITY PLANNING
+// ============================================================
+
+model DepartmentCapacity {
+  id              String   @id @default(cuid())
+  department      String   @unique  // DESIGN, PRODUCTION, INSTALLATION
+  displayName     String
+  hoursPerWeek    Decimal  @db.Decimal(8, 1)
+  headcount       Int      @default(1)
+  notes           String?
+  updatedAt       DateTime @updatedAt
+
+  @@map("department_capacities")
+}
+
+model ProjectResourceEstimate {
+  id              String   @id @default(cuid())
+  projectId       String
+  department      String   // DESIGN, PRODUCTION, INSTALLATION
+  estimatedHours  Decimal  @db.Decimal(8, 1)
+  plannedStart    DateTime?
+  plannedEnd      DateTime?
+  actualHours     Decimal? @db.Decimal(8, 1)
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, department])
+  @@map("project_resource_estimates")
+}
+
+// ============================================================
+// CUSTOMER PORTAL ACCESS
+// ============================================================
+
+model CustomerPortalToken {
+  id         String    @id @default(cuid())
+  customerId String
+  projectId  String?
+  token      String    @unique
+  expiresAt  DateTime
+  lastUsed   DateTime?
+  active     Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  project  Project?  @relation(fields: [projectId], references: [id])
+
+  @@map("customer_portal_tokens")
+}
+
+// ============================================================
+// DESIGN STAGE MODULE
+// ============================================================
+
+enum DesignCardStatus {
+  QUEUED
+  IN_PROGRESS
+  REVIEW
+  COMPLETE
+  ON_HOLD
+}
+
+enum DesignJobType {
+  GA_DRAWING
+  PRODUCTION_DRAWINGS
+  BOM_FINALISATION
+  DESIGN_REVIEW
+}
+
+enum DesignJobStatus {
+  BLOCKED
+  READY
+  IN_PROGRESS
+  SUBMITTED
+  APPROVED
+  REJECTED
+  SIGNED_OFF
+}
+
+enum HandoverStatus {
+  DRAFT
+  SUBMITTED
+  ACKNOWLEDGED
+  REJECTED
+}
+
+model ProductDesignCard {
+  id                 String           @id @default(cuid())
+  productId          String           @unique
+  projectId          String
+  assignedDesignerId String?
+  status             DesignCardStatus @default(QUEUED)
+
+  // Target dates (back-calculated from project deadline)
+  targetStartDate    DateTime?
+  targetEndDate      DateTime?
+  actualStartDate    DateTime?
+  actualEndDate      DateTime?
+
+  // Hours tracking
+  estimatedHours     Decimal?         @db.Decimal(8, 1)
+  actualHours        Decimal?         @db.Decimal(8, 1)
+
+  notes              String?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  // Relations
+  product            Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
+  project            Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assignedDesigner   User?            @relation("DesignCardDesigner", fields: [assignedDesignerId], references: [id])
+  jobCards           DesignJobCard[]
+  bomLines           DesignBomLine[]
+
+  @@index([projectId])
+  @@index([assignedDesignerId])
+  @@index([status])
+  @@index([productId])
+  @@index([updatedAt])
+  @@map("product_design_cards")
+}
+
+model DesignJobCard {
+  id              String          @id @default(cuid())
+  designCardId    String
+  jobType         DesignJobType
+  status          DesignJobStatus @default(BLOCKED)
+  sortOrder       Int             @default(0)
+
+  // Assignment
+  assignedToId    String?
+  reviewerId      String?
+
+  // Timing
+  startedAt       DateTime?
+  submittedAt     DateTime?
+  approvedAt      DateTime?
+  signedOffAt     DateTime?
+  rejectedAt      DateTime?
+
+  // Review
+  reviewNotes     String?
+  rejectionReason String?
+
+  // Hours
+  estimatedHours  Decimal?        @db.Decimal(8, 1)
+  actualHours     Decimal?        @db.Decimal(8, 1)
+
+  notes           String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  // Relations
+  designCard      ProductDesignCard @relation(fields: [designCardId], references: [id], onDelete: Cascade)
+  assignedTo      User?             @relation("JobCardAssignee", fields: [assignedToId], references: [id])
+  reviewer        User?             @relation("JobCardReviewer", fields: [reviewerId], references: [id])
+
+  @@unique([designCardId, jobType])
+  @@index([assignedToId])
+  @@index([status])
+  @@index([designCardId, status])
+  @@map("design_job_cards")
+}
+
+model DesignBomLine {
+  id              String            @id @default(cuid())
+  designCardId    String
+  description     String
+  category        BomCategory       @default(MATERIALS)
+  partNumber      String?
+  supplier        String?
+  quantity        Decimal           @default(1) @db.Decimal(10, 2)
+  unit            String            @default("each")
+  unitCost        Decimal           @default(0) @db.Decimal(10, 2)
+  notes           String?
+  sortOrder       Int               @default(0)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  designCard      ProductDesignCard @relation(fields: [designCardId], references: [id], onDelete: Cascade)
+
+  @@index([designCardId])
+  @@map("design_bom_lines")
+}
+
+enum BomCategory {
+  MATERIALS
+  LABOUR
+  HARDWARE
+  SEALS
+  FINISH
+  OTHER
+}
+
+// ============================================================
+// PRODUCTION TASKS (Workshop-level work items)
+// ============================================================
+
+model ProductionTask {
+  id               String            @id @default(cuid())
+  productId        String
+  projectId        String
+  stage            ProductionStage
+  status           TaskStatus        @default(PENDING)
+  queuePosition    Int               @default(0)
+  assignedTo       String?
+  notes            String?
+  estimatedMins    Int?
+  actualMins       Int?
+  startedAt        DateTime?
+  completedAt      DateTime?
+
+  // Inspection fields
+  inspectedBy      String?
+  inspectedAt      DateTime?
+  inspectionStatus InspectionStatus?
+
+  // NCR link
+  ncrId            String?
+
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  product          Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
+  project          Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@index([projectId])
+  @@index([stage])
+  @@index([status])
+  @@index([queuePosition])
+  @@index([stage, status, queuePosition])
+  @@map("production_tasks")
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  BLOCKED
+  ON_HOLD
+  REWORK
+}
+
+enum InspectionStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+enum WorkerRole {
+  CUTTER
+  WELDER
+  FABRICATOR
+  FITTER
+  PAINTER
+  PACKER
+  SUPERVISOR
+}
+
+// ============================================================
+// WORKERS (Production staff)
+// ============================================================
+
+model Worker {
+  id          String     @id @default(cuid())
+  name        String
+  role        WorkerRole
+  isAvailable Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@map("workers")
+}
+
+model DesignHandover {
+  id              String         @id @default(cuid())
+  projectId       String         @unique
+  status          HandoverStatus @default(DRAFT)
+
+  // Initiator (design manager)
+  initiatedById   String?
+  initiatedAt     DateTime?
+
+  // Checklist (stored as JSON)
+  checklist       Json           @default("[]")
+
+  // Handover notes
+  designNotes     String?
+
+  // Products included in this handover (partial handover support)
+  includedProductIds Json  @default("[]")
+
+  // Receiver (production manager)
+  receivedById    String?
+  acknowledgedAt  DateTime?
+  rejectedAt      DateTime?
+  rejectionReason String?
+
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  // Relations
+  project         Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  initiatedBy     User?          @relation("HandoverInitiator", fields: [initiatedById], references: [id])
+  receivedBy      User?          @relation("HandoverReceiver", fields: [receivedById], references: [id])
+
+  @@map("design_handovers")
+}
+
+// ============================================================
+// FEATURE TAGS (CRM Amendment 4)
+// ============================================================
+
+model FeatureTag {
+  id                     String   @id @default(cuid())
+  name                   String                          // e.g. "Frame Fixings M12×100"
+  code                   String   @unique
+  category               String   @default("GENERAL")    // FIXINGS | DOOR_HARDWARE | ELECTRICAL | SEALS_GASKETS | OTHER
+  description            String?
+  unitCost               Decimal  @default(0) @db.Decimal(12, 2)
+  unit                   String   @default("each")       // each | per_metre | per_m2 | per_set
+  defaultQuantity        Int      @default(1)
+  autoCalcFromDimensions Boolean  @default(false)         // If true, qty derived from product dimensions
+  autoCalcFormula        String?                          // e.g. "perimeter / 300" for fixings, "perimeter" for seals
+  bomItems               Json?                            // Associated BOM line items
+  applicableProducts     Json?                            // Array of product type codes, or null = ALL
+  isActive               Boolean  @default(true)
+  sortOrder              Int      @default(0)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  @@map("feature_tags")
+}
+
+// ============================================================
+// SPEC-BOM MAPPING (CRM Amendment 2)
+// ============================================================
+
+model SpecBomMapping {
+  id          String   @id @default(cuid())
+  productType String                                     // Product type code (e.g. "BLAST_DOOR")
+  specField   String                                     // Spec field code (e.g. "transome")
+  specValue   String                                     // Spec value (e.g. "yes", "double_transome")
+  bomItems    Json                                       // Array of {material, qtyFormula, unitCost, unit, category}
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([productType, specField])
+  @@map("spec_bom_mappings")
+}
+
+model DimensionBomMapping {
+  id          String   @id @default(cuid())
+  productType String                                     // Product type code
+  material    String                                     // e.g. "Frame Steel RHS 100x60x4"
+  category    String   @default("MATERIALS")             // MATERIALS | LABOUR | HARDWARE | SEALS | FINISH
+  qtyFormula  String                                     // e.g. "(width * 2 + height * 2) / 1000"
+  unitCost    Decimal  @db.Decimal(12, 2)
+  unit        String   @default("metres")                // metres | pieces | kg | litres | m2
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([productType])
+  @@map("dimension_bom_mappings")
+}
+
+// ============================================================
+// LOCK OPTIONS (CRM Amendment 7 — Admin lookup)
+// ============================================================
+
+model LockOption {
+  id        String   @id @default(cuid())
+  category  String                                       // LOCK_TYPE | LOCK_BRAND | CYLINDER_TYPE | HANDLE_TYPE
+  parentId  String?                                      // For filtered dropdowns (brand → filtered by lock type)
+  label     String
+  value     String
+  unitCost  Decimal  @default(0) @db.Decimal(12, 2)
+  bomItems  Json?                                        // Associated BOM line items
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  parent   LockOption?  @relation("LockOptionHierarchy", fields: [parentId], references: [id])
+  children LockOption[] @relation("LockOptionHierarchy")
+
+  @@index([category])
+  @@index([parentId])
+  @@map("lock_options")
+}
+
+// ============================================================
+// COATING OPTIONS (CRM Amendment 8 — Admin lookup)
+// ============================================================
+
+model CoatingOption {
+  id          String   @id @default(cuid())
+  category    String                                     // COATING_STANDARD | PAINT_SYSTEM | FINISH_TYPE | GALV_TYPE
+  parentId    String?                                    // For filtered dropdowns (paint system → by coating standard)
+  label       String
+  value       String
+  description String?
+  costPerM2   Decimal  @default(0) @db.Decimal(12, 2)   // Cost per square metre
+  defaultDft  Int?                                       // Default dry film thickness (microns)
+  bomItems    Json?                                      // Associated BOM line items
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  parent   CoatingOption?  @relation("CoatingOptionHierarchy", fields: [parentId], references: [id])
+  children CoatingOption[] @relation("CoatingOptionHierarchy")
+
+  @@index([category])
+  @@index([parentId])
+  @@map("coating_options")
+}
+
+// ============================================================
+// SAGE BOM/BOO IMPORT TABLES
+// ============================================================
+
+model SageStockItem {
+  id                    String   @id @default(cuid())
+  stockCode             String   @unique
+  name                  String
+  description           String?
+  productGroup          String?
+  taxCode               String?
+  manufacturerName      String?
+  manufacturerPartNo    String?
+  commodityCode         String?
+  netMass               Decimal? @db.Decimal(12, 4)
+  stockTakeDays         Int?
+  allowSalesOrder       Boolean  @default(false)
+  barcode               String?
+  memo                  String?
+
+  // Pricing
+  averageBuyingPrice    Decimal? @db.Decimal(12, 2)
+  unitOfMeasure         String?
+
+  // Supplier
+  supplierRef           String?
+  supplierLeadTime      Int?
+  supplierLeadTimeUnit  String?
+  supplierMinQty        Decimal? @db.Decimal(10, 2)
+  supplierUsualQty      Decimal? @db.Decimal(10, 2)
+  supplierPartNo        String?
+
+  // Alternative
+  alternativeItemCode   String?
+  alternativeItemName   String?
+
+  // Sage Analysis Fields
+  productFamily         String?
+  itemSetType           String?
+  operationType         String?
+  materialComposition   String?
+  automation            String?
+  floodingRating        String?
+  securityRating        String?
+  fireRating            String?
+  blastRating           String?
+  pressureRating        String?
+  thermalRating         String?
+  extraAnalysis         Json?
+
+  // Accounting
+  accountingData        Json?
+
+  // Manufacturing settings (from MSE Stock Item)
+  bomItemType           Int?
+  defaultMake           Boolean?
+  defaultWarehouse      String?
+  costHeading           String?
+  scrapPercent          Decimal? @db.Decimal(5, 2)
+  woBatchMinQty         Int?
+  woBatchMaxQty         Int?
+  bulkIssue             Boolean?
+  mrpRulesTypeId        Int?
+  mseData               Json?
+
+  // Source tracking
+  sourceFile            String?
+  importedAt            DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  // Relations
+  bomHeader             SageBomHeader?
+  componentLines        SageBomComponent[]
+  operations            SageBomOperation[]
+
+  @@index([productGroup])
+  @@index([productFamily])
+  @@map("sage_stock_items")
+}
+
+model SageBomHeader {
+  id                        String    @id @default(cuid())
+  headerRef                 String    @unique
+  description               String?
+  manufacturingInstructions String?
+  qualityStandard           String?
+  effectiveFrom             DateTime?
+  effectiveTo               DateTime?
+  defaultCostQty            Int       @default(1)
+  defaultBuildQty           Int       @default(1)
+  bomModuleOnly             Boolean   @default(false)
+  revision                  String?
+  changeRef                 String?
+  componentTraceability     Boolean   @default(false)
+
+  // Source tracking
+  sourceFile                String?
+  importedAt                DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+
+  // Relations
+  stockItem                 SageStockItem    @relation(fields: [headerRef], references: [stockCode])
+  components                SageBomComponent[]
+  operations                SageBomOperation[]
+
+  @@index([headerRef])
+  @@map("sage_bom_headers")
+}
+
+model SageBomComponent {
+  id              String   @id @default(cuid())
+  headerRef       String
+  stockCode       String
+  description     String?
+  notes           String?
+  sequenceNo      Int
+  quantity        Decimal  @db.Decimal(10, 4)
+  instruction     String?
+  unitOfMeasure   String?
+  scrapPercent    Decimal  @default(0) @db.Decimal(5, 2)
+  fixedQuantity   Boolean  @default(false)
+  bomModuleOnly   Boolean  @default(false)
+
+  // Source tracking
+  sourceFile      String?
+  importedAt      DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  bomHeader       SageBomHeader   @relation(fields: [headerRef], references: [headerRef])
+  stockItem       SageStockItem   @relation(fields: [stockCode], references: [stockCode])
+
+  @@index([headerRef])
+  @@index([stockCode])
+  @@map("sage_bom_components")
+}
+
+model SageBomOperation {
+  id                     String   @id @default(cuid())
+  headerRef              String
+  stockCode              String
+  sequenceNo             Int
+  operationRef           String
+  operationDescription   String?
+  isSubcontract          Boolean  @default(false)
+  nonPrinting            Boolean  @default(false)
+  shrinkage              Decimal? @db.Decimal(5, 2)
+  overlapPercent         Decimal? @db.Decimal(5, 2)
+
+  // Run time
+  runTimeHours           Int      @default(0)
+  runTimeMinutes         Int      @default(0)
+  runTimeSeconds         Int      @default(0)
+  quantityPerRun         Int      @default(1)
+
+  // Delay
+  delayHours             Int      @default(0)
+  delayMinutes           Int      @default(0)
+  delaySeconds           Int      @default(0)
+
+  // Setup
+  setupHours             Int      @default(0)
+  setupMinutes           Int      @default(0)
+  setupSeconds           Int      @default(0)
+  setupRate              Decimal? @db.Decimal(10, 2)
+
+  // Labour
+  labourRef              String?
+  labourDescription      String?
+  labourNotes            String?
+  labourRate             Decimal? @db.Decimal(10, 2)
+  labourHours            Int      @default(0)
+  labourMinutes          Int      @default(0)
+  labourSeconds          Int      @default(0)
+  setupLabourRef         String?
+  setupLabourDesc        String?
+
+  // Machine
+  machineRef             String?
+  machineDescription     String?
+  machineNotes           String?
+  machineRate            Decimal? @db.Decimal(10, 2)
+  machineHours           Int      @default(0)
+  machineMinutes         Int      @default(0)
+  machineSeconds         Int      @default(0)
+  setupMachineRef        String?
+  setupMachineDesc       String?
+
+  // Tooling
+  toolingRef             String?
+  toolingDesc            String?
+  toolingCost            Decimal? @db.Decimal(10, 2)
+  toolingQty             Int?
+
+  // Subcontract
+  supplierAccountRef     String?
+  orderRef               String?
+  orderDetails           String?
+  leadTime               Int?
+  saturday               Boolean  @default(false)
+  sunday                 Boolean  @default(false)
+  subcontractBreaks      Json?
+
+  // Flags
+  labourIsResourceGroup  Boolean  @default(false)
+  machineIsResourceGroup Boolean  @default(false)
+  notes                  String?
+
+  // Computed convenience
+  totalRunTimeMinutes    Decimal? @db.Decimal(10, 2)
+  totalLabourMinutes     Decimal? @db.Decimal(10, 2)
+
+  // Source tracking
+  sourceFile             String?
+  importedAt             DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  // Relations
+  bomHeader              SageBomHeader   @relation(fields: [headerRef], references: [headerRef])
+  parentStockItem        SageStockItem   @relation(fields: [stockCode], references: [stockCode])
+
+  @@index([headerRef])
+  @@index([stockCode])
+  @@index([operationRef])
+  @@map("sage_bom_operations")
+}

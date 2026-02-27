@@ -1,0 +1,1 @@
+const fs=require("fs"); const s=JSON.parse(fs.readFileSync("d:/Ethos/mme-eto-system-master/mme-eto-system-master/scripts/_content.json","utf8")); fs.writeFileSync("d:/Ethos/mme-eto-system-master/mme-eto-system-master/scripts/inspect-db.ts", s); console.log("ok: "+s.length+" bytes");

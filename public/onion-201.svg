@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 220" width="200" height="220">
+  <!-- Onion body -->
+  <ellipse cx="100" cy="140" rx="65" ry="70" fill="#D4A843"/>
+  <ellipse cx="100" cy="140" rx="55" ry="60" fill="#E8C35A"/>
+  <ellipse cx="100" cy="140" rx="42" ry="48" fill="#F0D06A"/>
+  <ellipse cx="100" cy="140" rx="28" ry="34" fill="#F7DE7E"/>
+
+  <!-- Onion layers (lines) -->
+  <path d="M55 120 Q100 95 145 120" stroke="#C89830" stroke-width="1.5" fill="none" opacity="0.5"/>
+  <path d="M62 130 Q100 108 138 130" stroke="#C89830" stroke-width="1.5" fill="none" opacity="0.4"/>
+  <path d="M68 145 Q100 125 132 145" stroke="#C89830" stroke-width="1" fill="none" opacity="0.3"/>
+
+  <!-- Onion root -->
+  <ellipse cx="100" cy="205" rx="12" ry="6" fill="#A07828"/>
+  <line x1="95" y1="207" x2="92" y2="218" stroke="#8B6914" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="100" y1="208" x2="100" y2="220" stroke="#8B6914" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="105" y1="207" x2="108" y2="218" stroke="#8B6914" stroke-width="1.5" stroke-linecap="round"/>
+
+  <!-- Onion sprout -->
+  <path d="M100 72 Q95 50 92 25" stroke="#5B8C2A" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <path d="M100 72 Q105 48 110 22" stroke="#6BA030" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <path d="M100 72 Q100 45 100 18" stroke="#4E7A22" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+
+  <!-- Sprout tip leaves -->
+  <ellipse cx="90" cy="22" rx="4" ry="10" fill="#5B8C2A" transform="rotate(-10 90 22)"/>
+  <ellipse cx="110" cy="20" rx="4" ry="10" fill="#6BA030" transform="rotate(10 110 20)"/>
+  <ellipse cx="100" cy="16" rx="3" ry="9" fill="#4E7A22"/>
+
+  <!-- Highlight -->
+  <ellipse cx="80" cy="120" rx="12" ry="20" fill="white" opacity="0.2" transform="rotate(-15 80 120)"/>
+
+  <!-- Text: ONION -->
+  <text x="100" y="150" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="22" fill="#6B4400" letter-spacing="4">ONION</text>
+  <!-- Text: 201 -->
+  <text x="100" y="172" text-anchor="middle" font-family="Arial, sans-serif" font-weight="bold" font-size="16" fill="#8B6914" letter-spacing="2">201</text>
+</svg>

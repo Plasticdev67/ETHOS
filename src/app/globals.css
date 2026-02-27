@@ -1,0 +1,761 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+}
+
+:root {
+  --radius: 0.625rem;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+/* Font size scaling — controlled by layout-context via class on <html> */
+html { font-size: 18px; }
+html.font-small { font-size: 16px; }
+html.font-large { font-size: 22px; }
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   CYBERPUNK 2077 THEME — Bright Yellow / Cyan / Magenta / High Visibility
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* CP2077 core palette:
+   Yellow:  #FCE300 (primary brand)
+   Cyan:    #00F0FF (UI accent)
+   Magenta: #FF003C (danger/hot)
+   Black:   #1A1A1E (sidebar/dark panels)
+   Off-white: #FFFDE7 (background)
+*/
+
+.cyberpunk {
+  --radius: 0.25rem;
+  --background: #FFFDE7;
+  --foreground: #1A1A1E;
+  --card: #FFFFFF;
+  --card-foreground: #1A1A1E;
+  --popover: #FFFFFF;
+  --popover-foreground: #1A1A1E;
+  --primary: #1A1A1E;
+  --primary-foreground: #FCE300;
+  --secondary: #FCE300;
+  --secondary-foreground: #1A1A1E;
+  --muted: #FFF9C4;
+  --muted-foreground: #555555;
+  --accent: #FCE300;
+  --accent-foreground: #1A1A1E;
+  --destructive: #FF003C;
+  --border: #1A1A1E;
+  --input: #E0D9A8;
+  --ring: #00F0FF;
+  --chart-1: #00F0FF;
+  --chart-2: #FF003C;
+  --chart-3: #FCE300;
+  --chart-4: #00FF88;
+  --chart-5: #FF6600;
+  --sidebar: #1A1A1E;
+  --sidebar-foreground: #FCE300;
+  --sidebar-primary: #FCE300;
+  --sidebar-primary-foreground: #1A1A1E;
+  --sidebar-accent: #2A2A30;
+  --sidebar-accent-foreground: #FCE300;
+  --sidebar-border: #333338;
+  --sidebar-ring: #00F0FF;
+}
+
+/* ─── Body & Background with graffiti texture ───────────────────────────────── */
+.cyberpunk body {
+  background: #FFFDE7;
+  color: #1A1A1E;
+  position: relative;
+}
+
+/* Graffiti / spray-paint texture overlay on main content */
+.cyberpunk main {
+  position: relative;
+}
+
+.cyberpunk main::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.035;
+  background-image:
+    /* Spray dots pattern */
+    radial-gradient(circle at 15% 25%, #FF003C 1px, transparent 1px),
+    radial-gradient(circle at 85% 15%, #00F0FF 1.5px, transparent 1.5px),
+    radial-gradient(circle at 45% 75%, #FF003C 1px, transparent 1px),
+    radial-gradient(circle at 70% 50%, #FCE300 2px, transparent 2px),
+    radial-gradient(circle at 25% 60%, #00F0FF 1px, transparent 1px),
+    radial-gradient(circle at 90% 80%, #FF003C 1.5px, transparent 1.5px),
+    /* Drip lines */
+    linear-gradient(180deg, transparent 0%, transparent 20%, #FF003C 20%, #FF003C 20.3%, transparent 20.3%),
+    linear-gradient(180deg, transparent 0%, transparent 45%, #00F0FF 45%, #00F0FF 45.2%, transparent 45.2%),
+    linear-gradient(180deg, transparent 0%, transparent 70%, #FCE300 70%, #FCE300 70.4%, transparent 70.4%),
+    /* Diagonal slash marks */
+    repeating-linear-gradient(45deg, transparent, transparent 80px, rgba(255, 0, 60, 0.02) 80px, rgba(255, 0, 60, 0.02) 82px),
+    repeating-linear-gradient(-30deg, transparent, transparent 120px, rgba(0, 240, 255, 0.015) 120px, rgba(0, 240, 255, 0.015) 123px);
+  background-size:
+    200px 200px, 300px 250px, 250px 300px, 180px 220px, 280px 180px, 220px 260px,
+    3px 100%, 2px 100%, 4px 100%,
+    100% 100%, 100% 100%;
+}
+
+.cyberpunk main > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ─── Global border color ────────────────────────────────────────────────────── */
+.cyberpunk * {
+  border-color: rgba(26, 26, 30, 0.2);
+}
+
+.cyberpunk .border-border {
+  border-color: rgba(26, 26, 30, 0.25) !important;
+}
+
+/* ─── Background overrides — bright & clean ──────────────────────────────────── */
+.cyberpunk .bg-white {
+  background-color: #FFFFFF !important;
+}
+
+.cyberpunk .bg-gray-50,
+.cyberpunk .bg-gray-50\/50 {
+  background-color: #FFFEF2 !important;
+}
+
+.cyberpunk .bg-gray-100,
+.cyberpunk .bg-gray-100\/50 {
+  background-color: #FFF9C4 !important;
+}
+
+.cyberpunk .bg-gray-200 {
+  background-color: #FCE300 !important;
+}
+
+/* ─── Text: dark & high-contrast on yellow ───────────────────────────────────── */
+.cyberpunk .text-gray-900 { color: #1A1A1E !important; }
+.cyberpunk .text-gray-800 { color: #222226 !important; }
+.cyberpunk .text-gray-700 { color: #333338 !important; }
+.cyberpunk .text-gray-600 { color: #444448 !important; }
+.cyberpunk .text-gray-500 { color: #666 !important; }
+.cyberpunk .text-gray-400 { color: #888 !important; }
+
+.cyberpunk .hover\:bg-gray-50:hover {
+  background-color: #FFF8B0 !important;
+}
+
+.cyberpunk .hover\:bg-gray-100:hover {
+  background-color: #FFF176 !important;
+}
+
+/* ─── Sidebar: dark panel (CP2077 menu style) ────────────────────────────────── */
+.cyberpunk aside {
+  background-color: #1A1A1E !important;
+  border-color: #333338 !important;
+  border-right: 3px solid #FCE300 !important;
+}
+
+/* ─── Header: yellow accent bar ──────────────────────────────────────────────── */
+.cyberpunk header {
+  background-color: #FCE300 !important;
+  border-bottom: 3px solid #1A1A1E !important;
+  backdrop-filter: none;
+}
+
+.cyberpunk header input {
+  background-color: #1A1A1E !important;
+  color: #FCE300 !important;
+  border-color: #333 !important;
+}
+
+.cyberpunk header input::placeholder {
+  color: #888 !important;
+}
+
+.cyberpunk header input:focus {
+  border-color: #00F0FF !important;
+  box-shadow: 0 0 8px rgba(0, 240, 255, 0.5) !important;
+}
+
+.cyberpunk header .text-gray-400,
+.cyberpunk header .text-gray-500 {
+  color: #1A1A1E !important;
+}
+
+.cyberpunk header .text-gray-900 {
+  color: #1A1A1E !important;
+}
+
+.cyberpunk header .hover\:bg-gray-50:hover,
+.cyberpunk header .hover\:bg-red-50:hover {
+  background-color: rgba(26, 26, 30, 0.15) !important;
+}
+
+.cyberpunk header .bg-blue-100 {
+  background-color: #1A1A1E !important;
+}
+
+.cyberpunk header .text-blue-700 {
+  color: #FCE300 !important;
+}
+
+/* ─── Blue link overrides → cyan ─────────────────────────────────────────────── */
+.cyberpunk .text-blue-700,
+.cyberpunk .text-blue-600 {
+  color: #0088AA !important;
+}
+
+.cyberpunk .bg-blue-50 {
+  background-color: #E0FFFE !important;
+}
+
+/* ─── Card effects: bold borders, yellow shadow ──────────────────────────────── */
+.cyberpunk .rounded-lg {
+  box-shadow: 2px 2px 0 rgba(26, 26, 30, 0.08);
+}
+
+.cyberpunk .shadow-sm {
+  box-shadow: 3px 3px 0 rgba(26, 26, 30, 0.1), 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+}
+
+.cyberpunk .shadow-lg,
+.cyberpunk .shadow-md {
+  box-shadow: 4px 4px 0 #1A1A1E, 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* ─── Input styling ──────────────────────────────────────────────────────────── */
+.cyberpunk input,
+.cyberpunk select,
+.cyberpunk textarea {
+  background-color: #FFFEF5 !important;
+  color: #1A1A1E !important;
+  border: 2px solid #1A1A1E !important;
+  font-weight: 500;
+}
+
+.cyberpunk input:focus,
+.cyberpunk select:focus,
+.cyberpunk textarea:focus {
+  border-color: #00F0FF !important;
+  box-shadow: 0 0 0 3px rgba(0, 240, 255, 0.3), 3px 3px 0 #1A1A1E !important;
+  outline: none !important;
+}
+
+/* ─── Buttons ────────────────────────────────────────────────────────────────── */
+.cyberpunk button {
+  transition: all 0.15s ease;
+}
+
+/* ─── Badge overrides: vivid & punchy ────────────────────────────────────────── */
+.cyberpunk .bg-green-100  { background-color: #B9F6CA !important; }
+.cyberpunk .text-green-700 { color: #1B5E20 !important; }
+.cyberpunk .bg-red-100    { background-color: #FFCDD2 !important; }
+.cyberpunk .text-red-700  { color: #B71C1C !important; }
+.cyberpunk .bg-amber-100  { background-color: #FCE300 !important; }
+.cyberpunk .text-amber-700 { color: #1A1A1E !important; }
+.cyberpunk .bg-purple-100 { background-color: #E1BEE7 !important; }
+.cyberpunk .text-purple-700 { color: #6A1B9A !important; }
+.cyberpunk .bg-teal-100   { background-color: #B2DFDB !important; }
+.cyberpunk .text-teal-700 { color: #004D40 !important; }
+.cyberpunk .bg-indigo-100 { background-color: #C5CAE9 !important; }
+.cyberpunk .text-indigo-700 { color: #283593 !important; }
+
+/* ─── Table ──────────────────────────────────────────────────────────────────── */
+.cyberpunk table {
+  border-color: rgba(26, 26, 30, 0.15);
+}
+
+.cyberpunk thead tr {
+  background-color: #FCE300 !important;
+}
+
+.cyberpunk thead .text-gray-500 {
+  color: #1A1A1E !important;
+  font-weight: 700 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.cyberpunk tbody tr:hover {
+  background-color: #FFF9C4 !important;
+}
+
+.cyberpunk .divide-border > * + * {
+  border-color: rgba(26, 26, 30, 0.12);
+}
+
+/* ─── Kanban columns ─────────────────────────────────────────────────────────── */
+.cyberpunk .bg-blue-50\/50 {
+  background-color: #FFFEF2 !important;
+}
+
+.cyberpunk .bg-rose-50\/60 {
+  background-color: #FFF0F0 !important;
+}
+
+/* ─── Scrollbar: yellow on dark ──────────────────────────────────────────────── */
+.cyberpunk ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.cyberpunk ::-webkit-scrollbar-track {
+  background: #FFFDE7;
+}
+
+.cyberpunk ::-webkit-scrollbar-thumb {
+  background: #FCE300;
+  border: 1px solid #1A1A1E;
+  border-radius: 0;
+}
+
+.cyberpunk ::-webkit-scrollbar-thumb:hover {
+  background: #1A1A1E;
+}
+
+/* ─── Cyberpunk Logo Glow Animation ──────────────────────────────────────────── */
+@keyframes cyber-glow {
+  0%, 100% {
+    text-shadow:
+      0 0 5px #FCE300,
+      0 0 15px #FCE300,
+      0 0 30px rgba(252, 227, 0, 0.4);
+  }
+  50% {
+    text-shadow:
+      0 0 10px #FCE300,
+      0 0 25px #FCE300,
+      0 0 50px rgba(252, 227, 0, 0.6),
+      0 0 80px rgba(0, 240, 255, 0.2);
+  }
+}
+
+@keyframes cyber-flicker {
+  0%, 19.999%, 22%, 62.999%, 64%, 64.999%, 70%, 100% {
+    opacity: 1;
+  }
+  20%, 21.999%, 63%, 63.999%, 65%, 69.999% {
+    opacity: 0.85;
+  }
+}
+
+.cyber-logo {
+  font-family: var(--font-orbitron), 'Orbitron', sans-serif;
+  font-weight: 900;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #FCE300;
+  animation: cyber-glow 3s ease-in-out infinite, cyber-flicker 8s linear infinite;
+}
+
+.cyber-logo-sub {
+  font-family: var(--font-orbitron), 'Orbitron', sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: #00F0FF;
+  text-shadow: 0 0 6px rgba(0, 240, 255, 0.6);
+}
+
+/* ─── Scanline effect (subtle horizontal line sweep) ─────────────────────────── */
+@keyframes scanline {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+
+.cyberpunk-scanline::after {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent 10%, #00F0FF 30%, #FCE300 50%, #FF003C 70%, transparent 90%);
+  animation: scanline 6s linear infinite;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.15;
+}
+
+/* ─── Graffiti SVG pattern (applied to main background) ──────────────────────── */
+.cyberpunk .cyber-graffiti-bg {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400' viewBox='0 0 400 400'%3E%3Ctext x='20' y='60' fill='%23FF003C' opacity='0.04' font-size='48' font-weight='900' font-family='Impact,sans-serif' transform='rotate(-12 20 60)'%3EMME%3C/text%3E%3Ctext x='200' y='150' fill='%2300F0FF' opacity='0.03' font-size='32' font-weight='900' font-family='Impact,sans-serif' transform='rotate(8 200 150)'%3EETHOS%3C/text%3E%3Ctext x='50' y='280' fill='%23FCE300' opacity='0.04' font-size='24' font-weight='900' font-family='Impact,sans-serif' transform='rotate(-5 50 280)'%3EMK.1%3C/text%3E%3Ctext x='280' y='350' fill='%23FF003C' opacity='0.03' font-size='20' font-weight='900' font-family='Impact,sans-serif' transform='rotate(15 280 350)'%3E2077%3C/text%3E%3Cline x1='10' y1='120' x2='10' y2='180' stroke='%23FF003C' stroke-width='3' opacity='0.03'/%3E%3Cline x1='380' y1='200' x2='380' y2='280' stroke='%2300F0FF' stroke-width='2' opacity='0.03'/%3E%3Ccircle cx='300' cy='80' r='15' fill='none' stroke='%23FCE300' stroke-width='2' opacity='0.03'/%3E%3Cpath d='M100,320 Q120,300 140,320 Q160,340 180,320' fill='none' stroke='%23FF003C' stroke-width='2' opacity='0.03'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 400px 400px;
+}
+
+/* ─── Utility: cyberpunk font class ──────────────────────────────────────────── */
+.font-cyber {
+  font-family: var(--font-orbitron), 'Orbitron', sans-serif;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   SAGE 200 THEME — Professional green / dark sidebar / corporate feel
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* Sage 200 core palette:
+   Green:      #00DC00 (Sage bright green — from logo)
+   Brand:      #00B140 (Sage UI green)
+   Dark Green: #008C2E (accent/hover)
+   Sidebar:    #2D2D2D (dark charcoal)
+   Header:     #F5F5F5 (light gray)
+   Background: #F4FBF4 (very light green tint)
+   Selected:   #FFF9C4 (yellow highlight — classic Sage row selection)
+   Text:       #333333 (dark gray)
+*/
+
+.sage {
+  --radius: 0.375rem;
+  --background: #F4FBF4;
+  --foreground: #333333;
+  --card: #FFFFFF;
+  --card-foreground: #333333;
+  --popover: #FFFFFF;
+  --popover-foreground: #333333;
+  --primary: #00B140;
+  --primary-foreground: #FFFFFF;
+  --secondary: #E8F5E9;
+  --secondary-foreground: #1B5E20;
+  --muted: #F5F5F5;
+  --muted-foreground: #666666;
+  --accent: #E8F5E9;
+  --accent-foreground: #1B5E20;
+  --destructive: #D32F2F;
+  --border: #E0E0E0;
+  --input: #E0E0E0;
+  --ring: #00B140;
+  --chart-1: #00B140;
+  --chart-2: #1565C0;
+  --chart-3: #FF8F00;
+  --chart-4: #6A1B9A;
+  --chart-5: #C62828;
+  --sidebar: #2D2D2D;
+  --sidebar-foreground: #EEEEEE;
+  --sidebar-primary: #00B140;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #3A3A3A;
+  --sidebar-accent-foreground: #FFFFFF;
+  --sidebar-border: #404040;
+  --sidebar-ring: #00B140;
+}
+
+/* ─── Sidebar: Sage 200 dark charcoal ─────────────────────────────────────── */
+.sage aside {
+  background-color: #2D2D2D !important;
+  border-color: #404040 !important;
+  border-right: 1px solid #404040 !important;
+}
+
+/* ─── Header: Sage light gray bar ─────────────────────────────────────────── */
+.sage header {
+  background-color: #F5F5F5 !important;
+  border-bottom: 1px solid #E0E0E0 !important;
+}
+
+.sage header .text-gray-400,
+.sage header .text-gray-500 {
+  color: #666 !important;
+}
+
+.sage header .bg-blue-100 {
+  background-color: #00B140 !important;
+}
+
+.sage header .text-blue-700 {
+  color: #FFFFFF !important;
+}
+
+/* ─── Sage Logo Styling — matches real Sage branding ──────────────────────── */
+.sage-logo {
+  font-family: 'Arial Rounded MT Bold', 'Nunito', 'Varela Round', 'Arial', sans-serif;
+  font-weight: 900;
+  font-style: normal;
+  letter-spacing: -0.03em;
+  color: #00DC00;
+  font-size: inherit;
+  text-shadow: 0 1px 2px rgba(0, 220, 0, 0.15);
+}
+
+.sage-logo-version {
+  font-family: 'Arial', 'Helvetica', sans-serif;
+  font-weight: 800;
+  color: #00DC00;
+  letter-spacing: 0.08em;
+  background: linear-gradient(135deg, #00DC00 0%, #00B140 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ─── Sage green accent for links ─────────────────────────────────────────── */
+.sage .text-blue-700,
+.sage .text-blue-600 {
+  color: #00875A !important;
+}
+
+.sage .hover\:text-blue-700:hover,
+.sage .hover\:text-blue-600:hover {
+  color: #006644 !important;
+}
+
+.sage .bg-blue-50 {
+  background-color: #E8F5E9 !important;
+}
+
+.sage .bg-blue-100 {
+  background-color: #C8E6C9 !important;
+}
+
+.sage .text-blue-700 {
+  color: #1B5E20 !important;
+}
+
+/* ─── Row selection: Sage classic yellow highlight ────────────────────────── */
+.sage tbody tr:hover {
+  background-color: #FFF9C4 !important;
+}
+
+/* ─── Table headers: Sage gray ────────────────────────────────────────────── */
+.sage thead tr {
+  background-color: #F5F5F5 !important;
+}
+
+.sage thead .text-gray-500 {
+  color: #555 !important;
+  font-weight: 600 !important;
+}
+
+/* ─── Card styling: clean Sage look ───────────────────────────────────────── */
+.sage .shadow-sm {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+}
+
+.sage .shadow-md,
+.sage .shadow-lg {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* ─── Border styling: subtle Sage borders ─────────────────────────────────── */
+.sage .border-border {
+  border-color: #E0E0E0 !important;
+}
+
+.sage .border-l-4 {
+  border-left-color: #00B140 !important;
+}
+
+/* Only override blue border-left accents */
+.sage .border-l-blue-500 {
+  border-left-color: #00B140 !important;
+}
+
+/* ─── Input styling: Sage form fields ─────────────────────────────────────── */
+.sage input:focus,
+.sage select:focus,
+.sage textarea:focus {
+  border-color: #00B140 !important;
+  box-shadow: 0 0 0 2px rgba(0, 177, 64, 0.2) !important;
+  outline: none !important;
+}
+
+/* ─── Badge overrides: Sage corporate colors ──────────────────────────────── */
+.sage .bg-green-100  { background-color: #C8E6C9 !important; }
+.sage .text-green-700 { color: #1B5E20 !important; }
+
+/* ─── Sage scrollbar: green on gray ───────────────────────────────────────── */
+.sage ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.sage ::-webkit-scrollbar-track {
+  background: #F5F5F5;
+}
+
+.sage ::-webkit-scrollbar-thumb {
+  background: #BDBDBD;
+  border-radius: 4px;
+}
+
+.sage ::-webkit-scrollbar-thumb:hover {
+  background: #00B140;
+}
+
+/* ─── Sage button primary: green ──────────────────────────────────────────── */
+.sage .bg-primary {
+  background-color: #00B140 !important;
+}
+
+.sage .bg-primary:hover {
+  background-color: #008C2E !important;
+}
+
+/* ─── Sage selected row in sidebar (collapse toggle) ──────────────────────── */
+.sage .hover\:bg-gray-50:hover {
+  background-color: #F0F0F0 !important;
+}
+
+/* ─── Sage body: subtle green-tinted background ───────────────────────────── */
+.sage body {
+  background: #F4FBF4;
+}
+
+/* ─── Sage main area: subtle green tint overlay ───────────────────────────── */
+.sage main {
+  position: relative;
+}
+
+.sage main::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.012;
+  background:
+    /* Subtle green dots pattern — like Sage report paper */
+    radial-gradient(circle at 20% 30%, #00DC00 1px, transparent 1px),
+    radial-gradient(circle at 80% 70%, #00B140 1px, transparent 1px),
+    radial-gradient(circle at 50% 50%, #00DC00 0.5px, transparent 0.5px);
+  background-size: 60px 60px, 80px 80px, 40px 40px;
+}
+
+.sage main > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ─── Sage 200 giant watermark on main content ────────────────────────────── */
+.sage .sage-watermark-bg {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='500' viewBox='0 0 800 500'%3E%3Ctext x='50%25' y='45%25' text-anchor='middle' dominant-baseline='middle' fill='%2300DC00' opacity='0.035' font-size='200' font-weight='900' font-family='Arial Rounded MT Bold,Nunito,Arial,sans-serif'%3Esage%3C/text%3E%3Ctext x='50%25' y='78%25' text-anchor='middle' dominant-baseline='middle' fill='%2300B140' opacity='0.04' font-size='120' font-weight='800' font-family='Arial,Helvetica,sans-serif' letter-spacing='0.15em'%3E200%3C/text%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 800px 500px;
+}
+
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}

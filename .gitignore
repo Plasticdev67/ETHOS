@@ -1,0 +1,61 @@
+# Dependencies
+node_modules/
+.pnp/
+.pnp.js
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# Next.js
+.next/
+out/
+
+# Production build
+/build
+
+# Environment — NEVER commit secrets
+.env
+.env.*
+
+# Prisma generated client
+src/generated/
+
+# Sage BOM Data — NEVER commit business data
+Bom Database/
+data/sage-export/
+*.csv
+
+# Temp files
+tmpclaude-*
+Untitled-*.txt
+*.tmp
+tmp/
+
+# IDE
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Vercel
+.vercel
+
+# Claude Code
+.claude/
+
+# Testing
+/coverage
