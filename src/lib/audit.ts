@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db"
+import { auth } from "@/lib/auth"
 
 type AuditEntry = {
   userId?: string | null
@@ -14,10 +15,25 @@ type AuditEntry = {
 
 export async function logAudit(entry: AuditEntry) {
   try {
+    // Auto-capture user identity from session if not provided
+    let userId = entry.userId || null
+    let userName = entry.userName || null
+    if (!userId) {
+      try {
+        const session = await auth()
+        if (session?.user) {
+          userId = (session.user as { id?: string }).id || null
+          userName = session.user.name || null
+        }
+      } catch {
+        // Session lookup can fail in edge cases — continue without identity
+      }
+    }
+
     await prisma.auditLog.create({
       data: {
-        userId: entry.userId || null,
-        userName: entry.userName || null,
+        userId,
+        userName,
         action: entry.action,
         entity: entry.entity,
         entityId: entry.entityId,

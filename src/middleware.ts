@@ -1,35 +1,48 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getToken } from "next-auth/jwt"
 
-export async function middleware(req: NextRequest) {
-  const { pathname } = req.nextUrl
-
-  // Allow auth API routes, portal routes, and static files always
-  if (pathname.startsWith("/api/auth") || pathname.startsWith("/portal")) {
-    return NextResponse.next()
-  }
-
-  // Skip token verification for internal API routes — they run server-side
-  // and can check auth themselves if needed. This avoids JWT decode on every fetch.
-  if (pathname.startsWith("/api/")) {
-    return NextResponse.next()
-  }
-
-  // NextAuth v5 uses "authjs" cookie prefix (not "next-auth")
+function getSessionToken(req: NextRequest) {
   const secureCookie = req.nextUrl.protocol === "https:"
   const cookieName = secureCookie
     ? "__Secure-authjs.session-token"
     : "authjs.session-token"
-  const token = await getToken({ req, secret: process.env.AUTH_SECRET, cookieName })
+  return getToken({ req, secret: process.env.AUTH_SECRET, cookieName })
+}
+
+export async function middleware(req: NextRequest) {
+  const { pathname } = req.nextUrl
+
+  // Always allow NextAuth routes (login/callback/signout)
+  if (pathname.startsWith("/api/auth")) {
+    return NextResponse.next()
+  }
+
+  // Allow public portal pages (customer-facing, token-authenticated separately)
+  if (pathname.startsWith("/portal")) {
+    return NextResponse.next()
+  }
+
+  // Protect ALL other /api/ routes — require a valid session
+  if (pathname.startsWith("/api/")) {
+    const token = await getSessionToken(req)
+    if (!token) {
+      return NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 }
+      )
+    }
+    return NextResponse.next()
+  }
+
+  // Page routes — check session
+  const token = await getSessionToken(req)
   const isLoggedIn = !!token
   const isLoginPage = pathname === "/login"
 
-  // Redirect logged-in users away from login page
   if (isLoginPage && isLoggedIn) {
     return NextResponse.redirect(new URL("/", req.url))
   }
 
-  // Redirect unauthenticated users to login
   if (!isLoginPage && !isLoggedIn) {
     return NextResponse.redirect(new URL("/login", req.url))
   }
@@ -39,7 +52,7 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    // Only run middleware on page routes (not API, static, image, or public asset routes)
-    "/((?!_next/static|_next/image|favicon.ico|api/|.*\\.(?:jpg|jpeg|png|gif|svg|ico|webp|mp4|css|js)$).*)",
+    // Run on page routes AND API routes (exclude static assets and NextAuth)
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:jpg|jpeg|png|gif|svg|ico|webp|mp4|css|js|woff|woff2)$).*)",
   ],
 }
