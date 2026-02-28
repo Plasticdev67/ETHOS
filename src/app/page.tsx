@@ -357,7 +357,7 @@ async function getDesignTabData() {
     }),
     prisma.designHandover.findMany({
       where: { status: "SUBMITTED" },
-      select: { submittedAt: true, project: { select: { projectNumber: true, name: true } } },
+      select: { initiatedAt: true, project: { select: { projectNumber: true, name: true } } },
     }),
   ])
 
@@ -449,8 +449,8 @@ async function getDesignTabData() {
   const handoversPending = handovers.map((h) => ({
     projectNumber: h.project.projectNumber,
     projectName: h.project.name,
-    submittedAt: h.submittedAt?.toISOString() || "",
-    daysWaiting: h.submittedAt ? Math.floor((now.getTime() - new Date(h.submittedAt).getTime()) / (1000 * 60 * 60 * 24)) : 0,
+    submittedAt: h.initiatedAt?.toISOString() || "",
+    daysWaiting: h.initiatedAt ? Math.floor((now.getTime() - new Date(h.initiatedAt).getTime()) / (1000 * 60 * 60 * 24)) : 0,
   }))
 
   return { activeCards, completedCards, overdueCards, avgCycleTimeDays, cardsByStatus, designerWorkload, byWorkstream, overdueList, handoversPending }
