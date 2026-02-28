@@ -84,7 +84,7 @@ export async function POST(
       name: opportunity.name,
       customerId: customerId,
       projectType: "STANDARD",
-      workStream: "ADHOC",
+      workStream: "BESPOKE",
       salesStage: "ORDER",
       projectStatus: "DESIGN",
       contractType: "STANDARD",

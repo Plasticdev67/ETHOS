@@ -7,7 +7,7 @@ import { useRef } from "react"
 
 const statuses = ["ALL", "OPPORTUNITY", "QUOTATION", "DESIGN", "MANUFACTURE", "INSTALLATION", "REVIEW", "COMPLETE"]
 const salesStages = ["ALL", "OPPORTUNITY", "QUOTED", "ORDER"]
-const workStreams = ["ALL", "COMMUNITY", "UTILITIES", "BESPOKE", "BLAST", "BUND_CONTAINMENT", "REFURBISHMENT", "ADHOC"]
+const workStreams = ["ALL", "COMMUNITY", "UTILITIES", "BESPOKE", "BLAST", "BUND_CONTAINMENT", "REFURBISHMENT"]
 const priorities = ["ALL", "NORMAL", "HIGH", "CRITICAL"]
 const classifications = ["ALL", "NORMAL", "MEGA", "SUB_CONTRACT"]
 

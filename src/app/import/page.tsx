@@ -58,7 +58,7 @@ const importTypes = [
       { key: "projectNumber", label: "Project Number", required: false, description: "Will auto-generate if blank" },
       { key: "customer", label: "Customer Name", required: false, description: "Must match an existing customer" },
       { key: "coordinator", label: "Coordinator", required: false, description: "Must match a team member name" },
-      { key: "workStream", label: "Work Stream", required: false, description: "Community, Utilities, Bespoke, Blast, Bund, Refurbishment, Adhoc" },
+      { key: "workStream", label: "Work Stream", required: false, description: "Community, Utilities, Bespoke, Blast, Bund, Refurbishment" },
       { key: "salesStage", label: "Sales Stage", required: false, description: "Opportunity, Quoted, Order" },
       { key: "projectStatus", label: "Status", required: false, description: "Opportunity, Quotation, Design, Manufacture, Installation, Review, Complete" },
       { key: "estimatedValue", label: "Estimated Value", required: false, description: "£ value — can include £ and commas" },

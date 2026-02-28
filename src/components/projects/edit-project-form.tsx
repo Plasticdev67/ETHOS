@@ -20,7 +20,6 @@ const workStreams = [
   { value: "BLAST", label: "Blast" },
   { value: "BUND_CONTAINMENT", label: "Bund Containment" },
   { value: "REFURBISHMENT", label: "Refurbishment" },
-  { value: "ADHOC", label: "Ad-hoc" },
 ]
 
 const salesStages = [

@@ -173,6 +173,12 @@ const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     "ncrs:create", "ncrs:edit",
     "production:manage", "production:inspect",
   ],
+  PRODUCTION_PLANNER: [
+    ...BASE_READ,
+    "products:edit",
+    "purchasing:create",
+    "production:manage",
+  ],
 
   // ── Projects ──
   PROJECT_MANAGER: [
@@ -233,6 +239,11 @@ const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     "finance:edit",
     "audit:read",
     "dashboards:read",
+  ],
+  ACCOUNTS: [
+    ...BASE_READ,
+    "purchasing:create", "purchasing:edit",
+    "finance:edit",
   ],
 
   // ── Site ──
@@ -295,3 +306,14 @@ export const DASHBOARD_ROLES = [
   "HEAD_OF_FINANCE_IT_PROCUREMENT", "FINANCE_MANAGER",
   "ENGINEERING_MANAGER", "PRODUCTION_MANAGER", "ADMIN",
 ] as const
+
+/** Roles that can access KPI reports and performance data */
+export const MANAGEMENT_ROLES = [
+  "MANAGING_DIRECTOR", "TECHNICAL_DIRECTOR", "SALES_DIRECTOR", "DIRECTOR",
+  "ENGINEERING_MANAGER", "PRODUCTION_MANAGER", "PROJECT_MANAGER",
+  "HEAD_OF_FINANCE_IT_PROCUREMENT", "FINANCE_MANAGER", "ADMIN",
+] as const
+
+export function isManagerOrDirector(role: string): boolean {
+  return (MANAGEMENT_ROLES as readonly string[]).includes(resolveRole(role))
+}

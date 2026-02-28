@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
       projectManagerId: body.projectManagerId || null,
       installManagerId: body.installManagerId || null,
       projectType: body.projectType || "STANDARD",
-      workStream: body.workStream || "ADHOC",
+      workStream: body.workStream || "BESPOKE",
       salesStage: body.salesStage || "OPPORTUNITY",
       projectStatus: body.projectStatus || "OPPORTUNITY",
       contractType: body.contractType || "STANDARD",

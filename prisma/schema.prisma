@@ -58,6 +58,8 @@ enum UserRole {
   PROJECT_COORDINATOR
   PROJECT_ADMINISTRATOR
   PRODUCTION_SUPERVISOR
+  PRODUCTION_PLANNER
+  ACCOUNTS
   SURVEYOR
   STAFF
   ADMIN
@@ -356,7 +358,7 @@ model Project {
   installManagerId  String?
 
   projectType     ProjectType     @default(STANDARD)
-  workStream      WorkStream      @default(ADHOC)
+  workStream      WorkStream      @default(BESPOKE)
   salesStage      SalesStage      @default(OPPORTUNITY)
   projectStatus   ProjectStatus   @default(OPPORTUNITY)
   contractType    ContractType    @default(STANDARD)
@@ -454,7 +456,6 @@ enum WorkStream {
   BLAST
   BUND_CONTAINMENT
   REFURBISHMENT
-  ADHOC
 }
 
 enum SalesStage {

@@ -92,11 +92,13 @@ async function main() {
     { name: "Owen Hughes",      email: "owen.hughes@mme.co.uk",      role: "HEAD_OF_FINANCE_IT_PROCUREMENT", department: "FINANCE_IT_PROCUREMENT" },
     { name: "Marc Harrison",    email: "marc.harrison@mme.co.uk",    role: "FINANCE_MANAGER",     department: "FINANCE_IT_PROCUREMENT" },
 
-    // Additional staff (roles TBC — defaults to STAFF)
-    { name: "Amy Carter",       email: "amy.carter@mme.co.uk",       role: "STAFF",               department: null },
-    { name: "Catherine Morris", email: "catherine.morris@mme.co.uk", role: "STAFF",               department: null },
-    { name: "Geraint Morgan",   email: "geraint.morgan@mme.co.uk",   role: "STAFF",               department: null },
-    { name: "Teresa Millan",    email: "teresa.millan@mme.co.uk",    role: "STAFF",               department: null },
+    // Accounts
+    { name: "Amy Carter",       email: "amy.carter@mme.co.uk",       role: "ACCOUNTS",            department: "FINANCE_IT_PROCUREMENT" },
+    { name: "Catherine Morris", email: "catherine.morris@mme.co.uk", role: "ACCOUNTS",            department: "FINANCE_IT_PROCUREMENT" },
+    { name: "Teresa Millan",    email: "teresa.millan@mme.co.uk",    role: "ACCOUNTS",            department: "FINANCE_IT_PROCUREMENT" },
+
+    // Production Planning
+    { name: "Geraint Morgan",   email: "geraint.morgan@mme.co.uk",   role: "PRODUCTION_PLANNER",  department: "PRODUCTION" },
 
     // System Admin
     { name: "Rick Zhou",        email: "rick.zhou@mme.co.uk",        role: "ADMIN",               department: "DIRECTORS" },

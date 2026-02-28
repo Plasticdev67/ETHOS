@@ -467,8 +467,8 @@ function mapCostCategory(val?: string): "MATERIALS" | "LABOUR" | "PLANT_HIRE" | 
   return "OTHER"
 }
 
-function mapWorkStream(val?: string): "COMMUNITY" | "UTILITIES" | "BESPOKE" | "BLAST" | "BUND_CONTAINMENT" | "REFURBISHMENT" | "ADHOC" {
-  if (!val) return "ADHOC"
+function mapWorkStream(val?: string): "COMMUNITY" | "UTILITIES" | "BESPOKE" | "BLAST" | "BUND_CONTAINMENT" | "REFURBISHMENT" {
+  if (!val) return "BESPOKE"
   const v = val.toUpperCase().replace(/[_\s-]/g, "")
   if (v.includes("COMMUNITY")) return "COMMUNITY"
   if (v.includes("UTIL")) return "UTILITIES"
@@ -476,7 +476,7 @@ function mapWorkStream(val?: string): "COMMUNITY" | "UTILITIES" | "BESPOKE" | "B
   if (v.includes("BLAST")) return "BLAST"
   if (v.includes("BUND") || v.includes("CONTAINMENT")) return "BUND_CONTAINMENT"
   if (v.includes("REFURB")) return "REFURBISHMENT"
-  return "ADHOC"
+  return "BESPOKE"
 }
 
 function mapSalesStage(val?: string): "OPPORTUNITY" | "QUOTED" | "ORDER" {
