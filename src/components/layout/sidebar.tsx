@@ -68,17 +68,11 @@ export function Sidebar() {
   const isCyber = theme === "cyberpunk"
   const isSage = theme === "sage"
 
-  // Easter egg: click logo 10 times to activate onion mode
+  // Easter egg: click logo 10 times to activate onion mode (resets on refresh)
   const [onionMode, setOnionMode] = useState(false)
   const [onionDrop, setOnionDrop] = useState(false)
   const clickCountRef = useRef(0)
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      setOnionMode(sessionStorage.getItem("onion-201") === "true")
-    }
-  }, [])
 
   const handleLogoClick = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
@@ -93,7 +87,6 @@ export function Sidebar() {
       clickCountRef.current = 0
       const newMode = !onionMode
       setOnionMode(newMode)
-      sessionStorage.setItem("onion-201", String(newMode))
       if (newMode) {
         setOnionDrop(true)
         setTimeout(() => setOnionDrop(false), 2500)
