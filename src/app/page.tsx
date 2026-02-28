@@ -3,7 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
-  AlertTriangle,
   Plus,
   ArrowRight,
   TrendingUp,
@@ -12,36 +11,74 @@ import {
   CheckCircle,
 } from "lucide-react"
 import Link from "next/link"
-import { formatDate, formatCurrency, getProjectStatusColor, getSalesStageColor, getDepartmentColor, prettifyEnum, calculateScheduleRag, getRagColor } from "@/lib/utils"
-import { DashboardCharts } from "@/components/dashboard/dashboard-charts"
-import { DashboardTimeline } from "@/components/dashboard/dashboard-timeline"
+import { formatDate, formatCurrency, getProjectStatusColor, prettifyEnum, calculateScheduleRag, getRagColor } from "@/lib/utils"
 import { DashboardTabs } from "@/components/dashboard/dashboard-tabs"
 import { ICUCarousel } from "@/components/dashboard/icu-carousel"
+import { DepartmentSales } from "@/components/dashboard/department-sales"
+import { DepartmentDesign } from "@/components/dashboard/department-design"
+import { DepartmentProduction } from "@/components/dashboard/department-production"
+import { DepartmentInstallation } from "@/components/dashboard/department-installation"
+import { DepartmentFinance } from "@/components/dashboard/department-finance"
+import { UpcomingDeadlines } from "@/components/dashboard/upcoming-deadlines"
+import { DashboardWorkstreamPerformance } from "@/components/dashboard/workstream-performance"
+import { auth } from "@/lib/auth"
+import { isManagerOrDirector } from "@/lib/permissions"
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 60
 
 async function getDashboardData() {
-  const sixMonthsAgo = new Date()
-  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
+  const now = new Date()
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+  const ninetyDaysAgo = new Date()
+  ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90)
+  const thirtyDaysFromNow = new Date()
+  thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30)
 
   const [
     projectsByStatus,
     departmentCounts,
     recentProjects,
-    overdueProducts,
     // Pipeline values
     pipelineProjects,
-    // Quote stats (single groupBy replaces 4 count queries)
+    // Quote stats
     quotesByStatus,
     // ICU projects
     icuProjects,
-    // Recent quotes
-    recentQuotes,
     // NCR stats
     openNcrs,
-    // Monthly data
-    allProjectsForChart,
+    // === New queries for department cards ===
+    // Sales: Opportunities by status
+    opportunitiesByStatus,
+    // Sales: Won this month
+    wonThisMonth,
+    // Sales: Lost this month
+    lostThisMonth,
+    // Sales: Conversion rate (90-day window)
+    wonLast90,
+    lostLast90,
+    // Design: active cards
+    designActive,
+    // Design: total cards
+    designTotal,
+    // Design: overdue cards
+    designOverdue,
+    // Production: products by production status
+    productionByStage,
+    // Installation: active projects
+    installProjects,
+    // Installation: upcoming
+    installUpcoming,
+    // Finance: contract value (on-order)
+    financeContractValue,
+    // Finance: PO spend
+    financePoSpend,
+    // Finance: outstanding invoices
+    financeOutstanding,
+    // Upcoming deadlines
+    deadlineProjects,
+    // Workstream performance
+    workstreamProjects,
   ] = await Promise.all([
     prisma.project.groupBy({
       by: ["projectStatus"],
@@ -52,7 +89,7 @@ async function getDashboardData() {
       _count: { id: true },
     }),
     prisma.project.findMany({
-      take: 10,
+      take: 5,
       orderBy: { updatedAt: "desc" },
       select: {
         id: true,
@@ -65,73 +102,140 @@ async function getDashboardData() {
         contractValue: true,
         estimatedValue: true,
         customer: { select: { name: true } },
-        coordinator: { select: { name: true } },
         projectManager: { select: { name: true } },
-        _count: { select: { products: true, ncrs: true } },
+        _count: { select: { products: true } },
       },
     }),
-    prisma.product.findMany({
-      where: {
-        requiredCompletionDate: { lt: new Date() },
-        currentDepartment: { notIn: ["COMPLETE", "REVIEW"] },
-      },
-      take: 10,
-      orderBy: { requiredCompletionDate: "asc" },
-      include: {
-        project: { select: { id: true, projectNumber: true, name: true } },
-      },
-    }),
-    // Pipeline values by sales stage — use groupBy to avoid fetching all rows
     prisma.project.groupBy({
       by: ["salesStage"],
       where: { projectStatus: { notIn: ["COMPLETE"] } },
       _sum: { estimatedValue: true, contractValue: true },
       _count: { id: true },
     }),
-    // Quote stats — single groupBy instead of 4 separate counts
     prisma.quote.groupBy({
       by: ["status"],
       _count: { id: true },
     }),
-    // ICU projects
     prisma.project.findMany({
       where: { isICUFlag: true, projectStatus: { not: "COMPLETE" } },
       select: { id: true, projectNumber: true, name: true, customer: { select: { name: true } } },
     }),
-    // Recent quotes
-    prisma.quote.findMany({
-      take: 5,
-      orderBy: { updatedAt: "desc" },
-      select: {
-        id: true,
-        quoteNumber: true,
-        status: true,
-        totalSell: true,
-        customer: { select: { name: true } },
-      },
-    }),
-    // Open NCRs
     prisma.nonConformanceReport.count({
       where: { status: { in: ["OPEN", "INVESTIGATING"] } },
     }),
-    // Monthly project data (last 6 months only)
+    // --- Sales card queries ---
+    prisma.opportunity.groupBy({
+      by: ["status"],
+      where: { status: { notIn: ["DEAD_LEAD"] } },
+      _sum: { estimatedValue: true },
+      _count: { id: true },
+    }),
+    prisma.opportunity.findMany({
+      where: { status: "WON", convertedAt: { gte: startOfMonth } },
+      select: { estimatedValue: true },
+    }),
+    prisma.opportunity.count({
+      where: { status: "LOST", updatedAt: { gte: startOfMonth } },
+    }),
+    prisma.opportunity.count({
+      where: { status: "WON", updatedAt: { gte: ninetyDaysAgo } },
+    }),
+    prisma.opportunity.count({
+      where: { status: "LOST", updatedAt: { gte: ninetyDaysAgo } },
+    }),
+    // --- Design card queries ---
+    prisma.productDesignCard.count({
+      where: { status: { in: ["IN_PROGRESS", "REVIEW"] } },
+    }),
+    prisma.productDesignCard.count(),
+    prisma.productDesignCard.findMany({
+      where: {
+        targetEndDate: { lt: now },
+        status: { notIn: ["COMPLETE"] },
+      },
+      orderBy: { targetEndDate: "asc" },
+      take: 3,
+      select: {
+        id: true,
+        targetEndDate: true,
+        product: { select: { description: true } },
+        project: { select: { projectNumber: true } },
+      },
+    }),
+    // --- Production card query ---
+    prisma.product.groupBy({
+      by: ["productionStatus"],
+      where: { currentDepartment: "PRODUCTION" },
+      _count: { id: true },
+    }),
+    // --- Installation card queries ---
+    prisma.project.count({
+      where: { projectStatus: "INSTALLATION" },
+    }),
     prisma.project.findMany({
-      where: { createdAt: { gte: sixMonthsAgo } },
-      select: { createdAt: true, salesStage: true, projectStatus: true },
+      where: {
+        projectStatus: "INSTALLATION",
+        targetCompletion: { lte: thirtyDaysFromNow },
+      },
+      orderBy: { targetCompletion: "asc" },
+      take: 5,
+      select: {
+        id: true,
+        projectNumber: true,
+        name: true,
+        targetCompletion: true,
+        customer: { select: { name: true } },
+      },
+    }),
+    // --- Finance card queries ---
+    prisma.project.aggregate({
+      where: { salesStage: "ORDER", projectStatus: { not: "COMPLETE" } },
+      _sum: { contractValue: true },
+    }),
+    prisma.purchaseOrder.aggregate({
+      where: { status: { notIn: ["CANCELLED"] } },
+      _sum: { totalValue: true },
+    }),
+    prisma.salesInvoice.findMany({
+      where: { status: { notIn: ["PAID"] } },
+      select: { netPayable: true },
+    }),
+    // --- Upcoming deadlines ---
+    prisma.project.findMany({
+      where: {
+        targetCompletion: { not: null },
+        projectStatus: { notIn: ["COMPLETE"] },
+      },
+      orderBy: { targetCompletion: "asc" },
+      take: 5,
+      select: {
+        id: true,
+        projectNumber: true,
+        name: true,
+        targetCompletion: true,
+      },
+    }),
+    // --- Workstream performance (for management card) ---
+    prisma.project.findMany({
+      where: { projectStatus: { not: "OPPORTUNITY" } },
+      select: {
+        workStream: true,
+        contractValue: true,
+        currentCost: true,
+        projectStatus: true,
+        targetCompletion: true,
+        actualCompletion: true,
+      },
     }),
   ])
 
-  // Derive project counts from projectsByStatus groupBy (saves 3 queries)
+  // --- Derive existing counts ---
   const totalProjects = projectsByStatus.reduce((sum, g) => sum + g._count.id, 0)
   const activeProjects = projectsByStatus
     .filter((g) => g.projectStatus !== "COMPLETE")
     .reduce((sum, g) => sum + g._count.id, 0)
   const totalProducts = departmentCounts.reduce((sum, g) => sum + g._count.id, 0)
-  const orderProjects = projectsByStatus
-    .filter((g) => ["DESIGN", "MANUFACTURE", "DESIGN_FREEZE", "INSTALLATION", "REVIEW"].includes(g.projectStatus))
-    .reduce((sum, g) => sum + g._count.id, 0)
 
-  // Derive quote counts from quotesByStatus groupBy (saves 3 queries)
   const quoteCountMap: Record<string, number> = {}
   let totalQuotes = 0
   for (const g of quotesByStatus) {
@@ -139,93 +243,216 @@ async function getDashboardData() {
     totalQuotes += g._count.id
   }
 
-  // Calculate pipeline values from grouped aggregates
   let opportunityValue = 0
   let quotedValue = 0
   let orderValue = 0
-  let opportunityCount = 0
-  let quotedCount = 0
-  let orderCount = 0
   for (const g of pipelineProjects) {
     const value = Number(g._sum.contractValue || g._sum.estimatedValue || 0)
-    if (g.salesStage === "OPPORTUNITY") { opportunityValue = value; opportunityCount = g._count.id }
-    else if (g.salesStage === "QUOTED") { quotedValue = value; quotedCount = g._count.id }
-    else if (g.salesStage === "ORDER") { orderValue = value; orderCount = g._count.id }
+    if (g.salesStage === "OPPORTUNITY") opportunityValue = value
+    else if (g.salesStage === "QUOTED") quotedValue = value
+    else if (g.salesStage === "ORDER") orderValue = value
   }
 
-  // Build monthly chart data (last 6 months)
-  const now = new Date()
-  const monthlyData = Array.from({ length: 6 }, (_, i) => {
-    const d = new Date(now.getFullYear(), now.getMonth() - 5 + i, 1)
-    const monthEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0)
-    const label = d.toLocaleDateString("en-GB", { month: "short", year: "2-digit" })
+  // --- Sales card data ---
+  const stageWeights: Record<string, number> = {
+    ACTIVE_LEAD: 0.1,
+    PENDING_APPROVAL: 0.25,
+    QUOTED: 0.5,
+    WON: 1.0,
+    LOST: 0,
+  }
+  let salesPipelineValue = 0
+  let weightedForecast = 0
+  const pipelineByStage: { stage: string; value: number; count: number }[] = []
+  const stageLabels: Record<string, string> = {
+    ACTIVE_LEAD: "Active Lead",
+    PENDING_APPROVAL: "Pending Approval",
+    QUOTED: "Quoted",
+    WON: "Won",
+    LOST: "Lost",
+  }
 
-    const monthProjects = allProjectsForChart.filter((p) => {
-      const created = new Date(p.createdAt)
-      return created >= d && created <= monthEnd
+  for (const g of opportunitiesByStatus) {
+    const value = Number(g._sum.estimatedValue || 0)
+    const weight = stageWeights[g.status] ?? 0
+    if (g.status !== "WON" && g.status !== "LOST") {
+      salesPipelineValue += value
+    }
+    weightedForecast += value * weight
+    pipelineByStage.push({
+      stage: stageLabels[g.status] || g.status,
+      value,
+      count: g._count.id,
     })
+  }
 
+  const wonValue = wonThisMonth.reduce((sum, o) => sum + Number(o.estimatedValue || 0), 0)
+  const totalDecisions = wonLast90 + lostLast90
+  const conversionRate = totalDecisions > 0 ? Math.round((wonLast90 / totalDecisions) * 100) : 0
+
+  const salesData = {
+    pipelineValue: salesPipelineValue,
+    weightedForecast,
+    wonThisMonth: { count: wonThisMonth.length, value: wonValue },
+    lostThisMonth,
+    conversionRate,
+    quotesAwaiting: quoteCountMap["SUBMITTED"] || 0,
+    pipelineByStage: pipelineByStage.filter((s) => s.stage !== "Lost"),
+  }
+
+  // --- Design card data ---
+  const designOverdueItems = designOverdue.map((card) => {
+    const daysOverdue = card.targetEndDate
+      ? Math.floor((now.getTime() - new Date(card.targetEndDate).getTime()) / (1000 * 60 * 60 * 24))
+      : 0
     return {
-      month: label,
-      quoted: monthProjects.filter((p) => p.salesStage === "QUOTED" || p.salesStage === "ORDER").length,
-      ordered: monthProjects.filter((p) => p.salesStage === "ORDER").length,
-      completed: monthProjects.filter((p) => p.projectStatus === "COMPLETE").length,
+      id: card.id,
+      projectNumber: card.project.projectNumber,
+      productDescription: card.product.description,
+      daysOverdue,
     }
   })
 
-  // Chart-ready data
-  const chartProjectsByStatus = projectsByStatus.map((g) => ({
-    status: g.projectStatus,
-    count: g._count.id,
-  }))
+  const designData = {
+    activeCards: designActive,
+    totalCards: designTotal,
+    overdueCount: designOverdue.length,
+    topOverdue: designOverdueItems,
+  }
 
-  const chartDepartmentCounts = departmentCounts.map((d) => ({
-    department: d.currentDepartment,
-    count: d._count.id,
-  }))
+  // --- Production card data ---
+  const productionStages = productionByStage
+    .filter((g) => g.productionStatus !== null)
+    .map((g) => ({
+      stage: g.productionStatus as string,
+      count: g._count.id,
+    }))
+    .sort((a, b) => b.count - a.count)
 
-  const chartPipelineData = [
-    { stage: "Opportunity", value: opportunityValue, count: opportunityCount },
-    { stage: "Quoted", value: quotedValue, count: quotedCount },
-    { stage: "On Order", value: orderValue, count: orderCount },
-  ]
+  const totalInProduction = productionStages.reduce((sum, s) => sum + s.count, 0)
+  const activeStages = productionStages.filter(
+    (s) => !["COMPLETED", "N_A", "DISPATCHED"].includes(s.stage)
+  )
+  const bottleneck = activeStages.length > 0 ? activeStages[0].stage : null
+
+  const productionData = {
+    totalInProduction,
+    stages: productionStages,
+    bottleneck,
+  }
+
+  // --- Installation card data ---
+  const installationData = {
+    activeInstalls: installProjects,
+    upcoming: installUpcoming.map((p) => ({
+      id: p.id,
+      projectNumber: p.projectNumber,
+      name: p.name,
+      targetCompletion: p.targetCompletion,
+      customer: p.customer?.name || "—",
+    })),
+  }
+
+  // --- Finance card data ---
+  const totalContractValue = Number(financeContractValue._sum.contractValue || 0)
+  const totalCostCommitted = Number(financePoSpend._sum.totalValue || 0)
+  const grossMarginPercent = totalContractValue > 0
+    ? ((totalContractValue - totalCostCommitted) / totalContractValue) * 100
+    : 0
+  const outstandingValue = financeOutstanding.reduce(
+    (sum, inv) => sum + Number(inv.netPayable || 0),
+    0
+  )
+
+  const financeData = {
+    totalContractValue,
+    totalCostCommitted,
+    grossMarginPercent,
+    outstandingInvoices: { count: financeOutstanding.length, value: outstandingValue },
+  }
+
+  // --- Upcoming deadlines data ---
+  const deadlines = deadlineProjects
+    .filter((p) => p.targetCompletion !== null)
+    .map((p) => {
+      const target = new Date(p.targetCompletion!)
+      const daysUntil = Math.ceil((target.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+      return {
+        id: p.id,
+        projectNumber: p.projectNumber,
+        name: p.name,
+        targetCompletion: p.targetCompletion!,
+        daysUntil,
+      }
+    })
+
+  // --- Workstream performance data ---
+  const wsLabels: Record<string, string> = {
+    COMMUNITY: "Community",
+    UTILITIES: "Utilities",
+    BESPOKE: "Bespoke",
+    BLAST: "Blast",
+    BUND_CONTAINMENT: "Bund Containment",
+    REFURBISHMENT: "Refurbishment",
+  }
+  const wsMap = new Map<string, { count: number; marginSum: number; marginCount: number; onTimeCount: number; completedCount: number }>()
+  for (const p of workstreamProjects) {
+    const ws = p.workStream
+    if (!ws) continue
+    let entry = wsMap.get(ws)
+    if (!entry) {
+      entry = { count: 0, marginSum: 0, marginCount: 0, onTimeCount: 0, completedCount: 0 }
+      wsMap.set(ws, entry)
+    }
+    entry.count++
+    const contract = Number(p.contractValue || 0)
+    const cost = Number(p.currentCost || 0)
+    if (contract > 0) {
+      entry.marginSum += ((contract - cost) / contract) * 100
+      entry.marginCount++
+    }
+    if (p.projectStatus === "COMPLETE" && p.actualCompletion && p.targetCompletion) {
+      entry.completedCount++
+      if (new Date(p.actualCompletion) <= new Date(p.targetCompletion)) {
+        entry.onTimeCount++
+      }
+    }
+  }
+  const workstreamData = Array.from(wsMap.entries())
+    .map(([ws, d]) => ({
+      workStream: ws,
+      label: wsLabels[ws] || ws,
+      projectCount: d.count,
+      avgMargin: d.marginCount > 0 ? d.marginSum / d.marginCount : 0,
+      onTimePercent: d.completedCount > 0 ? (d.onTimeCount / d.completedCount) * 100 : null,
+    }))
+    .sort((a, b) => b.projectCount - a.projectCount)
 
   return {
     totalProjects,
     activeProjects,
     totalProducts,
-    orderProjects,
     projectsByStatus,
-    departmentCounts,
     recentProjects,
-    overdueProducts,
     pipeline: { opportunityValue, quotedValue, orderValue, total: opportunityValue + quotedValue + orderValue },
-    quotes: { total: totalQuotes, draft: quoteCountMap["DRAFT"] || 0, submitted: quoteCountMap["SUBMITTED"] || 0, accepted: quoteCountMap["ACCEPTED"] || 0 },
+    quotes: { total: totalQuotes, submitted: quoteCountMap["SUBMITTED"] || 0 },
     icuProjects,
-    recentQuotes,
     openNcrs,
-    charts: {
-      projectsByStatus: chartProjectsByStatus,
-      departmentCounts: chartDepartmentCounts,
-      pipelineData: chartPipelineData,
-      monthlyData,
-    },
+    // Department cards
+    salesData,
+    designData,
+    productionData,
+    installationData,
+    financeData,
+    deadlines,
+    workstreamData,
   }
-}
-
-function getQuoteStatusColor(status: string) {
-  const colors: Record<string, string> = {
-    DRAFT: "bg-gray-100 text-gray-800",
-    SUBMITTED: "bg-blue-100 text-blue-800",
-    ACCEPTED: "bg-green-100 text-green-800",
-    DECLINED: "bg-red-100 text-red-800",
-    REVISED: "bg-amber-100 text-amber-800",
-  }
-  return colors[status] || "bg-gray-100 text-gray-800"
 }
 
 export default async function DashboardPage() {
-  const data = await getDashboardData()
+  const [data, session] = await Promise.all([getDashboardData(), auth()])
+  const userRole = (session?.user as any)?.role || "STAFF"
+  const showManagement = isManagerOrDirector(userRole)
 
   return (
     <div className="space-y-6">
@@ -357,213 +584,95 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Product pipeline by department */}
+      {/* Department cards — row 1 */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <DepartmentSales data={data.salesData} />
+        <DepartmentDesign data={data.designData} />
+        <DepartmentProduction data={data.productionData} />
+      </div>
+
+      {/* Department cards — row 2 */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <DepartmentInstallation data={data.installationData} />
+        <DepartmentFinance data={data.financeData} />
+        <UpcomingDeadlines projects={data.deadlines} />
+      </div>
+
+      {/* Workstream performance — management only */}
+      {showManagement && <DashboardWorkstreamPerformance data={data.workstreamData} />}
+
+      {/* Recent Projects table */}
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-base font-semibold">Product Pipeline</CardTitle>
-            <Link href="/projects?view=tracker" className="text-sm font-medium text-blue-600 hover:text-blue-700">
-              Open Tracker <ArrowRight className="ml-1 inline h-3 w-3" />
+            <CardTitle className="text-base font-semibold">Recent Projects</CardTitle>
+            <Link href="/projects" className="text-sm font-medium text-blue-600 hover:text-blue-700">
+              View all <ArrowRight className="ml-1 inline h-3 w-3" />
             </Link>
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-3">
-            {data.departmentCounts.map((dc) => (
-              <Link key={dc.currentDepartment} href={`/projects?view=tracker&department=${dc.currentDepartment}`}>
-                <div className="flex items-center gap-2 rounded-lg border border-border px-4 py-3 transition-shadow hover:shadow-md cursor-pointer">
-                  <Badge variant="secondary" className={getDepartmentColor(dc.currentDepartment)}>
-                    {prettifyEnum(dc.currentDepartment)}
-                  </Badge>
-                  <span className="text-lg font-semibold text-gray-900">{dc._count.id}</span>
-                </div>
-              </Link>
-            ))}
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-t border-border">
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">No.</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Project</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Customer</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Status</th>
+                  <th className="px-4 py-3 text-center text-xs font-medium uppercase text-gray-500">Items</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Value</th>
+                  <th className="px-4 py-3 text-center text-xs font-medium uppercase text-gray-500">RAG</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {data.recentProjects.map((project) => {
+                  const scheduleRag = project.ragStatus as "GREEN" | "AMBER" | "RED" | null || calculateScheduleRag(project.targetCompletion)
+                  return (
+                    <tr key={project.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-4 py-2.5">
+                        <Link href={`/projects/${project.id}`} className="font-mono text-xs font-medium text-blue-600 hover:text-blue-700">
+                          {project.projectNumber}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <Link href={`/projects/${project.id}`} className="font-medium text-gray-900 hover:text-blue-600 text-sm">
+                          {project.name}
+                        </Link>
+                        {project.projectManager && (
+                          <div className="text-xs text-gray-400">{project.projectManager.name}</div>
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5 text-xs text-gray-500">{project.customer?.name || "—"}</td>
+                      <td className="px-4 py-2.5">
+                        <Badge variant="secondary" className={`${getProjectStatusColor(project.projectStatus)} text-[10px]`}>
+                          {prettifyEnum(project.projectStatus)}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-2.5 text-center font-mono text-xs text-gray-600">{project._count.products}</td>
+                      <td className="px-4 py-2.5 text-right text-xs font-mono text-gray-700">
+                        {project.contractValue || project.estimatedValue
+                          ? formatCurrency(Number(project.contractValue || project.estimatedValue))
+                          : "—"}
+                      </td>
+                      <td className="px-4 py-2.5 text-center">
+                        <div className={`mx-auto h-3 w-3 rounded-full ${getRagColor(scheduleRag)}`} />
+                      </td>
+                    </tr>
+                  )
+                })}
+                {data.recentProjects.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
+                      No projects yet. <Link href="/projects/new" className="text-blue-600 hover:text-blue-700">Create your first project</Link>.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </CardContent>
       </Card>
-
-      {/* Charts */}
-      <DashboardCharts
-        projectsByStatus={data.charts.projectsByStatus}
-        departmentCounts={data.charts.departmentCounts}
-        pipelineData={data.charts.pipelineData}
-        monthlyData={data.charts.monthlyData}
-      />
-
-      {/* Project Timeline */}
-      <DashboardTimeline />
-
-      {/* Main content grid */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Projects table - takes 2 cols */}
-        <Card className="lg:col-span-2">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base font-semibold">Recent Projects</CardTitle>
-              <Link href="/projects" className="text-sm font-medium text-blue-600 hover:text-blue-700">
-                View all <ArrowRight className="ml-1 inline h-3 w-3" />
-              </Link>
-            </div>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-t border-border">
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">No.</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Project</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Customer</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Status</th>
-                    <th className="px-4 py-3 text-center text-xs font-medium uppercase text-gray-500">Items</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Value</th>
-                    <th className="px-4 py-3 text-center text-xs font-medium uppercase text-gray-500">RAG</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {data.recentProjects.map((project) => {
-                    const scheduleRag = project.ragStatus as "GREEN" | "AMBER" | "RED" | null || calculateScheduleRag(project.targetCompletion)
-                    return (
-                      <tr key={project.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-4 py-2.5">
-                          <Link href={`/projects/${project.id}`} className="font-mono text-xs font-medium text-blue-600 hover:text-blue-700">
-                            {project.projectNumber}
-                          </Link>
-                        </td>
-                        <td className="px-4 py-2.5">
-                          <Link href={`/projects/${project.id}`} className="font-medium text-gray-900 hover:text-blue-600 text-sm">
-                            {project.name}
-                          </Link>
-                          {project.projectManager && (
-                            <div className="text-xs text-gray-400">{project.projectManager.name}</div>
-                          )}
-                        </td>
-                        <td className="px-4 py-2.5 text-xs text-gray-500">{project.customer?.name || "—"}</td>
-                        <td className="px-4 py-2.5">
-                          <Badge variant="secondary" className={`${getProjectStatusColor(project.projectStatus)} text-[10px]`}>
-                            {prettifyEnum(project.projectStatus)}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-2.5 text-center font-mono text-xs text-gray-600">{project._count.products}</td>
-                        <td className="px-4 py-2.5 text-right text-xs font-mono text-gray-700">
-                          {project.contractValue || project.estimatedValue
-                            ? formatCurrency(Number(project.contractValue || project.estimatedValue))
-                            : "—"}
-                        </td>
-                        <td className="px-4 py-2.5 text-center">
-                          <div className={`mx-auto h-3 w-3 rounded-full ${getRagColor(scheduleRag)}`} />
-                        </td>
-                      </tr>
-                    )
-                  })}
-                  {data.recentProjects.length === 0 && (
-                    <tr>
-                      <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
-                        No projects yet. <Link href="/projects/new" className="text-blue-600 hover:text-blue-700">Create your first project</Link>.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Right column */}
-        <div className="space-y-6">
-          {/* Recent Quotes */}
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base font-semibold">Recent Quotes</CardTitle>
-                <Link href="/quotes" className="text-sm font-medium text-blue-600 hover:text-blue-700">
-                  View all <ArrowRight className="ml-1 inline h-3 w-3" />
-                </Link>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {data.recentQuotes.length > 0 ? (
-                <div className="space-y-2">
-                  {data.recentQuotes.map((quote) => (
-                    <Link key={quote.id} href={`/quotes/${quote.id}`}>
-                      <div className="flex items-center justify-between rounded-lg border border-border p-2.5 transition-shadow hover:shadow-sm cursor-pointer">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono text-xs font-medium text-gray-700">{quote.quoteNumber}</span>
-                            <Badge variant="secondary" className={`${getQuoteStatusColor(quote.status)} text-[10px]`}>
-                              {prettifyEnum(quote.status)}
-                            </Badge>
-                          </div>
-                          <div className="text-xs text-gray-500 mt-0.5">{quote.customer.name}</div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-sm font-mono font-medium text-gray-900">
-                            {quote.totalSell ? formatCurrency(Number(quote.totalSell)) : "—"}
-                          </div>
-                        </div>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-gray-500">No quotes yet.</p>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Overdue / attention needed */}
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 text-amber-500" />
-                <CardTitle className="text-base font-semibold">Needs Attention</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {data.overdueProducts.length > 0 ? (
-                <div className="space-y-2">
-                  {data.overdueProducts.map((product) => (
-                    <Link key={product.id} href={`/projects/${product.project.id}`}>
-                      <div className="rounded-lg border border-red-100 bg-red-50 p-2.5 transition-shadow hover:shadow-sm cursor-pointer">
-                        <p className="text-sm font-medium text-gray-900">{product.description}</p>
-                        <p className="text-xs text-gray-500">
-                          {product.project.projectNumber} — {product.project.name}
-                        </p>
-                        <p className="mt-1 text-xs font-medium text-red-600">
-                          Due: {formatDate(product.requiredCompletionDate)}
-                        </p>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-gray-500">No overdue items. Everything on track.</p>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Projects by Status */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base font-semibold">Projects by Stage</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-1">
-                {data.projectsByStatus.map((group) => (
-                  <Link key={group.projectStatus} href={`/projects?status=${group.projectStatus}`}>
-                    <div className="flex items-center justify-between rounded-lg px-3 py-2 transition-colors hover:bg-gray-50 cursor-pointer">
-                      <Badge variant="secondary" className={getProjectStatusColor(group.projectStatus)}>
-                        {prettifyEnum(group.projectStatus)}
-                      </Badge>
-                      <span className="text-sm font-semibold text-gray-900">{group._count.id}</span>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
     </div>
   )
 }
