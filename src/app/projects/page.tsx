@@ -6,7 +6,6 @@ import { ViewSwitcher } from "@/components/projects/view-switcher"
 import { BoardView } from "@/components/projects/board-view"
 import { TableView } from "@/components/projects/table-view"
 import { TrackerView } from "@/components/projects/tracker-view"
-import { ByCustomerView } from "@/components/projects/by-customer-view"
 import { TimelineView } from "@/components/projects/timeline-view"
 import { DashboardTabs } from "@/components/dashboard/dashboard-tabs"
 

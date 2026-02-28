@@ -1,14 +1,13 @@
 "use client"
 
 import { useRouter, useSearchParams } from "next/navigation"
-import { Columns3, Table2, ListChecks, Building, GanttChart } from "lucide-react"
+import { Columns3, Table2, ListChecks, GanttChart } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const views = [
   { id: "board", label: "Board", icon: Columns3 },
   { id: "table", label: "Table", icon: Table2 },
   { id: "tracker", label: "Tracker", icon: ListChecks },
-  { id: "by-customer", label: "By Customer", icon: Building },
   { id: "timeline", label: "Timeline", icon: GanttChart },
 ]
 

@@ -76,7 +76,7 @@ export function Sidebar() {
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      setOnionMode(localStorage.getItem("onion-201") === "true")
+      setOnionMode(sessionStorage.getItem("onion-201") === "true")
     }
   }, [])
 
@@ -88,11 +88,12 @@ export function Sidebar() {
     if (clickTimerRef.current) clearTimeout(clickTimerRef.current)
     clickTimerRef.current = setTimeout(() => { clickCountRef.current = 0 }, 3000)
 
-    if (clickCountRef.current >= 10) {
+    const threshold = onionMode ? 3 : 10
+    if (clickCountRef.current >= threshold) {
       clickCountRef.current = 0
       const newMode = !onionMode
       setOnionMode(newMode)
-      localStorage.setItem("onion-201", String(newMode))
+      sessionStorage.setItem("onion-201", String(newMode))
       if (newMode) {
         setOnionDrop(true)
         setTimeout(() => setOnionDrop(false), 2500)
