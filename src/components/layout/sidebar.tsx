@@ -136,16 +136,19 @@ export function Sidebar() {
               <span className="sage-logo-version text-[14px] leading-none mt-0.5">200</span>
             </Link>
           ) : (
-            <div className="flex items-center cursor-pointer select-none" onClick={handleLogoClick}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={onionMode ? "/onion-201.svg" : "/ethos-sidebar-logo.svg"}
-                alt={onionMode ? "Onion 201" : "ETHOS MK.1"}
-                className={cn(
-                  "h-12 w-auto transition-all duration-300",
-                  onionMode && "drop-shadow-[0_0_8px_rgba(212,168,67,0.5)]"
-                )}
-              />
+            <div className="flex flex-col items-start cursor-pointer select-none" onClick={handleLogoClick}>
+              {onionMode ? (
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/onion-201.svg" alt="Onion 201" className="h-12 w-auto drop-shadow-[0_0_8px_rgba(212,168,67,0.5)]" />
+                </>
+              ) : (
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/mme-logo-coral.svg" alt="MMengineering" className="h-5 w-auto" />
+                  <span className="text-[11px] font-bold tracking-[0.25em] text-gray-800 mt-1.5">ETHOS</span>
+                </>
+              )}
             </div>
           )
         ) : (

@@ -50,9 +50,9 @@ export function Header() {
       <div className="flex items-center gap-4 ml-10 md:ml-0">
         {/* MMengineering branding — light theme only */}
         {isLight && (
-          <div className="hidden md:flex items-center mr-2">
-            <span className="text-lg font-bold tracking-tight" style={{ color: "#e95445" }}>MM</span>
-            <span className="text-lg font-light tracking-tight" style={{ color: "#00b1eb" }}>engineering</span>
+          <div className="hidden md:flex items-center mr-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/mme-logo-coral.svg" alt="MMengineering" className="h-5 w-auto" />
           </div>
         )}
         <div className="relative">
