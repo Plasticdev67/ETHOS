@@ -8,6 +8,7 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   compress: true,
+  serverExternalPackages: ["pdfkit"],
   experimental: {
     optimizePackageImports: ["lucide-react", "@radix-ui/react-icons"],
   },
