@@ -36,6 +36,11 @@ export async function PATCH(
     "status", "notes", "prospectId", "sortOrder", "quoteApproval",
   ]
 
+  // Win probability (0-100)
+  if (body.winProbability !== undefined) {
+    data.winProbability = Math.max(0, Math.min(100, parseInt(body.winProbability, 10) || 0))
+  }
+
   for (const field of fields) {
     if (body[field] !== undefined) {
       data[field] = body[field] === "" ? null : body[field]
@@ -78,6 +83,21 @@ export async function PATCH(
   if (body.deadAt !== undefined) data.deadAt = body.deadAt ? new Date(body.deadAt) : null
   if (body.revivedAt !== undefined) data.revivedAt = body.revivedAt ? new Date(body.revivedAt) : null
   if (body.revivedFrom !== undefined) data.revivedFrom = body.revivedFrom
+
+  // Auto-set win probability when status changes (unless manually provided)
+  if (body.status && body.winProbability === undefined) {
+    const probabilityDefaults: Record<string, number> = {
+      DEAD_LEAD: 0,
+      ACTIVE_LEAD: 10,
+      PENDING_APPROVAL: 30,
+      QUOTED: 50,
+      WON: 100,
+      LOST: 0,
+    }
+    if (probabilityDefaults[body.status] !== undefined) {
+      data.winProbability = probabilityDefaults[body.status]
+    }
+  }
 
   // Handle dead history — append to existing history on status changes
   if (body.status === "DEAD_LEAD" && body.deadReason) {

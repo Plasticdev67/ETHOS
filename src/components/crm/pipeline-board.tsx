@@ -76,6 +76,7 @@ type PipelineOpp = {
   quoteSentAt: string | null
   quoteSentTo: string | null
   hasEtoLines: boolean | null
+  winProbability: number
   deadReason: string | null
   deadAt: string | null
   revivedAt: string | null
@@ -119,6 +120,13 @@ function groupByStatus(opps: PipelineOpp[]) {
 function getColumnTotal(opps: PipelineOpp[]) {
   return opps.reduce(
     (sum, o) => sum + (o.estimatedValue ? parseFloat(String(o.estimatedValue)) : 0),
+    0
+  )
+}
+
+function getColumnWeighted(opps: PipelineOpp[]) {
+  return opps.reduce(
+    (sum, o) => sum + (o.estimatedValue ? parseFloat(String(o.estimatedValue)) * (o.winProbability / 100) : 0),
     0
   )
 }
@@ -343,16 +351,25 @@ function QuoteGatewayDialog({
 
 // ─── Opportunity Card ──────────────────────────────────────────────────────────
 
+function getProbabilityColor(p: number) {
+  if (p >= 75) return "bg-green-100 text-green-700 border-green-300"
+  if (p >= 50) return "bg-amber-100 text-amber-700 border-amber-300"
+  if (p >= 25) return "bg-orange-100 text-orange-700 border-orange-300"
+  return "bg-red-100 text-red-700 border-red-300"
+}
+
 const OpportunityCard = memo(function OpportunityCard({
   opp,
   onApproveQuote,
   onRejectQuote,
   onConvertToProject,
+  onProbabilityChange,
 }: {
   opp: PipelineOpp
   onApproveQuote: (id: string) => void
   onRejectQuote: (id: string) => void
   onConvertToProject: (id: string) => void
+  onProbabilityChange: (id: string, value: number) => void
 }) {
   return (
     <div
@@ -386,8 +403,37 @@ const OpportunityCard = memo(function OpportunityCard({
         </div>
 
         {opp.estimatedValue && (
-          <div className="text-sm font-mono font-medium text-gray-900 mt-1">
-            {formatCurrency(parseFloat(String(opp.estimatedValue)))}
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-sm font-mono font-medium text-gray-900">
+              {formatCurrency(parseFloat(String(opp.estimatedValue)))}
+            </span>
+            {opp.status !== "WON" && opp.status !== "LOST" && opp.status !== "DEAD_LEAD" && (
+              <span
+                className={cn(
+                  "inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded border cursor-pointer",
+                  getProbabilityColor(opp.winProbability)
+                )}
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  const input = prompt("Win probability (0-100):", String(opp.winProbability))
+                  if (input !== null) {
+                    const val = Math.max(0, Math.min(100, parseInt(input, 10) || 0))
+                    onProbabilityChange(opp.id, val)
+                  }
+                }}
+                title="Click to edit win probability"
+              >
+                {opp.winProbability}%
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Weighted value indicator */}
+        {opp.estimatedValue && opp.status !== "WON" && opp.status !== "LOST" && opp.status !== "DEAD_LEAD" && opp.winProbability > 0 && (
+          <div className="text-[10px] text-gray-400 font-mono">
+            Weighted: {formatCurrency(parseFloat(String(opp.estimatedValue)) * opp.winProbability / 100)}
           </div>
         )}
 
@@ -599,6 +645,7 @@ function DeadLeadColumn({
   onApproveQuote,
   onRejectQuote,
   onConvertToProject,
+  onProbabilityChange,
 }: {
   opps: PipelineOpp[]
   expanded: boolean
@@ -606,6 +653,7 @@ function DeadLeadColumn({
   onApproveQuote: (id: string) => void
   onRejectQuote: (id: string) => void
   onConvertToProject: (id: string) => void
+  onProbabilityChange: (id: string, value: number) => void
 }) {
   if (!expanded) {
     // Collapsed: slim vertical tab
@@ -687,6 +735,7 @@ function DeadLeadColumn({
                       onApproveQuote={onApproveQuote}
                       onRejectQuote={onRejectQuote}
                       onConvertToProject={onConvertToProject}
+                      onProbabilityChange={onProbabilityChange}
                     />
                   </div>
                 )}
@@ -720,6 +769,21 @@ export function PipelineBoard({ initialOpportunities }: { initialOpportunities: 
 
   // Auto-expand dead lead column if there are dead leads
   const deadCount = grouped["DEAD_LEAD"]?.length || 0
+
+  async function handleProbabilityChange(oppId: string, value: number) {
+    setOpportunities((prev) =>
+      prev.map((o) => (o.id === oppId ? { ...o, winProbability: value } : o))
+    )
+    try {
+      await fetch(`/api/opportunities/${oppId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ winProbability: value }),
+      })
+    } catch {
+      // Silently fail — optimistic update
+    }
+  }
 
   async function persistStatusChange(oppId: string, newStatus: string, extraData?: Record<string, unknown>) {
     try {
@@ -936,12 +1000,14 @@ export function PipelineBoard({ initialOpportunities }: { initialOpportunities: 
             onApproveQuote={handleApproveQuote}
             onRejectQuote={handleRejectQuote}
             onConvertToProject={handleConvertToProject}
+            onProbabilityChange={handleProbabilityChange}
           />
 
           {/* Active pipeline columns */}
           {STATUS_COLUMNS.map((col) => {
             const colOpps = grouped[col.id]
             const total = getColumnTotal(colOpps)
+            const weighted = getColumnWeighted(colOpps)
 
             return (
               <Droppable key={col.id} droppableId={col.id}>
@@ -967,9 +1033,12 @@ export function PipelineBoard({ initialOpportunities }: { initialOpportunities: 
                         </span>
                       </div>
                       {total > 0 && (
-                        <span className="text-xs font-mono text-gray-500">
-                          {formatCurrency(total)}
-                        </span>
+                        <div className="text-right">
+                          <div className="text-xs font-mono text-gray-500">{formatCurrency(total)}</div>
+                          {col.id !== "WON" && col.id !== "LOST" && weighted !== total && (
+                            <div className="text-[9px] font-mono text-gray-400">Wtd: {formatCurrency(weighted)}</div>
+                          )}
+                        </div>
                       )}
                     </div>
 
@@ -989,6 +1058,7 @@ export function PipelineBoard({ initialOpportunities }: { initialOpportunities: 
                                 onApproveQuote={handleApproveQuote}
                                 onRejectQuote={handleRejectQuote}
                                 onConvertToProject={handleConvertToProject}
+                                onProbabilityChange={handleProbabilityChange}
                               />
                             </div>
                           )}
