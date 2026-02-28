@@ -61,10 +61,9 @@ async function main() {
 
   const staffData = [
     // Directors
-    { name: "Chris McDermid",   email: "chris.mcdermid@mme.co.uk",   role: "MANAGING_DIRECTOR",  department: "DIRECTORS" },
-    { name: "James Morton",     email: "james.morton@mme.co.uk",     role: "TECHNICAL_DIRECTOR",  department: "DIRECTORS" },
-    { name: "Martin McDermid",  email: "mm@mme.co.uk",               role: "SALES_DIRECTOR",      department: "DIRECTORS" },
-    { name: "Nick West",        email: "nick.west@mme.co.uk",        role: "DIRECTOR",            department: "DIRECTORS" },
+    { name: "Chris McDermid",   email: "chris.mcdermid@mme.co.uk",   role: "DIRECTOR",  department: "DIRECTORS" },
+    { name: "James Morton",     email: "james.morton@mme.co.uk",     role: "DIRECTOR",  department: "DIRECTORS" },
+    { name: "Martin McDermid",  email: "mm@mme.co.uk",               role: "DIRECTOR",  department: "DIRECTORS" },
 
     // Engineering
     { name: "Shaun Griffiths",  email: "shaun.griffiths@mme.co.uk",  role: "ENGINEERING_MANAGER", department: "ENGINEERING" },
@@ -82,8 +81,8 @@ async function main() {
     { name: "Nathan Hope",      email: "nathan.hope@mme.co.uk",      role: "PRODUCTION_SUPERVISOR", department: "PRODUCTION" },
 
     // Projects
-    { name: "Richard Guest",    email: "richard.guest@mme.co.uk",    role: "PROJECT_MANAGER",     department: "PROJECTS" },
-    { name: "Corey Thomas",     email: "corey.thomas@mme.co.uk",     role: "PROJECT_COORDINATOR", department: "PROJECTS" },
+    { name: "Corey Thomas",     email: "corey.thomas@mme.co.uk",     role: "PROJECT_MANAGER",     department: "PROJECTS" },
+    { name: "Richard Guest",    email: "richard.guest@mme.co.uk",    role: "PROJECT_COORDINATOR", department: "PROJECTS" },
     { name: "Adam Parry",       email: "adam.parry@mme.co.uk",       role: "PROJECT_ADMINISTRATOR", department: "PROJECTS" },
 
     // Sales / Business Development
