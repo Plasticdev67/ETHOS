@@ -78,12 +78,10 @@ export default function LoginPage() {
       <div className="relative z-10 w-full max-w-md rounded-lg border border-white/10 p-8 space-y-6"
         style={{ backgroundColor: "rgba(30,36,50,0.95)" }}
       >
-        {/* MMengineering logo — text based */}
-        <div className="text-center">
-          <h2 className="text-3xl font-bold tracking-wide">
-            <span style={{ color: "#e95445" }}>MM</span>
-            <span style={{ color: "#00b1eb" }}>engineering</span>
-          </h2>
+        {/* MMengineering logo */}
+        <div className="flex justify-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/mme-logo-coral.svg" alt="MMengineering" className="h-7 w-auto" />
         </div>
 
         {/* ETHOS title */}

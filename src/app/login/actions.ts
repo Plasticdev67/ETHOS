@@ -8,6 +8,7 @@ export async function authenticate(formData: FormData) {
     await signIn("credentials", formData)
   } catch (error) {
     if (error instanceof AuthError) {
+      console.error("[AUTH] AuthError type:", error.type, "message:", error.message)
       return "Invalid email or password. Check credentials and try again."
     }
     throw error // Re-throw redirects and other errors
