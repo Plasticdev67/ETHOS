@@ -1,20 +1,393 @@
 import { prisma } from "@/lib/db"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { formatCurrency, prettifyEnum, getProjectStatusColor, getSalesStageColor } from "@/lib/utils"
-import Link from "next/link"
+import { auth } from "@/lib/auth"
+import { isManagerOrDirector } from "@/lib/permissions"
+import { Suspense } from "react"
+import { ReportsTabs } from "@/components/reports/reports-tabs"
+import { WorkstreamPerformance } from "@/components/reports/workstream-performance"
+import { PeoplePerformance } from "@/components/reports/people-performance"
+import { TimingDelivery } from "@/components/reports/timing-delivery"
+import { PipelineFinancials } from "@/components/reports/pipeline-financials"
+import { formatCurrency, prettifyEnum } from "@/lib/utils"
+import { ShieldAlert } from "lucide-react"
 
-export const dynamic = 'force-dynamic'
+export const dynamic = "force-dynamic"
 export const revalidate = 120
 
-async function getReportData() {
-  const [
-    projects,
-    quotes,
-    products,
-    ncrs,
-    recentQuotes,
-  ] = await Promise.all([
+// ── Helper: days between two dates ──
+function daysBetween(a: Date | null, b: Date | null): number | null {
+  if (!a || !b) return null
+  return Math.ceil((new Date(b).getTime() - new Date(a).getTime()) / (1000 * 60 * 60 * 24))
+}
+
+// ── Workstream data ──
+async function getWorkstreamData() {
+  const WORKSTREAMS = ["COMMUNITY", "UTILITIES", "BESPOKE", "BLAST", "BUND_CONTAINMENT", "REFURBISHMENT"]
+
+  const [completedProjects, designCards, products, ncrs] = await Promise.all([
+    prisma.project.findMany({
+      where: { projectStatus: { not: "OPPORTUNITY" } },
+      select: {
+        workStream: true,
+        contractValue: true,
+        currentCost: true,
+        ncrCost: true,
+        targetCompletion: true,
+        actualCompletion: true,
+        projectStatus: true,
+        _count: { select: { ncrs: true } },
+      },
+    }),
+    prisma.productDesignCard.findMany({
+      where: { status: "COMPLETE" },
+      select: {
+        actualStartDate: true,
+        actualEndDate: true,
+        project: { select: { workStream: true } },
+      },
+    }),
+    prisma.product.findMany({
+      where: {
+        OR: [
+          { productionCompletionDate: { not: null } },
+          { installCompletionDate: { not: null } },
+        ],
+      },
+      select: {
+        productionPlannedStart: true,
+        productionCompletionDate: true,
+        installPlannedStart: true,
+        installCompletionDate: true,
+        project: { select: { workStream: true } },
+      },
+    }),
+    prisma.nonConformanceReport.findMany({
+      select: {
+        costImpact: true,
+        parentProject: { select: { workStream: true } },
+      },
+    }),
+  ])
+
+  return WORKSTREAMS.map((ws) => {
+    const wsProjects = completedProjects.filter((p) => p.workStream === ws)
+    const projectCount = wsProjects.length
+
+    // Margin
+    const projectsWithFinancials = wsProjects.filter(
+      (p) => Number(p.contractValue) > 0 && Number(p.currentCost) > 0
+    )
+    const avgMargin =
+      projectsWithFinancials.length > 0
+        ? projectsWithFinancials.reduce((sum, p) => {
+            const contract = Number(p.contractValue)
+            const cost = Number(p.currentCost) + Number(p.ncrCost || 0)
+            return sum + ((contract - cost) / contract) * 100
+          }, 0) / projectsWithFinancials.length
+        : 0
+
+    // Design duration
+    const wsDesignCards = designCards.filter((c) => c.project.workStream === ws)
+    const designDays = wsDesignCards
+      .map((c) => daysBetween(c.actualStartDate, c.actualEndDate))
+      .filter((d): d is number => d !== null)
+    const avgDesignDays = designDays.length > 0 ? designDays.reduce((a, b) => a + b, 0) / designDays.length : null
+
+    // Production duration
+    const wsProducts = products.filter((p) => p.project.workStream === ws)
+    const prodDays = wsProducts
+      .map((p) => daysBetween(p.productionPlannedStart, p.productionCompletionDate))
+      .filter((d): d is number => d !== null)
+    const avgProductionDays = prodDays.length > 0 ? prodDays.reduce((a, b) => a + b, 0) / prodDays.length : null
+
+    // Install duration
+    const installDays = wsProducts
+      .map((p) => daysBetween(p.installPlannedStart, p.installCompletionDate))
+      .filter((d): d is number => d !== null)
+    const avgInstallDays = installDays.length > 0 ? installDays.reduce((a, b) => a + b, 0) / installDays.length : null
+
+    // On-time delivery
+    const completed = wsProjects.filter(
+      (p) => p.projectStatus === "COMPLETE" && p.actualCompletion && p.targetCompletion
+    )
+    const onTime = completed.filter(
+      (p) => new Date(p.actualCompletion!) <= new Date(p.targetCompletion!)
+    )
+    const onTimePercent = completed.length > 0 ? (onTime.length / completed.length) * 100 : null
+
+    // NCR
+    const wsNcrs = ncrs.filter((n) => n.parentProject.workStream === ws)
+    const ncrRate = projectCount > 0 ? wsNcrs.length / projectCount : 0
+    const ncrCost = wsNcrs.reduce((sum, n) => sum + Number(n.costImpact || 0), 0)
+
+    return {
+      workStream: ws,
+      projectCount,
+      avgMargin,
+      avgDesignDays,
+      avgProductionDays,
+      avgInstallDays,
+      onTimePercent,
+      ncrRate,
+      ncrCost,
+    }
+  })
+}
+
+// ── People data ──
+async function getPeopleData() {
+  const [designCards, jobCards, projects] = await Promise.all([
+    prisma.productDesignCard.findMany({
+      select: {
+        status: true,
+        actualStartDate: true,
+        actualEndDate: true,
+        estimatedHours: true,
+        actualHours: true,
+        assignedDesigner: { select: { id: true, name: true } },
+      },
+    }),
+    prisma.designJobCard.findMany({
+      select: {
+        status: true,
+        assignedTo: { select: { id: true, name: true } },
+      },
+    }),
+    prisma.project.findMany({
+      where: { projectManagerId: { not: null } },
+      select: {
+        projectStatus: true,
+        contractValue: true,
+        currentCost: true,
+        ncrCost: true,
+        targetCompletion: true,
+        actualCompletion: true,
+        projectManager: { select: { id: true, name: true } },
+        _count: { select: { ncrs: true } },
+      },
+    }),
+  ])
+
+  // Designer metrics
+  const designerMap = new Map<string, { name: string; cards: typeof designCards; jobs: typeof jobCards }>()
+  for (const card of designCards) {
+    if (!card.assignedDesigner) continue
+    const { id, name } = card.assignedDesigner
+    if (!designerMap.has(id)) designerMap.set(id, { name: name || "Unknown", cards: [], jobs: [] })
+    designerMap.get(id)!.cards.push(card)
+  }
+  for (const job of jobCards) {
+    if (!job.assignedTo) continue
+    const { id } = job.assignedTo
+    if (designerMap.has(id)) designerMap.get(id)!.jobs.push(job)
+  }
+
+  const designers = Array.from(designerMap.entries()).map(([id, { name, cards, jobs }]) => {
+    const completed = cards.filter((c) => c.status === "COMPLETE")
+    const inProgress = cards.filter((c) => c.status === "IN_PROGRESS" || c.status === "REVIEW")
+    const completionDays = completed
+      .map((c) => daysBetween(c.actualStartDate, c.actualEndDate))
+      .filter((d): d is number => d !== null)
+    const avgCompletionDays = completionDays.length > 0 ? completionDays.reduce((a, b) => a + b, 0) / completionDays.length : null
+
+    const withHours = completed.filter((c) => Number(c.estimatedHours) > 0 && Number(c.actualHours) > 0)
+    const hoursAccuracy =
+      withHours.length > 0
+        ? withHours.reduce((sum, c) => sum + Number(c.actualHours) / Number(c.estimatedHours), 0) / withHours.length
+        : null
+
+    const submitted = jobs.filter((j) => ["SUBMITTED", "APPROVED", "SIGNED_OFF", "REJECTED"].includes(j.status))
+    const rejected = jobs.filter((j) => j.status === "REJECTED")
+    const rejectionRate = submitted.length > 0 ? (rejected.length / submitted.length) * 100 : 0
+
+    return {
+      id,
+      name,
+      cardsCompleted: completed.length,
+      cardsInProgress: inProgress.length,
+      avgCompletionDays,
+      hoursAccuracy,
+      rejectionRate,
+    }
+  }).sort((a, b) => b.cardsCompleted - a.cardsCompleted)
+
+  // PM metrics
+  const pmMap = new Map<string, { name: string; projects: typeof projects }>()
+  for (const p of projects) {
+    if (!p.projectManager) continue
+    const { id, name } = p.projectManager
+    if (!pmMap.has(id)) pmMap.set(id, { name: name || "Unknown", projects: [] })
+    pmMap.get(id)!.projects.push(p)
+  }
+
+  const projectManagers = Array.from(pmMap.entries()).map(([id, { name, projects: pmProjects }]) => {
+    const active = pmProjects.filter((p) => p.projectStatus !== "COMPLETE")
+    const completed = pmProjects.filter((p) => p.projectStatus === "COMPLETE")
+    const completedWithDates = completed.filter((p) => p.actualCompletion && p.targetCompletion)
+    const onTime = completedWithDates.filter(
+      (p) => new Date(p.actualCompletion!) <= new Date(p.targetCompletion!)
+    )
+    const onTimePercent = completedWithDates.length > 0 ? (onTime.length / completedWithDates.length) * 100 : null
+
+    const withFinancials = pmProjects.filter((p) => Number(p.contractValue) > 0)
+    const avgMargin =
+      withFinancials.length > 0
+        ? withFinancials.reduce((sum, p) => {
+            const contract = Number(p.contractValue)
+            const cost = Number(p.currentCost || 0) + Number(p.ncrCost || 0)
+            return sum + (contract > 0 ? ((contract - cost) / contract) * 100 : 0)
+          }, 0) / withFinancials.length
+        : 0
+
+    const ncrCount = pmProjects.reduce((sum, p) => sum + p._count.ncrs, 0)
+
+    return {
+      id,
+      name,
+      activeProjects: active.length,
+      completedProjects: completed.length,
+      onTimePercent,
+      avgMargin,
+      ncrCount,
+    }
+  }).sort((a, b) => b.completedProjects - a.completedProjects)
+
+  return { designers, projectManagers }
+}
+
+// ── Timing data ──
+async function getTimingData() {
+  const now = new Date()
+  const sixMonthsAgo = new Date()
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
+
+  const [designCards, products, completedProjects, overdueProjects] = await Promise.all([
+    prisma.productDesignCard.findMany({
+      where: { status: "COMPLETE" },
+      select: { actualStartDate: true, actualEndDate: true, estimatedHours: true, actualHours: true },
+    }),
+    prisma.product.findMany({
+      where: {
+        OR: [
+          { designCompletionDate: { not: null } },
+          { productionCompletionDate: { not: null } },
+          { installCompletionDate: { not: null } },
+        ],
+      },
+      select: {
+        designPlannedStart: true,
+        designCompletionDate: true,
+        productionPlannedStart: true,
+        productionCompletionDate: true,
+        productionEstimatedHours: true,
+        installPlannedStart: true,
+        installCompletionDate: true,
+      },
+    }),
+    prisma.project.findMany({
+      where: { projectStatus: "COMPLETE", actualCompletion: { not: null } },
+      select: { actualCompletion: true, targetCompletion: true, orderReceived: true },
+    }),
+    prisma.project.findMany({
+      where: {
+        targetCompletion: { lt: now },
+        projectStatus: { notIn: ["COMPLETE", "OPPORTUNITY"] },
+      },
+      orderBy: { targetCompletion: "asc" },
+      take: 20,
+      select: { id: true, projectNumber: true, name: true, targetCompletion: true },
+    }),
+  ])
+
+  // Stage cycle times
+  const designDays = designCards
+    .map((c) => daysBetween(c.actualStartDate, c.actualEndDate))
+    .filter((d): d is number => d !== null)
+  const avgDesignDays = designDays.length > 0 ? designDays.reduce((a, b) => a + b, 0) / designDays.length : null
+
+  const prodDays = products
+    .map((p) => daysBetween(p.productionPlannedStart, p.productionCompletionDate))
+    .filter((d): d is number => d !== null)
+  const avgProductionDays = prodDays.length > 0 ? prodDays.reduce((a, b) => a + b, 0) / prodDays.length : null
+
+  const instDays = products
+    .map((p) => daysBetween(p.installPlannedStart, p.installCompletionDate))
+    .filter((d): d is number => d !== null)
+  const avgInstallDays = instDays.length > 0 ? instDays.reduce((a, b) => a + b, 0) / instDays.length : null
+
+  // Lead time
+  const leadTimes = completedProjects
+    .map((p) => daysBetween(p.orderReceived, p.actualCompletion))
+    .filter((d): d is number => d !== null && d > 0)
+  const avgLeadTimeDays = leadTimes.length > 0 ? leadTimes.reduce((a, b) => a + b, 0) / leadTimes.length : null
+
+  // Hours accuracy
+  const designWithHours = designCards.filter((c) => Number(c.estimatedHours) > 0 && Number(c.actualHours) > 0)
+  const designHoursAccuracy =
+    designWithHours.length > 0
+      ? designWithHours.reduce((sum, c) => sum + Number(c.actualHours) / Number(c.estimatedHours), 0) / designWithHours.length
+      : null
+
+  const prodWithHours = products.filter(
+    (p) => Number(p.productionEstimatedHours) > 0 && p.productionCompletionDate
+  )
+  const productionHoursAccuracy = null // No actual production hours tracked at product level yet
+
+  // On-time
+  const withDates = completedProjects.filter((p) => p.targetCompletion)
+  const onTime = withDates.filter(
+    (p) => new Date(p.actualCompletion!) <= new Date(p.targetCompletion!)
+  )
+  const overallOnTimePercent = withDates.length > 0 ? (onTime.length / withDates.length) * 100 : null
+
+  // Monthly on-time trend (last 6 months)
+  const monthlyOnTime: { month: string; percent: number; total: number }[] = []
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+    const monthEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0)
+    const label = d.toLocaleDateString("en-GB", { month: "short", year: "2-digit" })
+    const monthCompleted = completedProjects.filter((p) => {
+      const comp = new Date(p.actualCompletion!)
+      return comp >= d && comp <= monthEnd && p.targetCompletion
+    })
+    const monthOnTime = monthCompleted.filter(
+      (p) => new Date(p.actualCompletion!) <= new Date(p.targetCompletion!)
+    )
+    if (monthCompleted.length > 0) {
+      monthlyOnTime.push({
+        month: label,
+        percent: (monthOnTime.length / monthCompleted.length) * 100,
+        total: monthCompleted.length,
+      })
+    }
+  }
+
+  // Overdue
+  const overdueList = overdueProjects
+    .filter((p) => p.targetCompletion !== null)
+    .map((p) => ({
+      id: p.id,
+      projectNumber: p.projectNumber,
+      name: p.name,
+      targetCompletion: p.targetCompletion!,
+      daysOverdue: Math.ceil((now.getTime() - new Date(p.targetCompletion!).getTime()) / (1000 * 60 * 60 * 24)),
+    }))
+
+  return {
+    avgDesignDays,
+    avgProductionDays,
+    avgInstallDays,
+    avgLeadTimeDays,
+    designHoursAccuracy,
+    productionHoursAccuracy,
+    overallOnTimePercent,
+    monthlyOnTime,
+    overdueProjects: overdueList,
+  }
+}
+
+// ── Pipeline data ──
+async function getPipelineData() {
+  const [projects, quotes, ncrs, recentQuotes] = await Promise.all([
     prisma.project.findMany({
       select: {
         id: true,
@@ -23,7 +396,6 @@ async function getReportData() {
         projectStatus: true,
         salesStage: true,
         workStream: true,
-        classification: true,
         estimatedValue: true,
         contractValue: true,
         currentCost: true,
@@ -32,26 +404,10 @@ async function getReportData() {
       },
     }),
     prisma.quote.findMany({
-      select: {
-        id: true,
-        quoteNumber: true,
-        status: true,
-        totalCost: true,
-        totalSell: true,
-        overallMargin: true,
-        customer: { select: { name: true } },
-      },
-    }),
-    prisma.product.groupBy({
-      by: ["currentDepartment"],
-      _count: { id: true },
+      select: { status: true, totalCost: true, totalSell: true, overallMargin: true },
     }),
     prisma.nonConformanceReport.findMany({
-      select: {
-        severity: true,
-        status: true,
-        costImpact: true,
-      },
+      select: { severity: true, status: true, costImpact: true },
     }),
     prisma.quote.findMany({
       take: 20,
@@ -67,45 +423,25 @@ async function getReportData() {
     }),
   ])
 
-  return { projects, quotes, products, ncrs, recentQuotes }
-}
-
-export default async function ReportsPage() {
-  const { projects, quotes, products, ncrs, recentQuotes } = await getReportData()
-
-  // Pipeline by sales stage
   const pipelineByStage: Record<string, { count: number; value: number }> = {}
+  const pipelineByWorkStream: Record<string, { count: number; value: number }> = {}
   for (const p of projects) {
     const stage = p.salesStage
     if (!pipelineByStage[stage]) pipelineByStage[stage] = { count: 0, value: 0 }
     pipelineByStage[stage].count++
     pipelineByStage[stage].value += Number(p.contractValue || p.estimatedValue || 0)
-  }
 
-  // Pipeline by work stream
-  const pipelineByWorkStream: Record<string, { count: number; value: number }> = {}
-  for (const p of projects) {
     const ws = p.workStream
     if (!pipelineByWorkStream[ws]) pipelineByWorkStream[ws] = { count: 0, value: 0 }
     pipelineByWorkStream[ws].count++
     pipelineByWorkStream[ws].value += Number(p.contractValue || p.estimatedValue || 0)
   }
 
-  // Project profitability (where we have both contract value and current cost)
-  const profitableProjects = projects
-    .filter((p) => Number(p.contractValue) > 0 && Number(p.currentCost) > 0)
-    .map((p) => {
-      const contract = Number(p.contractValue)
-      const cost = Number(p.currentCost)
-      const ncr = Number(p.ncrCost) || 0
-      const totalCost = cost + ncr
-      const profit = contract - totalCost
-      const margin = contract > 0 ? ((profit / contract) * 100) : 0
-      return { ...p, contract, cost: totalCost, profit, margin }
-    })
-    .sort((a, b) => a.margin - b.margin)
+  const totalPipeline = projects.reduce((sum, p) => sum + Number(p.contractValue || p.estimatedValue || 0), 0)
+  const orderValue = projects
+    .filter((p) => p.salesStage === "ORDER")
+    .reduce((sum, p) => sum + Number(p.contractValue || p.estimatedValue || 0), 0)
 
-  // Quote conversion stats
   const quoteStats = {
     total: quotes.length,
     draft: quotes.filter((q) => q.status === "DRAFT").length,
@@ -114,25 +450,18 @@ export default async function ReportsPage() {
     declined: quotes.filter((q) => q.status === "DECLINED").length,
     revised: quotes.filter((q) => q.status === "REVISED").length,
   }
-  const conversionRate = quoteStats.total > 0
-    ? ((quoteStats.accepted / (quoteStats.accepted + quoteStats.declined)) * 100) || 0
-    : 0
+  const conversionRate =
+    quoteStats.accepted + quoteStats.declined > 0
+      ? (quoteStats.accepted / (quoteStats.accepted + quoteStats.declined)) * 100
+      : 0
 
-  // Quote margin analysis
-  const quotesWithMargin = quotes
-    .filter((q) => Number(q.totalSell) > 0)
-    .map((q) => ({
-      ...q,
-      margin: Number(q.overallMargin) || 0,
-      sell: Number(q.totalSell) || 0,
-      cost: Number(q.totalCost) || 0,
-    }))
-  const avgMargin = quotesWithMargin.length > 0
-    ? quotesWithMargin.reduce((sum, q) => sum + q.margin, 0) / quotesWithMargin.length
-    : 0
-  const totalQuoteValue = quotesWithMargin.reduce((sum, q) => sum + q.sell, 0)
+  const quotesWithMargin = quotes.filter((q) => Number(q.totalSell) > 0)
+  const avgMargin =
+    quotesWithMargin.length > 0
+      ? quotesWithMargin.reduce((sum, q) => sum + (Number(q.overallMargin) || 0), 0) / quotesWithMargin.length
+      : 0
+  const totalQuoteValue = quotesWithMargin.reduce((sum, q) => sum + Number(q.totalSell), 0)
 
-  // NCR analysis
   const ncrStats = {
     total: ncrs.length,
     open: ncrs.filter((n) => n.status === "OPEN" || n.status === "INVESTIGATING").length,
@@ -142,286 +471,104 @@ export default async function ReportsPage() {
     totalCost: ncrs.reduce((sum, n) => sum + (Number(n.costImpact) || 0), 0),
   }
 
-  // Total pipeline value
-  const totalPipeline = projects.reduce((sum, p) => sum + Number(p.contractValue || p.estimatedValue || 0), 0)
-  const orderValue = projects.filter(p => p.salesStage === "ORDER").reduce((sum, p) => sum + Number(p.contractValue || p.estimatedValue || 0), 0)
+  const profitableProjects = projects
+    .filter((p) => Number(p.contractValue) > 0 && Number(p.currentCost) > 0)
+    .map((p) => {
+      const contract = Number(p.contractValue)
+      const cost = Number(p.currentCost) + (Number(p.ncrCost) || 0)
+      const profit = contract - cost
+      const margin = contract > 0 ? (profit / contract) * 100 : 0
+      return {
+        id: p.id,
+        projectNumber: p.projectNumber,
+        name: p.name,
+        projectStatus: p.projectStatus,
+        customer: p.customer?.name || "—",
+        contract,
+        cost,
+        profit,
+        margin,
+      }
+    })
+    .sort((a, b) => a.margin - b.margin)
+
+  const formattedQuotes = recentQuotes.map((q) => ({
+    id: q.id,
+    quoteNumber: q.quoteNumber,
+    status: q.status,
+    customer: q.customer.name,
+    sell: Number(q.totalSell) || 0,
+    margin: Number(q.overallMargin) || 0,
+  }))
+
+  return {
+    totalPipeline,
+    orderValue,
+    conversionRate,
+    avgMargin,
+    quoteStats,
+    totalQuoteValue,
+    pipelineByStage,
+    pipelineByWorkStream,
+    ncrStats,
+    profitableProjects,
+    recentQuotes: formattedQuotes,
+  }
+}
+
+export default async function ReportsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | undefined>>
+}) {
+  // Role gate
+  const session = await auth()
+  const role = (session?.user as { role?: string } | undefined)?.role || "STAFF"
+
+  if (!isManagerOrDirector(role)) {
+    return (
+      <div className="flex flex-col items-center justify-center py-32 space-y-4">
+        <ShieldAlert className="h-12 w-12 text-gray-300" />
+        <h1 className="text-xl font-semibold text-gray-700">Access Restricted</h1>
+        <p className="text-sm text-gray-500">Reports are available to Management and Directors only.</p>
+      </div>
+    )
+  }
+
+  const params = await searchParams
+  const tab = params.tab || "workstream"
+
+  // Fetch data based on active tab to avoid unnecessary queries
+  const [workstreamData, peopleData, timingData, pipelineData] = await Promise.all([
+    tab === "workstream" ? getWorkstreamData() : Promise.resolve(null),
+    tab === "people" ? getPeopleData() : Promise.resolve(null),
+    tab === "timing" ? getTimingData() : Promise.resolve(null),
+    tab === "pipeline" ? getPipelineData() : Promise.resolve(null),
+  ])
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-gray-900">Reports</h1>
-        <p className="text-sm text-gray-500">Pipeline analysis, margins, and project financials</p>
+        <h1 className="text-2xl font-semibold text-gray-900">Reports & KPIs</h1>
+        <p className="text-sm text-gray-500">Performance metrics across workstreams, people, and delivery</p>
       </div>
 
-      {/* Top-level KPIs */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-xs text-gray-500 uppercase">Total Pipeline</div>
-            <div className="text-xl font-mono font-semibold text-gray-900">{formatCurrency(totalPipeline)}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-xs text-gray-500 uppercase">Confirmed Orders</div>
-            <div className="text-xl font-mono font-semibold text-green-700">{formatCurrency(orderValue)}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-xs text-gray-500 uppercase">Quote Conversion</div>
-            <div className="text-xl font-mono font-semibold text-blue-700">{conversionRate.toFixed(0)}%</div>
-            <div className="text-[10px] text-gray-400">{quoteStats.accepted} won / {quoteStats.accepted + quoteStats.declined} decided</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-xs text-gray-500 uppercase">Avg Quote Margin</div>
-            <div className={`text-xl font-mono font-semibold ${avgMargin >= 25 ? "text-green-700" : avgMargin >= 0 ? "text-amber-600" : "text-red-600"}`}>
-              {avgMargin.toFixed(1)}%
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <ReportsTabs />
 
-      {/* Two column layout */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Pipeline by Sales Stage */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Pipeline by Sales Stage</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {Object.entries(pipelineByStage).map(([stage, data]) => {
-                const pct = totalPipeline > 0 ? (data.value / totalPipeline) * 100 : 0
-                return (
-                  <div key={stage}>
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary" className={getSalesStageColor(stage)}>
-                          {prettifyEnum(stage)}
-                        </Badge>
-                        <span className="text-xs text-gray-400">{data.count} projects</span>
-                      </div>
-                      <span className="font-mono text-sm font-medium text-gray-900">{formatCurrency(data.value)}</span>
-                    </div>
-                    <div className="h-2 rounded-full bg-gray-100">
-                      <div
-                        className={`h-2 rounded-full ${stage === "ORDER" ? "bg-green-500" : stage === "QUOTED" ? "bg-amber-400" : "bg-blue-400"}`}
-                        style={{ width: `${Math.min(pct, 100)}%` }}
-                      />
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Pipeline by Work Stream */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Pipeline by Work Stream</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {Object.entries(pipelineByWorkStream)
-                .sort((a, b) => b[1].value - a[1].value)
-                .map(([ws, data]) => (
-                  <div key={ws} className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-gray-700">{prettifyEnum(ws)}</span>
-                      <span className="text-xs text-gray-400">({data.count})</span>
-                    </div>
-                    <span className="font-mono text-sm font-medium text-gray-900">{formatCurrency(data.value)}</span>
-                  </div>
-                ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Quote Funnel */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Quote Funnel</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {[
-                { label: "Draft", count: quoteStats.draft, color: "bg-gray-300", textColor: "text-gray-700" },
-                { label: "Submitted", count: quoteStats.submitted, color: "bg-blue-400", textColor: "text-blue-700" },
-                { label: "Accepted", count: quoteStats.accepted, color: "bg-green-500", textColor: "text-green-700" },
-                { label: "Declined", count: quoteStats.declined, color: "bg-red-400", textColor: "text-red-700" },
-                { label: "Revised", count: quoteStats.revised, color: "bg-amber-400", textColor: "text-amber-700" },
-              ].map((item) => (
-                <div key={item.label} className="flex items-center gap-3">
-                  <div className={`h-3 w-3 rounded-full ${item.color}`} />
-                  <span className="text-sm text-gray-700 w-24">{item.label}</span>
-                  <div className="flex-1 h-6 bg-gray-50 rounded relative">
-                    <div
-                      className={`h-6 rounded ${item.color} opacity-20`}
-                      style={{ width: `${quoteStats.total > 0 ? (item.count / quoteStats.total) * 100 : 0}%` }}
-                    />
-                    <span className={`absolute inset-0 flex items-center px-2 text-xs font-semibold ${item.textColor}`}>
-                      {item.count}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="mt-4 pt-3 border-t border-border">
-              <div className="text-xs text-gray-500">Total Quote Value (all time)</div>
-              <div className="text-lg font-mono font-semibold text-gray-900">{formatCurrency(totalQuoteValue)}</div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* NCR Summary */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">NCR Summary</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <div>
-                <div className="text-xs text-gray-500">Total NCRs</div>
-                <div className="text-2xl font-semibold text-gray-900">{ncrStats.total}</div>
-              </div>
-              <div>
-                <div className="text-xs text-gray-500">Open</div>
-                <div className={`text-2xl font-semibold ${ncrStats.open > 0 ? "text-red-600" : "text-gray-900"}`}>{ncrStats.open}</div>
-              </div>
-              <div>
-                <div className="text-xs text-gray-500">Total Cost Impact</div>
-                <div className={`text-lg font-mono font-semibold ${ncrStats.totalCost > 0 ? "text-red-600" : "text-gray-900"}`}>
-                  {formatCurrency(ncrStats.totalCost)}
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center gap-4 pt-3 border-t border-border">
-              <div className="flex items-center gap-1.5">
-                <div className="h-2.5 w-2.5 rounded-full bg-yellow-400" />
-                <span className="text-xs text-gray-500">Minor: {ncrStats.minor}</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div className="h-2.5 w-2.5 rounded-full bg-orange-500" />
-                <span className="text-xs text-gray-500">Major: {ncrStats.major}</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div className="h-2.5 w-2.5 rounded-full bg-red-600" />
-                <span className="text-xs text-gray-500">Critical: {ncrStats.critical}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Project Profitability Table */}
-      {profitableProjects.length > 0 && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Project Profitability</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border bg-gray-50/50">
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">No.</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Project</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Customer</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Status</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Contract</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Cost (inc NCR)</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Profit</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Margin</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {profitableProjects.map((p) => (
-                    <tr key={p.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-2.5">
-                        <Link href={`/projects/${p.id}`} className="font-mono text-xs font-medium text-blue-600 hover:text-blue-700">
-                          {p.projectNumber}
-                        </Link>
-                      </td>
-                      <td className="px-4 py-2.5 text-gray-900">{p.name}</td>
-                      <td className="px-4 py-2.5 text-xs text-gray-500">{p.customer?.name || "—"}</td>
-                      <td className="px-4 py-2.5">
-                        <Badge variant="secondary" className={`${getProjectStatusColor(p.projectStatus)} text-[10px]`}>
-                          {prettifyEnum(p.projectStatus)}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-2.5 text-right font-mono text-sm">{formatCurrency(p.contract)}</td>
-                      <td className="px-4 py-2.5 text-right font-mono text-sm">{formatCurrency(p.cost)}</td>
-                      <td className={`px-4 py-2.5 text-right font-mono text-sm font-medium ${p.profit >= 0 ? "text-green-700" : "text-red-600"}`}>
-                        {formatCurrency(p.profit)}
-                      </td>
-                      <td className={`px-4 py-2.5 text-right font-mono text-sm font-semibold ${p.margin >= 25 ? "text-green-700" : p.margin >= 0 ? "text-amber-600" : "text-red-600"}`}>
-                        {p.margin.toFixed(1)}%
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Recent Quotes with Margins */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Recent Quotes — Margin Analysis</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border bg-gray-50/50">
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Quote</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Customer</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Status</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Sell Value</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">Margin</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {recentQuotes.map((q) => {
-                  const margin = Number(q.overallMargin) || 0
-                  return (
-                    <tr key={q.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-2.5">
-                        <Link href={`/quotes/${q.id}`} className="font-mono text-xs font-medium text-blue-600 hover:text-blue-700">
-                          {q.quoteNumber}
-                        </Link>
-                      </td>
-                      <td className="px-4 py-2.5 text-xs text-gray-500">{q.customer.name}</td>
-                      <td className="px-4 py-2.5">
-                        <Badge variant="secondary" className={`text-[10px] ${
-                          q.status === "ACCEPTED" ? "bg-green-100 text-green-700" :
-                          q.status === "DECLINED" ? "bg-red-100 text-red-700" :
-                          q.status === "SUBMITTED" ? "bg-blue-100 text-blue-700" :
-                          "bg-gray-100 text-gray-700"
-                        }`}>
-                          {prettifyEnum(q.status)}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-2.5 text-right font-mono text-sm">
-                        {q.totalSell ? formatCurrency(Number(q.totalSell)) : "—"}
-                      </td>
-                      <td className={`px-4 py-2.5 text-right font-mono text-sm font-medium ${margin >= 25 ? "text-green-700" : margin >= 0 ? "text-amber-600" : "text-red-600"}`}>
-                        {margin ? `${margin.toFixed(1)}%` : "—"}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+      <Suspense fallback={<div className="py-12 text-center text-gray-400">Loading...</div>}>
+        {tab === "workstream" && workstreamData && (
+          <WorkstreamPerformance data={workstreamData} />
+        )}
+        {tab === "people" && peopleData && (
+          <PeoplePerformance designers={peopleData.designers} projectManagers={peopleData.projectManagers} />
+        )}
+        {tab === "timing" && timingData && (
+          <TimingDelivery data={timingData} />
+        )}
+        {tab === "pipeline" && pipelineData && (
+          <PipelineFinancials data={pipelineData} />
+        )}
+      </Suspense>
     </div>
   )
 }
