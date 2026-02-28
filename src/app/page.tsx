@@ -3,25 +3,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
-  FolderKanban,
-  Package,
-  ListChecks,
   AlertTriangle,
   Plus,
   ArrowRight,
   TrendingUp,
   PoundSterling,
   FileText,
-  Siren,
-  Flame,
   CheckCircle,
-  Clock,
 } from "lucide-react"
 import Link from "next/link"
 import { formatDate, formatCurrency, getProjectStatusColor, getSalesStageColor, getDepartmentColor, prettifyEnum, calculateScheduleRag, getRagColor } from "@/lib/utils"
 import { DashboardCharts } from "@/components/dashboard/dashboard-charts"
 import { DashboardTimeline } from "@/components/dashboard/dashboard-timeline"
 import { DashboardTabs } from "@/components/dashboard/dashboard-tabs"
+import { ICUCarousel } from "@/components/dashboard/icu-carousel"
 
 export const revalidate = 60
 
@@ -38,9 +33,8 @@ async function getDashboardData() {
     pipelineProjects,
     // Quote stats (single groupBy replaces 4 count queries)
     quotesByStatus,
-    // ICU / priority projects
+    // ICU projects
     icuProjects,
-    criticalProjects,
     // Recent quotes
     recentQuotes,
     // NCR stats
@@ -101,11 +95,6 @@ async function getDashboardData() {
     // ICU projects
     prisma.project.findMany({
       where: { isICUFlag: true, projectStatus: { not: "COMPLETE" } },
-      select: { id: true, projectNumber: true, name: true, customer: { select: { name: true } } },
-    }),
-    // Critical projects
-    prisma.project.findMany({
-      where: { priority: "CRITICAL", isICUFlag: false, projectStatus: { not: "COMPLETE" } },
       select: { id: true, projectNumber: true, name: true, customer: { select: { name: true } } },
     }),
     // Recent quotes
@@ -212,7 +201,6 @@ async function getDashboardData() {
     pipeline: { opportunityValue, quotedValue, orderValue, total: opportunityValue + quotedValue + orderValue },
     quotes: { total: totalQuotes, draft: quoteCountMap["DRAFT"] || 0, submitted: quoteCountMap["SUBMITTED"] || 0, accepted: quoteCountMap["ACCEPTED"] || 0 },
     icuProjects,
-    criticalProjects,
     recentQuotes,
     openNcrs,
     charts: {
@@ -264,34 +252,8 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* ICU / Priority alerts */}
-      {(data.icuProjects.length > 0 || data.criticalProjects.length > 0) && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-3 space-y-1">
-          <div className="text-xs font-semibold uppercase text-red-700 mb-1">Priority Alerts</div>
-          {data.icuProjects.map((p) => (
-            <Link key={p.id} href={`/projects/${p.id}`}>
-              <div className="flex items-center gap-2 text-sm hover:bg-red-100/50 rounded px-1 py-0.5">
-                <Siren className="h-4 w-4 text-red-600" />
-                <span className="font-mono text-xs font-semibold">{p.projectNumber}</span>
-                <span className="text-red-800">{p.name}</span>
-                <span className="text-red-500 text-xs">— ICU</span>
-                {p.customer && <span className="ml-auto text-xs text-red-400">{p.customer.name}</span>}
-              </div>
-            </Link>
-          ))}
-          {data.criticalProjects.map((p) => (
-            <Link key={p.id} href={`/projects/${p.id}`}>
-              <div className="flex items-center gap-2 text-sm hover:bg-red-100/50 rounded px-1 py-0.5">
-                <Flame className="h-4 w-4 text-red-500" />
-                <span className="font-mono text-xs font-semibold">{p.projectNumber}</span>
-                <span className="text-red-800">{p.name}</span>
-                <span className="text-red-500 text-xs">— Critical</span>
-                {p.customer && <span className="ml-auto text-xs text-red-400">{p.customer.name}</span>}
-              </div>
-            </Link>
-          ))}
-        </div>
-      )}
+      {/* ICU Carousel */}
+      <ICUCarousel projects={data.icuProjects} />
 
       {/* Pipeline value cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

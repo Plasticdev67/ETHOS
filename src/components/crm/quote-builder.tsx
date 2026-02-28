@@ -121,7 +121,7 @@ export function QuoteBuilder({ opportunity, userRole = "STAFF" }: { opportunity:
   const [markingSent, setMarkingSent] = useState(false)
   const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [configureOpen, setConfigureOpen] = useState(false)
-  const [configureClassification, setConfigureClassification] = useState<"STANDARD" | "INNOVATE_TO_ORDER">("STANDARD")
+  const [configureClassification, setConfigureClassification] = useState<"STANDARD" | "CTO" | "ENGINEER_TO_ORDER">("STANDARD")
   const [confirmAction, setConfirmAction] = useState<string | null>(null)
   const [editingLine, setEditingLine] = useState<QuoteLineEditData | null>(null)
   const [editManualLine, setEditManualLine] = useState<QuoteLine | null>(null)
@@ -173,8 +173,8 @@ export function QuoteBuilder({ opportunity, userRole = "STAFF" }: { opportunity:
   const marginAmount = baseCost * (marginNum / 100)
   const quotedPrice = baseCost + marginAmount
 
-  const hasItoLines = lines.some((l) => l.classification === "INNOVATE_TO_ORDER")
-  const canApproveIto = ["MANAGING_DIRECTOR", "TECHNICAL_DIRECTOR", "SALES_DIRECTOR", "ADMIN"].includes(userRole)
+  const hasEtoLines = lines.some((l) => l.classification === "ENGINEER_TO_ORDER")
+  const canApproveEto = ["MANAGING_DIRECTOR", "TECHNICAL_DIRECTOR", "SALES_DIRECTOR", "ADMIN"].includes(userRole)
 
   // Add line item (manual)
   async function handleAddLine(data: {
@@ -286,7 +286,7 @@ export function QuoteBuilder({ opportunity, userRole = "STAFF" }: { opportunity:
         transomeConfig: line.transomeConfig,
       })
       setConfigureClassification(
-        (line.classification as "STANDARD" | "INNOVATE_TO_ORDER") || "STANDARD"
+        (line.classification as "STANDARD" | "CTO" | "ENGINEER_TO_ORDER") || "STANDARD"
       )
       setConfigureOpen(true)
     } else {
@@ -461,13 +461,13 @@ export function QuoteBuilder({ opportunity, userRole = "STAFF" }: { opportunity:
                 <Button
                   size="sm"
                   onClick={() => {
-                    setConfigureClassification("INNOVATE_TO_ORDER")
+                    setConfigureClassification("ENGINEER_TO_ORDER")
                     setConfigureOpen(true)
                   }}
                   className="gap-1.5 bg-orange-500 hover:bg-orange-600"
                 >
                   <Lightbulb className="h-3.5 w-3.5" />
-                  ITO Product
+                  ETO Product
                 </Button>
                 <Button
                   size="sm"
@@ -515,7 +515,7 @@ export function QuoteBuilder({ opportunity, userRole = "STAFF" }: { opportunity:
                     key={line.id}
                     onClick={() => handleRowClick(line)}
                     className={cn(
-                      line.classification === "INNOVATE_TO_ORDER"
+                      line.classification === "ENGINEER_TO_ORDER"
                         ? "bg-orange-50/60 hover:bg-orange-50"
                         : "hover:bg-gray-50",
                       !isLocked && "cursor-pointer"
@@ -536,9 +536,9 @@ export function QuoteBuilder({ opportunity, userRole = "STAFF" }: { opportunity:
                       </Badge>
                     </td>
                     <td className="px-4 py-2.5">
-                      {line.classification === "INNOVATE_TO_ORDER" ? (
+                      {line.classification === "ENGINEER_TO_ORDER" ? (
                         <Badge className="bg-orange-500 text-white text-xs font-bold px-2.5 py-1 shadow-sm">
-                          ITO
+                          ETO
                         </Badge>
                       ) : (
                         <Badge variant="secondary" className="bg-green-100 text-green-700">
@@ -549,7 +549,7 @@ export function QuoteBuilder({ opportunity, userRole = "STAFF" }: { opportunity:
                     <td className="px-4 py-2.5 text-gray-900">
                       <div className="flex items-center gap-2">
                         {line.description}
-                        {line.classification === "INNOVATE_TO_ORDER" && (
+                        {line.classification === "ENGINEER_TO_ORDER" && (
                           <Lightbulb className="h-4 w-4 text-orange-500 shrink-0" />
                         )}
                         {!isLocked && (
@@ -859,12 +859,12 @@ export function QuoteBuilder({ opportunity, userRole = "STAFF" }: { opportunity:
         </CardContent>
       </Card>
 
-      {/* ITO Warning */}
-      {hasItoLines && (
+      {/* ETO Warning */}
+      {hasEtoLines && (
         <div className="flex items-center gap-2 text-orange-800 bg-orange-50 rounded-lg p-3 border border-orange-200">
           <AlertTriangle className="h-4 w-4 shrink-0" />
           <span className="text-sm">
-            This quote contains <strong>Innovate to Order</strong> items. Sales Director approval is required.
+            This quote contains <strong>Engineer to Order</strong> items. Multi-level director approval is required.
           </span>
         </div>
       )}
@@ -893,8 +893,8 @@ export function QuoteBuilder({ opportunity, userRole = "STAFF" }: { opportunity:
               <div className="flex items-center gap-2 text-amber-700 bg-amber-50 rounded-lg p-3 border border-amber-200">
                 <AlertTriangle className="h-4 w-4 shrink-0" />
                 <span className="text-sm">
-                  {hasItoLines
-                    ? "This quote contains Innovate to Order items and requires Sales Director approval."
+                  {hasEtoLines
+                    ? "This quote contains Engineer to Order items and requires multi-level director approval."
                     : "This quote is pending sales approval. Review the pricing and approve or reject."}
                 </span>
               </div>
@@ -905,7 +905,7 @@ export function QuoteBuilder({ opportunity, userRole = "STAFF" }: { opportunity:
                     {formatCurrency(quotedPrice)}
                   </span>
                 </p>
-                {hasItoLines && !canApproveIto ? (
+                {hasEtoLines && !canApproveEto ? (
                   <p className="text-sm text-orange-600 font-medium">
                     Awaiting Sales Director approval
                   </p>
@@ -1276,7 +1276,8 @@ function AddLineDialog({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="STANDARD">Standard</SelectItem>
-                  <SelectItem value="INNOVATE_TO_ORDER">Innovate to Order</SelectItem>
+                  <SelectItem value="CTO">Configure to Order</SelectItem>
+                  <SelectItem value="ENGINEER_TO_ORDER">Engineer to Order</SelectItem>
                 </SelectContent>
               </Select>
             </div>

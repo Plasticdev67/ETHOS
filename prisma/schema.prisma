@@ -173,7 +173,7 @@ model Opportunity {
   marginPercent     Decimal?          @db.Decimal(5, 2)
   quotedPrice       Decimal?          @db.Decimal(12, 2)
   quoteApproval     QuoteApprovalStatus @default(DRAFT)
-  hasItoLines       Boolean             @default(false)
+  hasEtoLines       Boolean             @default(false)
   quoteSentAt       DateTime?
   quoteSentTo       String?
 
@@ -264,7 +264,8 @@ enum OpportunityLineType {
 
 enum QuoteLineClassification {
   STANDARD
-  INNOVATE_TO_ORDER
+  CTO
+  ENGINEER_TO_ORDER
 }
 
 enum QuoteApprovalStatus {

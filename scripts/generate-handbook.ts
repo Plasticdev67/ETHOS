@@ -299,9 +299,9 @@ b("System auto-calculates BOM cost + shop floor labour (£17/hr)")
 
 h3("Manual Item (Services & Bespoke)")
 b("Enter Description, Type (Product/Activity), Quantity, Unit Cost")
-b("Set Classification: Standard or Innovate-to-Order (ITO)")
+b("Set Classification: Standard, CTO (Configure to Order), or ETO (Engineer to Order)")
 
-warn("Innovate-to-Order lines require Sales Director approval before the quote can be sent.")
+warn("Engineer to Order lines require multi-level director approval before the quote can be sent.")
 
 h2("Editing Existing Lines")
 p("Click any row in the Products & Activities table to re-edit it. Product lines reopen the full configurator with previous selections pre-filled.")

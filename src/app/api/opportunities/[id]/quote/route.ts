@@ -116,12 +116,12 @@ export async function POST(
   }
 
   if (action === "approve") {
-    // Check if any line is ITO — requires Director-level or ADMIN approval
-    const hasIto = opp.quoteLines.some(
-      (l: { classification?: string }) => l.classification === "INNOVATE_TO_ORDER"
+    // Check if any line is ETO — requires Director-level or ADMIN approval
+    const hasEto = opp.quoteLines.some(
+      (l: { classification?: string }) => l.classification === "ENGINEER_TO_ORDER"
     )
 
-    if (hasIto) {
+    if (hasEto) {
       const session = await auth()
       const userRole = (session?.user as { role?: string })?.role
       const approvalRoles = ["MANAGING_DIRECTOR", "TECHNICAL_DIRECTOR", "SALES_DIRECTOR", "ADMIN"]

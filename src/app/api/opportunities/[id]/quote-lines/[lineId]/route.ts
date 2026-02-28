@@ -62,14 +62,14 @@ export async function PATCH(
     data,
   })
 
-  // Recompute hasItoLines if classification changed
+  // Recompute hasEtoLines if classification changed
   if (body.classification !== undefined) {
-    const itoCount = await prisma.opportunityQuoteLine.count({
-      where: { opportunityId: id, classification: "INNOVATE_TO_ORDER" },
+    const etoCount = await prisma.opportunityQuoteLine.count({
+      where: { opportunityId: id, classification: "ENGINEER_TO_ORDER" },
     })
     await prisma.opportunity.update({
       where: { id },
-      data: { hasItoLines: itoCount > 0 },
+      data: { hasEtoLines: etoCount > 0 },
     })
   }
 
@@ -85,13 +85,13 @@ export async function DELETE(
   const { id, lineId } = await params
   await prisma.opportunityQuoteLine.delete({ where: { id: lineId } })
 
-  // Recompute hasItoLines
-  const itoCount = await prisma.opportunityQuoteLine.count({
-    where: { opportunityId: id, classification: "INNOVATE_TO_ORDER" },
+  // Recompute hasEtoLines
+  const etoCount = await prisma.opportunityQuoteLine.count({
+    where: { opportunityId: id, classification: "ENGINEER_TO_ORDER" },
   })
   await prisma.opportunity.update({
     where: { id },
-    data: { hasItoLines: itoCount > 0 },
+    data: { hasEtoLines: etoCount > 0 },
   })
 
   revalidatePath("/crm")

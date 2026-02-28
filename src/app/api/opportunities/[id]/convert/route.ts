@@ -138,9 +138,9 @@ export async function POST(
         overallMargin: marginPercent,
         notes: `Converted from CRM opportunity. ${
           opportunity.quoteLines.some(
-            (l) => l.classification === "INNOVATE_TO_ORDER"
+            (l) => l.classification === "ENGINEER_TO_ORDER"
           )
-            ? "Contains Innovate to Order items."
+            ? "Contains Engineer to Order items."
             : ""
         }`.trim(),
       },

@@ -269,7 +269,7 @@ export function CrmProductBuilder({
   onLineAdded: (data: CrmLineData) => void
   onLineUpdated?: (lineId: string, data: CrmLineData) => void
   editingLine?: QuoteLineEditData | null
-  defaultClassification?: "STANDARD" | "INNOVATE_TO_ORDER"
+  defaultClassification?: "STANDARD" | "CTO" | "ENGINEER_TO_ORDER"
 }) {
   const [mode, setMode] = useState<BuilderMode>("product")
   const [saving, setSaving] = useState(false)
@@ -283,7 +283,7 @@ export function CrmProductBuilder({
   // Simplified config
   const [config, setConfig] = useState<SimpleProductConfig>({ ...defaultSimpleConfig })
   const [quantity, setQuantity] = useState("1")
-  const [classification, setClassification] = useState<"STANDARD" | "INNOVATE_TO_ORDER">(defaultClassification)
+  const [classification, setClassification] = useState<"STANDARD" | "CTO" | "ENGINEER_TO_ORDER">(defaultClassification)
   const [costOverride, setCostOverride] = useState("")
 
   // BOM preview state
@@ -372,7 +372,7 @@ export function CrmProductBuilder({
       notes: editingLine.notes || "",
     })
     setQuantity(String(editingLine.quantity || 1))
-    setClassification((editingLine.classification as "STANDARD" | "INNOVATE_TO_ORDER") || defaultClassification)
+    setClassification((editingLine.classification as "STANDARD" | "CTO" | "ENGINEER_TO_ORDER") || defaultClassification)
     if (editingLine.unitCost) {
       setCostOverride(String(editingLine.unitCost))
     }
@@ -584,12 +584,12 @@ export function CrmProductBuilder({
       <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            {defaultClassification === "INNOVATE_TO_ORDER" ? (
+            {defaultClassification === "ENGINEER_TO_ORDER" ? (
               <>
                 <Lightbulb className="h-5 w-5 text-orange-600" />
                 {editingLine ? "Edit Quote Line" : "Add Quote Line"}
                 <Badge variant="secondary" className="bg-orange-100 text-orange-700 text-xs px-2 py-0.5">
-                  ITO
+                  ETO
                 </Badge>
               </>
             ) : (
@@ -1288,15 +1288,15 @@ export function CrmProductBuilder({
               />
             </section>
 
-            {/* SECTION: Classification (ITO) */}
+            {/* SECTION: Classification (ETO) */}
             <section>
               <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Classification</h3>
               <div className="flex gap-3">
                 <button
-                  onClick={() => setClassification("STANDARD")}
+                  onClick={() => setClassification("CTO")}
                   className={cn(
                     "flex-1 rounded-lg border-2 p-3 text-left transition-all",
-                    classification === "STANDARD"
+                    classification === "STANDARD" || classification === "CTO"
                       ? "border-green-500 bg-green-50"
                       : "border-border hover:border-gray-300"
                   )}
@@ -1305,24 +1305,24 @@ export function CrmProductBuilder({
                   <p className="text-xs text-gray-500">Configure to Order — standard product</p>
                 </button>
                 <button
-                  onClick={() => setClassification("INNOVATE_TO_ORDER")}
+                  onClick={() => setClassification("ENGINEER_TO_ORDER")}
                   className={cn(
                     "flex-1 rounded-lg border-2 p-3 text-left transition-all",
-                    classification === "INNOVATE_TO_ORDER"
+                    classification === "ENGINEER_TO_ORDER"
                       ? "border-orange-500 bg-orange-50"
                       : "border-border hover:border-gray-300"
                   )}
                 >
-                  <div className="text-sm font-semibold text-gray-900">ITO</div>
-                  <p className="text-xs text-gray-500">Innovate to Order — requires approval</p>
+                  <div className="text-sm font-semibold text-gray-900">ETO</div>
+                  <p className="text-xs text-gray-500">Engineer to Order — requires multi-level approval</p>
                 </button>
               </div>
 
-              {classification === "INNOVATE_TO_ORDER" && (
+              {classification === "ENGINEER_TO_ORDER" && (
                 <div className="mt-3 space-y-3">
                   <div className="flex items-center gap-2 rounded border border-orange-200 bg-orange-50 px-3 py-2 text-sm text-orange-800">
                     <AlertTriangle className="h-4 w-4 shrink-0" />
-                    This item will require Sales Director approval.
+                    This item will require multi-level director approval.
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs">Override Unit Cost (&pound;)</Label>
@@ -1378,12 +1378,12 @@ export function CrmProductBuilder({
                     variant="secondary"
                     className={cn(
                       "text-[10px]",
-                      classification === "STANDARD"
-                        ? "bg-green-100 text-green-700"
-                        : "bg-orange-100 text-orange-700"
+                      classification === "ENGINEER_TO_ORDER"
+                        ? "bg-orange-100 text-orange-700"
+                        : "bg-green-100 text-green-700"
                     )}
                   >
-                    {classification === "STANDARD" ? "CTO" : "ITO"}
+                    {classification === "ENGINEER_TO_ORDER" ? "ETO" : "CTO"}
                   </Badge>
                 </div>
               </div>
@@ -1398,7 +1398,7 @@ export function CrmProductBuilder({
                 onClick={handleSubmitProduct}
                 disabled={!canSubmitProduct || saving}
                 className={cn(
-                  classification === "INNOVATE_TO_ORDER"
+                  classification === "ENGINEER_TO_ORDER"
                     ? "bg-orange-600 hover:bg-orange-700"
                     : "bg-indigo-600 hover:bg-indigo-700"
                 )}

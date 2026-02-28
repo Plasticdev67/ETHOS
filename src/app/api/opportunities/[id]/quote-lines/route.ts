@@ -67,13 +67,13 @@ export async function POST(
     },
   })
 
-  // Recompute hasItoLines on the opportunity
-  const itoCount = await prisma.opportunityQuoteLine.count({
-    where: { opportunityId: id, classification: "INNOVATE_TO_ORDER" },
+  // Recompute hasEtoLines on the opportunity
+  const etoCount = await prisma.opportunityQuoteLine.count({
+    where: { opportunityId: id, classification: "ENGINEER_TO_ORDER" },
   })
   await prisma.opportunity.update({
     where: { id },
-    data: { hasItoLines: itoCount > 0 },
+    data: { hasEtoLines: etoCount > 0 },
   })
 
   revalidatePath("/crm")

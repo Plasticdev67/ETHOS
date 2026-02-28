@@ -75,7 +75,7 @@ type PipelineOpp = {
   quoteNumber: string | null
   quoteSentAt: string | null
   quoteSentTo: string | null
-  hasItoLines: boolean | null
+  hasEtoLines: boolean | null
   deadReason: string | null
   deadAt: string | null
   revivedAt: string | null
@@ -375,10 +375,10 @@ const OpportunityCard = memo(function OpportunityCard({
             <div className="flex items-center gap-1.5 text-xs text-blue-600">
               {opp.prospect.companyName}
             </div>
-            {opp.hasItoLines && (
+            {opp.hasEtoLines && (
               <div className="mt-1">
                 <Badge className="bg-orange-500 text-white text-[10px] font-bold px-2 py-0.5 shadow-sm">
-                  INNOVATE TO ORDER
+                  ENGINEER TO ORDER
                 </Badge>
               </div>
             )}
@@ -427,16 +427,16 @@ const OpportunityCard = memo(function OpportunityCard({
           <div className="mt-2 pt-1.5 border-t border-border/60 space-y-1">
             {opp.quoteLines.slice(0, 3).map((line) => (
               <div key={line.id} className="flex items-center gap-1.5">
-                {line.classification === "INNOVATE_TO_ORDER" ? (
+                {line.classification === "ENGINEER_TO_ORDER" ? (
                   <span className="inline-flex items-center justify-center rounded bg-orange-500 text-white text-[8px] font-bold px-1 py-0.5 leading-none shrink-0">
-                    ITO
+                    ETO
                   </span>
                 ) : (
                   <Package className="h-3 w-3 text-gray-400 shrink-0" />
                 )}
                 <span className={cn(
                   "text-[10px] truncate flex-1",
-                  line.classification === "INNOVATE_TO_ORDER" ? "text-orange-700 font-medium" : "text-gray-600"
+                  line.classification === "ENGINEER_TO_ORDER" ? "text-orange-700 font-medium" : "text-gray-600"
                 )}>
                   {line.description}
                 </span>
@@ -502,9 +502,9 @@ const OpportunityCard = memo(function OpportunityCard({
               Quoted: <span className="font-mono font-semibold text-gray-900">{formatCurrency(Number(opp.quotedPrice))}</span>
             </div>
           )}
-          {opp.hasItoLines && opp.quoteApproval !== "REJECTED" && (
+          {opp.hasEtoLines && opp.quoteApproval !== "REJECTED" && (
             <div className="text-[10px] text-orange-600 font-medium">
-              Requires Sales Director Approval
+              Requires Director Approval (ETO)
             </div>
           )}
           <div className="flex items-center gap-2">
