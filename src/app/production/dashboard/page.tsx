@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db"
 import { ProductionDashboard, type ProductionProject, type DesignCompleteProject, type PendingHandover } from "@/components/production/production-dashboard"
 
+export const dynamic = 'force-dynamic'
 export const revalidate = 30
 
 async function getProductionData() {

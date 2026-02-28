@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { EditUserRow } from "@/components/team/edit-user-row"
 import { AddUserDialog } from "@/components/team/add-user-dialog"
 
+export const dynamic = 'force-dynamic'
 export const revalidate = 60
 
 async function getUsers() {

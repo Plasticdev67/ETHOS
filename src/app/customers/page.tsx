@@ -7,6 +7,7 @@ import Link from "next/link"
 import { prettifyEnum } from "@/lib/utils"
 import { NewCustomerDialog } from "@/components/customers/new-customer-dialog"
 
+export const dynamic = 'force-dynamic'
 export const revalidate = 30
 
 async function getCustomers() {

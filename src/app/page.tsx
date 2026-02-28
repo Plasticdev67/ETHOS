@@ -18,6 +18,7 @@ import { DashboardTimeline } from "@/components/dashboard/dashboard-timeline"
 import { DashboardTabs } from "@/components/dashboard/dashboard-tabs"
 import { ICUCarousel } from "@/components/dashboard/icu-carousel"
 
+export const dynamic = 'force-dynamic'
 export const revalidate = 60
 
 async function getDashboardData() {

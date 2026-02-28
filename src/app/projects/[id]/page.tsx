@@ -37,6 +37,7 @@ import { DocumentManager } from "@/components/projects/document-manager"
 import { ProjectActivityLog } from "@/components/projects/project-activity-log"
 import { ProductHandoverButton } from "@/components/projects/product-handover-button"
 
+export const dynamic = 'force-dynamic'
 export const revalidate = 60
 
 async function getProject(id: string) {

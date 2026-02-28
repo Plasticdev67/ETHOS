@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db"
 import { BomLibraryClient } from "@/components/bom/bom-library-client"
 
+export const dynamic = 'force-dynamic'
 export const revalidate = 60
 
 async function getData() {

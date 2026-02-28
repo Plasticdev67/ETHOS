@@ -23,6 +23,7 @@ import {
   getProspectStatusColor,
 } from "@/lib/utils"
 
+export const dynamic = 'force-dynamic'
 export const revalidate = 60
 
 async function getProspect(id: string) {

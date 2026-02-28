@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db"
 import { WorkshopView, type WorkshopData, type WorkshopWorker, type AllocatedProduct } from "@/components/production/workshop-view"
 import { ALL_PRODUCTION_STAGES } from "@/lib/production-utils"
 
+export const dynamic = 'force-dynamic'
 export const revalidate = 30
 
 async function getWorkshopData(stage: string) {
