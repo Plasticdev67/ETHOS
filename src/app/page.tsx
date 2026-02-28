@@ -1,9 +1,7 @@
 import { prisma } from "@/lib/db"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import {
-  Plus,
   ArrowRight,
   TrendingUp,
   PoundSterling,
@@ -21,13 +19,28 @@ import { DepartmentInstallation } from "@/components/dashboard/department-instal
 import { DepartmentFinance } from "@/components/dashboard/department-finance"
 import { UpcomingDeadlines } from "@/components/dashboard/upcoming-deadlines"
 import { DashboardWorkstreamPerformance } from "@/components/dashboard/workstream-performance"
+import { TabSales } from "@/components/dashboard/tab-sales"
+import { TabDesign } from "@/components/dashboard/tab-design"
+import { TabProduction } from "@/components/dashboard/tab-production"
+import { TabInstallation } from "@/components/dashboard/tab-installation"
 import { auth } from "@/lib/auth"
 import { isManagerOrDirector } from "@/lib/permissions"
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 60
 
-async function getDashboardData() {
+// ─── Workstream label helper ─────────────────────────────────────────────────
+const WS_LABELS: Record<string, string> = {
+  COMMUNITY: "Community",
+  UTILITIES: "Utilities",
+  BESPOKE: "Bespoke",
+  BLAST: "Blast",
+  BUND_CONTAINMENT: "Bund Containment",
+  REFURBISHMENT: "Refurbishment",
+}
+
+// ─── Overview Tab Data ──────────────────────────────────────────────────────
+async function getOverviewData() {
   const now = new Date()
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
   const ninetyDaysAgo = new Date()
@@ -36,71 +49,22 @@ async function getDashboardData() {
   thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30)
 
   const [
-    projectsByStatus,
-    departmentCounts,
-    recentProjects,
-    // Pipeline values
-    pipelineProjects,
-    // Quote stats
-    quotesByStatus,
-    // ICU projects
-    icuProjects,
-    // NCR stats
-    openNcrs,
-    // === New queries for department cards ===
-    // Sales: Opportunities by status
-    opportunitiesByStatus,
-    // Sales: Won this month
-    wonThisMonth,
-    // Sales: Lost this month
-    lostThisMonth,
-    // Sales: Conversion rate (90-day window)
-    wonLast90,
-    lostLast90,
-    // Design: active cards
-    designActive,
-    // Design: total cards
-    designTotal,
-    // Design: overdue cards
-    designOverdue,
-    // Production: products by production status
-    productionByStage,
-    // Installation: active projects
-    installProjects,
-    // Installation: upcoming
-    installUpcoming,
-    // Finance: contract value (on-order)
-    financeContractValue,
-    // Finance: PO spend
-    financePoSpend,
-    // Finance: outstanding invoices
-    financeOutstanding,
-    // Upcoming deadlines
-    deadlineProjects,
-    // Workstream performance
-    workstreamProjects,
+    projectsByStatus, departmentCounts, recentProjects, pipelineProjects,
+    quotesByStatus, icuProjects, openNcrs,
+    opportunitiesByStatus, wonThisMonth, lostThisMonth, wonLast90, lostLast90,
+    designActive, designTotal, designOverdue,
+    productionByStage, installProjects, installUpcoming,
+    financeContractValue, financePoSpend, financeOutstanding,
+    deadlineProjects, workstreamProjects,
   ] = await Promise.all([
-    prisma.project.groupBy({
-      by: ["projectStatus"],
-      _count: { id: true },
-    }),
-    prisma.product.groupBy({
-      by: ["currentDepartment"],
-      _count: { id: true },
-    }),
+    prisma.project.groupBy({ by: ["projectStatus"], _count: { id: true } }),
+    prisma.product.groupBy({ by: ["currentDepartment"], _count: { id: true } }),
     prisma.project.findMany({
-      take: 5,
-      orderBy: { updatedAt: "desc" },
+      take: 5, orderBy: { updatedAt: "desc" },
       select: {
-        id: true,
-        projectNumber: true,
-        name: true,
-        projectStatus: true,
-        salesStage: true,
-        ragStatus: true,
-        targetCompletion: true,
-        contractValue: true,
-        estimatedValue: true,
+        id: true, projectNumber: true, name: true, projectStatus: true,
+        salesStage: true, ragStatus: true, targetCompletion: true,
+        contractValue: true, estimatedValue: true,
         customer: { select: { name: true } },
         projectManager: { select: { name: true } },
         _count: { select: { products: true } },
@@ -112,140 +76,61 @@ async function getDashboardData() {
       _sum: { estimatedValue: true, contractValue: true },
       _count: { id: true },
     }),
-    prisma.quote.groupBy({
-      by: ["status"],
-      _count: { id: true },
-    }),
+    prisma.quote.groupBy({ by: ["status"], _count: { id: true } }),
     prisma.project.findMany({
       where: { isICUFlag: true, projectStatus: { not: "COMPLETE" } },
       select: { id: true, projectNumber: true, name: true, customer: { select: { name: true } } },
     }),
-    prisma.nonConformanceReport.count({
-      where: { status: { in: ["OPEN", "INVESTIGATING"] } },
-    }),
-    // --- Sales card queries ---
+    prisma.nonConformanceReport.count({ where: { status: { in: ["OPEN", "INVESTIGATING"] } } }),
     prisma.opportunity.groupBy({
-      by: ["status"],
-      where: { status: { notIn: ["DEAD_LEAD"] } },
-      _sum: { estimatedValue: true },
-      _count: { id: true },
+      by: ["status"], where: { status: { notIn: ["DEAD_LEAD"] } },
+      _sum: { estimatedValue: true }, _count: { id: true },
     }),
     prisma.opportunity.findMany({
       where: { status: "WON", convertedAt: { gte: startOfMonth } },
       select: { estimatedValue: true },
     }),
-    prisma.opportunity.count({
-      where: { status: "LOST", updatedAt: { gte: startOfMonth } },
-    }),
-    prisma.opportunity.count({
-      where: { status: "WON", updatedAt: { gte: ninetyDaysAgo } },
-    }),
-    prisma.opportunity.count({
-      where: { status: "LOST", updatedAt: { gte: ninetyDaysAgo } },
-    }),
-    // --- Design card queries ---
-    prisma.productDesignCard.count({
-      where: { status: { in: ["IN_PROGRESS", "REVIEW"] } },
-    }),
+    prisma.opportunity.count({ where: { status: "LOST", updatedAt: { gte: startOfMonth } } }),
+    prisma.opportunity.count({ where: { status: "WON", updatedAt: { gte: ninetyDaysAgo } } }),
+    prisma.opportunity.count({ where: { status: "LOST", updatedAt: { gte: ninetyDaysAgo } } }),
+    prisma.productDesignCard.count({ where: { status: { in: ["IN_PROGRESS", "REVIEW"] } } }),
     prisma.productDesignCard.count(),
     prisma.productDesignCard.findMany({
-      where: {
-        targetEndDate: { lt: now },
-        status: { notIn: ["COMPLETE"] },
-      },
-      orderBy: { targetEndDate: "asc" },
-      take: 3,
-      select: {
-        id: true,
-        targetEndDate: true,
-        product: { select: { description: true } },
-        project: { select: { projectNumber: true } },
-      },
+      where: { targetEndDate: { lt: now }, status: { notIn: ["COMPLETE"] } },
+      orderBy: { targetEndDate: "asc" }, take: 3,
+      select: { id: true, targetEndDate: true, product: { select: { description: true } }, project: { select: { projectNumber: true } } },
     }),
-    // --- Production card query ---
-    prisma.product.groupBy({
-      by: ["productionStatus"],
-      where: { currentDepartment: "PRODUCTION" },
-      _count: { id: true },
-    }),
-    // --- Installation card queries ---
-    prisma.project.count({
-      where: { projectStatus: "INSTALLATION" },
-    }),
+    prisma.product.groupBy({ by: ["productionStatus"], where: { currentDepartment: "PRODUCTION" }, _count: { id: true } }),
+    prisma.project.count({ where: { projectStatus: "INSTALLATION" } }),
     prisma.project.findMany({
-      where: {
-        projectStatus: "INSTALLATION",
-        targetCompletion: { lte: thirtyDaysFromNow },
-      },
-      orderBy: { targetCompletion: "asc" },
-      take: 5,
-      select: {
-        id: true,
-        projectNumber: true,
-        name: true,
-        targetCompletion: true,
-        customer: { select: { name: true } },
-      },
+      where: { projectStatus: "INSTALLATION", targetCompletion: { lte: thirtyDaysFromNow } },
+      orderBy: { targetCompletion: "asc" }, take: 5,
+      select: { id: true, projectNumber: true, name: true, targetCompletion: true, customer: { select: { name: true } } },
     }),
-    // --- Finance card queries ---
-    prisma.project.aggregate({
-      where: { salesStage: "ORDER", projectStatus: { not: "COMPLETE" } },
-      _sum: { contractValue: true },
-    }),
-    prisma.purchaseOrder.aggregate({
-      where: { status: { notIn: ["CANCELLED"] } },
-      _sum: { totalValue: true },
-    }),
-    prisma.salesInvoice.findMany({
-      where: { status: { notIn: ["PAID"] } },
-      select: { netPayable: true },
-    }),
-    // --- Upcoming deadlines ---
+    prisma.project.aggregate({ where: { salesStage: "ORDER", projectStatus: { not: "COMPLETE" } }, _sum: { contractValue: true } }),
+    prisma.purchaseOrder.aggregate({ where: { status: { notIn: ["CANCELLED"] } }, _sum: { totalValue: true } }),
+    prisma.salesInvoice.findMany({ where: { status: { notIn: ["PAID"] } }, select: { netPayable: true } }),
     prisma.project.findMany({
-      where: {
-        targetCompletion: { not: null },
-        projectStatus: { notIn: ["COMPLETE"] },
-      },
-      orderBy: { targetCompletion: "asc" },
-      take: 5,
-      select: {
-        id: true,
-        projectNumber: true,
-        name: true,
-        targetCompletion: true,
-      },
+      where: { targetCompletion: { not: null }, projectStatus: { notIn: ["COMPLETE"] } },
+      orderBy: { targetCompletion: "asc" }, take: 5,
+      select: { id: true, projectNumber: true, name: true, targetCompletion: true },
     }),
-    // --- Workstream performance (for management card) ---
     prisma.project.findMany({
       where: { projectStatus: { not: "OPPORTUNITY" } },
-      select: {
-        workStream: true,
-        contractValue: true,
-        currentCost: true,
-        projectStatus: true,
-        targetCompletion: true,
-        actualCompletion: true,
-      },
+      select: { workStream: true, contractValue: true, currentCost: true, projectStatus: true, targetCompletion: true, actualCompletion: true },
     }),
   ])
 
-  // --- Derive existing counts ---
+  // Derive counts
   const totalProjects = projectsByStatus.reduce((sum, g) => sum + g._count.id, 0)
-  const activeProjects = projectsByStatus
-    .filter((g) => g.projectStatus !== "COMPLETE")
-    .reduce((sum, g) => sum + g._count.id, 0)
+  const activeProjects = projectsByStatus.filter((g) => g.projectStatus !== "COMPLETE").reduce((sum, g) => sum + g._count.id, 0)
   const totalProducts = departmentCounts.reduce((sum, g) => sum + g._count.id, 0)
 
   const quoteCountMap: Record<string, number> = {}
   let totalQuotes = 0
-  for (const g of quotesByStatus) {
-    quoteCountMap[g.status] = g._count.id
-    totalQuotes += g._count.id
-  }
+  for (const g of quotesByStatus) { quoteCountMap[g.status] = g._count.id; totalQuotes += g._count.id }
 
-  let opportunityValue = 0
-  let quotedValue = 0
-  let orderValue = 0
+  let opportunityValue = 0, quotedValue = 0, orderValue = 0
   for (const g of pipelineProjects) {
     const value = Number(g._sum.contractValue || g._sum.estimatedValue || 0)
     if (g.salesStage === "OPPORTUNITY") opportunityValue = value
@@ -253,231 +138,651 @@ async function getDashboardData() {
     else if (g.salesStage === "ORDER") orderValue = value
   }
 
-  // --- Sales card data ---
-  const stageWeights: Record<string, number> = {
-    ACTIVE_LEAD: 0.1,
-    PENDING_APPROVAL: 0.25,
-    QUOTED: 0.5,
-    WON: 1.0,
-    LOST: 0,
-  }
-  let salesPipelineValue = 0
-  let weightedForecast = 0
+  // Sales card
+  const stageWeights: Record<string, number> = { ACTIVE_LEAD: 0.1, PENDING_APPROVAL: 0.25, QUOTED: 0.5, WON: 1.0, LOST: 0 }
+  let salesPipelineValue = 0, weightedForecast = 0
   const pipelineByStage: { stage: string; value: number; count: number }[] = []
-  const stageLabels: Record<string, string> = {
-    ACTIVE_LEAD: "Active Lead",
-    PENDING_APPROVAL: "Pending Approval",
-    QUOTED: "Quoted",
-    WON: "Won",
-    LOST: "Lost",
-  }
-
+  const stageLabels: Record<string, string> = { ACTIVE_LEAD: "Active Lead", PENDING_APPROVAL: "Pending Approval", QUOTED: "Quoted", WON: "Won", LOST: "Lost" }
   for (const g of opportunitiesByStatus) {
     const value = Number(g._sum.estimatedValue || 0)
     const weight = stageWeights[g.status] ?? 0
-    if (g.status !== "WON" && g.status !== "LOST") {
-      salesPipelineValue += value
-    }
+    if (g.status !== "WON" && g.status !== "LOST") salesPipelineValue += value
     weightedForecast += value * weight
-    pipelineByStage.push({
-      stage: stageLabels[g.status] || g.status,
-      value,
-      count: g._count.id,
-    })
+    pipelineByStage.push({ stage: stageLabels[g.status] || g.status, value, count: g._count.id })
   }
-
   const wonValue = wonThisMonth.reduce((sum, o) => sum + Number(o.estimatedValue || 0), 0)
   const totalDecisions = wonLast90 + lostLast90
   const conversionRate = totalDecisions > 0 ? Math.round((wonLast90 / totalDecisions) * 100) : 0
 
-  const salesData = {
-    pipelineValue: salesPipelineValue,
-    weightedForecast,
-    wonThisMonth: { count: wonThisMonth.length, value: wonValue },
-    lostThisMonth,
-    conversionRate,
-    quotesAwaiting: quoteCountMap["SUBMITTED"] || 0,
-    pipelineByStage: pipelineByStage.filter((s) => s.stage !== "Lost"),
-  }
+  // Design card
+  const now2 = new Date()
+  const designOverdueItems = designOverdue.map((card) => ({
+    id: card.id,
+    projectNumber: card.project.projectNumber,
+    productDescription: card.product.description,
+    daysOverdue: card.targetEndDate ? Math.floor((now2.getTime() - new Date(card.targetEndDate).getTime()) / (1000 * 60 * 60 * 24)) : 0,
+  }))
 
-  // --- Design card data ---
-  const designOverdueItems = designOverdue.map((card) => {
-    const daysOverdue = card.targetEndDate
-      ? Math.floor((now.getTime() - new Date(card.targetEndDate).getTime()) / (1000 * 60 * 60 * 24))
-      : 0
-    return {
-      id: card.id,
-      projectNumber: card.project.projectNumber,
-      productDescription: card.product.description,
-      daysOverdue,
-    }
-  })
-
-  const designData = {
-    activeCards: designActive,
-    totalCards: designTotal,
-    overdueCount: designOverdue.length,
-    topOverdue: designOverdueItems,
-  }
-
-  // --- Production card data ---
-  const productionStages = productionByStage
-    .filter((g) => g.productionStatus !== null)
-    .map((g) => ({
-      stage: g.productionStatus as string,
-      count: g._count.id,
-    }))
+  // Production card
+  const productionStages = productionByStage.filter((g) => g.productionStatus !== null)
+    .map((g) => ({ stage: g.productionStatus as string, count: g._count.id }))
     .sort((a, b) => b.count - a.count)
-
   const totalInProduction = productionStages.reduce((sum, s) => sum + s.count, 0)
-  const activeStages = productionStages.filter(
-    (s) => !["COMPLETED", "N_A", "DISPATCHED"].includes(s.stage)
-  )
+  const activeStages = productionStages.filter((s) => !["COMPLETED", "N_A", "DISPATCHED"].includes(s.stage))
   const bottleneck = activeStages.length > 0 ? activeStages[0].stage : null
 
-  const productionData = {
-    totalInProduction,
-    stages: productionStages,
-    bottleneck,
-  }
-
-  // --- Installation card data ---
-  const installationData = {
-    activeInstalls: installProjects,
-    upcoming: installUpcoming.map((p) => ({
-      id: p.id,
-      projectNumber: p.projectNumber,
-      name: p.name,
-      targetCompletion: p.targetCompletion,
-      customer: p.customer?.name || "—",
-    })),
-  }
-
-  // --- Finance card data ---
+  // Finance card
   const totalContractValue = Number(financeContractValue._sum.contractValue || 0)
   const totalCostCommitted = Number(financePoSpend._sum.totalValue || 0)
-  const grossMarginPercent = totalContractValue > 0
-    ? ((totalContractValue - totalCostCommitted) / totalContractValue) * 100
-    : 0
-  const outstandingValue = financeOutstanding.reduce(
-    (sum, inv) => sum + Number(inv.netPayable || 0),
-    0
-  )
+  const grossMarginPercent = totalContractValue > 0 ? ((totalContractValue - totalCostCommitted) / totalContractValue) * 100 : 0
+  const outstandingValue = financeOutstanding.reduce((sum, inv) => sum + Number(inv.netPayable || 0), 0)
 
-  const financeData = {
-    totalContractValue,
-    totalCostCommitted,
-    grossMarginPercent,
-    outstandingInvoices: { count: financeOutstanding.length, value: outstandingValue },
-  }
+  // Deadlines
+  const deadlines = deadlineProjects.filter((p) => p.targetCompletion !== null).map((p) => {
+    const target = new Date(p.targetCompletion!)
+    return { id: p.id, projectNumber: p.projectNumber, name: p.name, targetCompletion: p.targetCompletion!, daysUntil: Math.ceil((target.getTime() - now2.getTime()) / (1000 * 60 * 60 * 24)) }
+  })
 
-  // --- Upcoming deadlines data ---
-  const deadlines = deadlineProjects
-    .filter((p) => p.targetCompletion !== null)
-    .map((p) => {
-      const target = new Date(p.targetCompletion!)
-      const daysUntil = Math.ceil((target.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-      return {
-        id: p.id,
-        projectNumber: p.projectNumber,
-        name: p.name,
-        targetCompletion: p.targetCompletion!,
-        daysUntil,
-      }
-    })
-
-  // --- Workstream performance data ---
-  const wsLabels: Record<string, string> = {
-    COMMUNITY: "Community",
-    UTILITIES: "Utilities",
-    BESPOKE: "Bespoke",
-    BLAST: "Blast",
-    BUND_CONTAINMENT: "Bund Containment",
-    REFURBISHMENT: "Refurbishment",
-  }
+  // Workstream performance
   const wsMap = new Map<string, { count: number; marginSum: number; marginCount: number; onTimeCount: number; completedCount: number }>()
   for (const p of workstreamProjects) {
-    const ws = p.workStream
-    if (!ws) continue
+    const ws = p.workStream; if (!ws) continue
     let entry = wsMap.get(ws)
-    if (!entry) {
-      entry = { count: 0, marginSum: 0, marginCount: 0, onTimeCount: 0, completedCount: 0 }
-      wsMap.set(ws, entry)
-    }
+    if (!entry) { entry = { count: 0, marginSum: 0, marginCount: 0, onTimeCount: 0, completedCount: 0 }; wsMap.set(ws, entry) }
     entry.count++
-    const contract = Number(p.contractValue || 0)
-    const cost = Number(p.currentCost || 0)
-    if (contract > 0) {
-      entry.marginSum += ((contract - cost) / contract) * 100
-      entry.marginCount++
-    }
+    const contract = Number(p.contractValue || 0), cost = Number(p.currentCost || 0)
+    if (contract > 0) { entry.marginSum += ((contract - cost) / contract) * 100; entry.marginCount++ }
     if (p.projectStatus === "COMPLETE" && p.actualCompletion && p.targetCompletion) {
       entry.completedCount++
-      if (new Date(p.actualCompletion) <= new Date(p.targetCompletion)) {
-        entry.onTimeCount++
-      }
+      if (new Date(p.actualCompletion) <= new Date(p.targetCompletion)) entry.onTimeCount++
     }
   }
   const workstreamData = Array.from(wsMap.entries())
-    .map(([ws, d]) => ({
-      workStream: ws,
-      label: wsLabels[ws] || ws,
-      projectCount: d.count,
-      avgMargin: d.marginCount > 0 ? d.marginSum / d.marginCount : 0,
-      onTimePercent: d.completedCount > 0 ? (d.onTimeCount / d.completedCount) * 100 : null,
-    }))
+    .map(([ws, d]) => ({ workStream: ws, label: WS_LABELS[ws] || ws, projectCount: d.count, avgMargin: d.marginCount > 0 ? d.marginSum / d.marginCount : 0, onTimePercent: d.completedCount > 0 ? (d.onTimeCount / d.completedCount) * 100 : null }))
     .sort((a, b) => b.projectCount - a.projectCount)
 
   return {
-    totalProjects,
-    activeProjects,
-    totalProducts,
-    projectsByStatus,
-    recentProjects,
+    totalProjects, activeProjects, totalProducts,
+    projectsByStatus, recentProjects,
     pipeline: { opportunityValue, quotedValue, orderValue, total: opportunityValue + quotedValue + orderValue },
     quotes: { total: totalQuotes, submitted: quoteCountMap["SUBMITTED"] || 0 },
-    icuProjects,
-    openNcrs,
-    // Department cards
-    salesData,
-    designData,
-    productionData,
-    installationData,
-    financeData,
-    deadlines,
-    workstreamData,
+    icuProjects, openNcrs,
+    salesData: {
+      pipelineValue: salesPipelineValue, weightedForecast,
+      wonThisMonth: { count: wonThisMonth.length, value: wonValue },
+      lostThisMonth, conversionRate,
+      quotesAwaiting: quoteCountMap["SUBMITTED"] || 0,
+      pipelineByStage: pipelineByStage.filter((s) => s.stage !== "Lost"),
+    },
+    designData: { activeCards: designActive, totalCards: designTotal, overdueCount: designOverdue.length, topOverdue: designOverdueItems },
+    productionData: { totalInProduction, stages: productionStages, bottleneck },
+    installationData: {
+      activeInstalls: installProjects,
+      upcoming: installUpcoming.map((p) => ({ id: p.id, projectNumber: p.projectNumber, name: p.name, targetCompletion: p.targetCompletion, customer: p.customer?.name || "—" })),
+    },
+    financeData: { totalContractValue, totalCostCommitted, grossMarginPercent, outstandingInvoices: { count: financeOutstanding.length, value: outstandingValue } },
+    deadlines, workstreamData,
   }
 }
 
-export default async function DashboardPage() {
-  const [data, session] = await Promise.all([getDashboardData(), auth()])
+// ─── Sales Tab Data ─────────────────────────────────────────────────────────
+async function getSalesTabData() {
+  const now = new Date()
+  const sixMonthsAgo = new Date(); sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
+  const ninetyDaysAgo = new Date(); ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90)
+
+  const [activeOpps, wonLostHistory, wonCount90, lostCount90, quotedOpps, recentChanges] = await Promise.all([
+    prisma.opportunity.findMany({
+      where: { status: { notIn: ["DEAD_LEAD"] } },
+      select: {
+        id: true, name: true, status: true, estimatedValue: true, winProbability: true,
+        expectedCloseDate: true, quotedPrice: true, quoteSentAt: true, updatedAt: true,
+        prospect: { select: { companyName: true } },
+        convertedProject: { select: { workStream: true } },
+      },
+    }),
+    prisma.opportunity.findMany({
+      where: { status: { in: ["WON", "LOST"] }, updatedAt: { gte: sixMonthsAgo } },
+      select: { status: true, estimatedValue: true, updatedAt: true, convertedProject: { select: { workStream: true } } },
+    }),
+    prisma.opportunity.count({ where: { status: "WON", updatedAt: { gte: ninetyDaysAgo } } }),
+    prisma.opportunity.count({ where: { status: "LOST", updatedAt: { gte: ninetyDaysAgo } } }),
+    prisma.opportunity.findMany({
+      where: { status: "QUOTED", quoteSentAt: { not: null } },
+      select: { id: true, name: true, quotedPrice: true, quoteSentAt: true, prospect: { select: { companyName: true } } },
+    }),
+    prisma.opportunity.findMany({
+      where: { updatedAt: { gte: ninetyDaysAgo }, status: { notIn: ["DEAD_LEAD"] } },
+      orderBy: { updatedAt: "desc" }, take: 10,
+      select: { id: true, name: true, status: true, updatedAt: true, prospect: { select: { companyName: true } } },
+    }),
+  ])
+
+  // Pipeline by stage
+  const stageLabels: Record<string, string> = { ACTIVE_LEAD: "Active Lead", PENDING_APPROVAL: "Pending Approval", QUOTED: "Quoted", WON: "Won", LOST: "Lost" }
+  const stageProbs: Record<string, number> = { ACTIVE_LEAD: 10, PENDING_APPROVAL: 30, QUOTED: 50, WON: 100, LOST: 0 }
+  const stageMap = new Map<string, { value: number; count: number }>()
+  let pipelineValue = 0, weightedForecast = 0, dealCount = 0, dealValueSum = 0
+
+  for (const opp of activeOpps) {
+    const val = Number(opp.estimatedValue || 0)
+    const prob = opp.winProbability
+    const status = opp.status
+    if (!stageMap.has(status)) stageMap.set(status, { value: 0, count: 0 })
+    const entry = stageMap.get(status)!
+    entry.value += val; entry.count++
+    if (status !== "WON" && status !== "LOST") { pipelineValue += val; dealCount++; dealValueSum += val }
+    weightedForecast += val * (prob / 100)
+  }
+
+  const pipelineByStage = Array.from(stageMap.entries())
+    .filter(([s]) => s !== "LOST")
+    .map(([s, d]) => ({ stage: stageLabels[s] || s, value: d.value, count: d.count, probability: stageProbs[s] || 0 }))
+
+  // Top opportunities by weighted value
+  const topOpportunities = activeOpps
+    .filter((o) => o.status !== "WON" && o.status !== "LOST")
+    .map((o) => ({
+      id: o.id, name: o.name,
+      companyName: o.prospect.companyName,
+      estimatedValue: Number(o.estimatedValue || 0),
+      winProbability: o.winProbability,
+      expectedCloseDate: o.expectedCloseDate?.toISOString() || null,
+      weightedValue: Number(o.estimatedValue || 0) * (o.winProbability / 100),
+    }))
+    .sort((a, b) => b.weightedValue - a.weightedValue)
+    .slice(0, 10)
+
+  // Monthly trend
+  const monthBuckets = new Map<string, { won: number; lost: number }>()
+  for (const h of wonLostHistory) {
+    const d = new Date(h.updatedAt)
+    const key = d.toLocaleDateString("en-GB", { month: "short", year: "2-digit" })
+    if (!monthBuckets.has(key)) monthBuckets.set(key, { won: 0, lost: 0 })
+    const b = monthBuckets.get(key)!
+    const val = Number(h.estimatedValue || 0)
+    if (h.status === "WON") b.won += val; else b.lost += val
+  }
+  const monthlyTrend = Array.from(monthBuckets.entries()).map(([month, d]) => ({ month, ...d }))
+
+  // Quotes awaiting response
+  const quotesAwaiting = quotedOpps.map((q) => ({
+    id: q.id, name: q.name, companyName: q.prospect.companyName,
+    quotedPrice: Number(q.quotedPrice || 0),
+    daysSinceSent: q.quoteSentAt ? Math.floor((now.getTime() - new Date(q.quoteSentAt).getTime()) / (1000 * 60 * 60 * 24)) : 0,
+  })).sort((a, b) => b.daysSinceSent - a.daysSinceSent)
+
+  // Win/loss by workstream
+  const wsWinLoss = new Map<string, { won: number; lost: number }>()
+  for (const h of wonLostHistory) {
+    const ws = h.convertedProject?.workStream
+    if (!ws) continue
+    const label = WS_LABELS[ws] || ws
+    if (!wsWinLoss.has(label)) wsWinLoss.set(label, { won: 0, lost: 0 })
+    const e = wsWinLoss.get(label)!
+    if (h.status === "WON") e.won++; else e.lost++
+  }
+  const winLossByWorkstream = Array.from(wsWinLoss.entries()).map(([workstream, d]) => ({
+    workstream, won: d.won, lost: d.lost,
+    winRate: (d.won + d.lost) > 0 ? Math.round((d.won / (d.won + d.lost)) * 100) : 0,
+  }))
+
+  // Win rate
+  const totalDecisions = wonCount90 + lostCount90
+  const winRate = totalDecisions > 0 ? Math.round((wonCount90 / totalDecisions) * 100) : 0
+  const avgDealSize = dealCount > 0 ? dealValueSum / dealCount : 0
+
+  // Recent activity
+  const recentActivity = recentChanges.map((a) => ({
+    id: a.id, name: a.name, companyName: a.prospect.companyName,
+    status: a.status, changedAt: formatDate(a.updatedAt),
+  }))
+
+  return { pipelineValue, weightedForecast, winRate, avgDealSize, pipelineByStage, topOpportunities, monthlyTrend, quotesAwaiting, winLossByWorkstream, recentActivity }
+}
+
+// ─── Design Tab Data ────────────────────────────────────────────────────────
+async function getDesignTabData() {
+  const now = new Date()
+
+  const [allCards, handovers] = await Promise.all([
+    prisma.productDesignCard.findMany({
+      select: {
+        id: true, status: true, targetStartDate: true, targetEndDate: true,
+        actualStartDate: true, actualEndDate: true, estimatedHours: true, actualHours: true,
+        assignedDesigner: { select: { id: true, name: true } },
+        product: { select: { description: true } },
+        project: { select: { id: true, projectNumber: true, workStream: true } },
+      },
+    }),
+    prisma.designHandover.findMany({
+      where: { status: "SUBMITTED" },
+      select: { submittedAt: true, project: { select: { projectNumber: true, name: true } } },
+    }),
+  ])
+
+  // KPIs
+  const activeCards = allCards.filter((c) => c.status === "IN_PROGRESS" || c.status === "REVIEW").length
+  const completedCards = allCards.filter((c) => c.status === "COMPLETE").length
+  const overdueCards = allCards.filter((c) => c.status !== "COMPLETE" && c.targetEndDate && new Date(c.targetEndDate) < now).length
+
+  // Avg cycle time (completed cards with both dates)
+  const completedWithDates = allCards.filter((c) => c.status === "COMPLETE" && c.actualStartDate && c.actualEndDate)
+  const avgCycleTimeDays = completedWithDates.length > 0
+    ? completedWithDates.reduce((sum, c) => sum + (new Date(c.actualEndDate!).getTime() - new Date(c.actualStartDate!).getTime()) / (1000 * 60 * 60 * 24), 0) / completedWithDates.length
+    : 0
+
+  // Cards by status
+  const statusCounts = new Map<string, number>()
+  for (const c of allCards) { statusCounts.set(c.status, (statusCounts.get(c.status) || 0) + 1) }
+  const cardsByStatus = Array.from(statusCounts.entries()).map(([status, count]) => ({ status, count }))
+
+  // Designer workload
+  const designerMap = new Map<string, { name: string; active: number; completed: number; totalDays: number; daysCount: number; estHours: number; actHours: number; hoursCount: number }>()
+  for (const c of allCards) {
+    const designer = c.assignedDesigner
+    if (!designer) continue
+    if (!designerMap.has(designer.id)) designerMap.set(designer.id, { name: designer.name, active: 0, completed: 0, totalDays: 0, daysCount: 0, estHours: 0, actHours: 0, hoursCount: 0 })
+    const d = designerMap.get(designer.id)!
+    if (c.status === "IN_PROGRESS" || c.status === "REVIEW") d.active++
+    if (c.status === "COMPLETE") {
+      d.completed++
+      if (c.actualStartDate && c.actualEndDate) {
+        d.totalDays += (new Date(c.actualEndDate).getTime() - new Date(c.actualStartDate).getTime()) / (1000 * 60 * 60 * 24)
+        d.daysCount++
+      }
+    }
+    if (c.estimatedHours && c.actualHours) {
+      d.estHours += Number(c.estimatedHours)
+      d.actHours += Number(c.actualHours)
+      d.hoursCount++
+    }
+  }
+  const designerWorkload = Array.from(designerMap.values())
+    .map((d) => ({
+      name: d.name, active: d.active, completed: d.completed,
+      avgDays: d.daysCount > 0 ? d.totalDays / d.daysCount : 0,
+      hoursAccuracy: d.estHours > 0 ? (d.actHours / d.estHours) * 100 : 100,
+    }))
+    .sort((a, b) => b.active - a.active)
+
+  // By workstream
+  const wsMap = new Map<string, { activeCards: number; totalDays: number; daysCount: number; estHours: number; actHours: number }>()
+  for (const c of allCards) {
+    const ws = c.project.workStream
+    if (!ws) continue
+    const label = WS_LABELS[ws] || ws
+    if (!wsMap.has(label)) wsMap.set(label, { activeCards: 0, totalDays: 0, daysCount: 0, estHours: 0, actHours: 0 })
+    const e = wsMap.get(label)!
+    if (c.status === "IN_PROGRESS" || c.status === "REVIEW") e.activeCards++
+    if (c.status === "COMPLETE" && c.actualStartDate && c.actualEndDate) {
+      e.totalDays += (new Date(c.actualEndDate).getTime() - new Date(c.actualStartDate).getTime()) / (1000 * 60 * 60 * 24)
+      e.daysCount++
+    }
+    if (c.estimatedHours && c.actualHours) {
+      e.estHours += Number(c.estimatedHours)
+      e.actHours += Number(c.actualHours)
+    }
+  }
+  const byWorkstream = Array.from(wsMap.entries())
+    .map(([workstream, d]) => ({
+      workstream, activeCards: d.activeCards,
+      avgDesignDays: d.daysCount > 0 ? d.totalDays / d.daysCount : 0,
+      hoursAccuracy: d.estHours > 0 ? (d.actHours / d.estHours) * 100 : 100,
+    }))
+    .sort((a, b) => b.activeCards - a.activeCards)
+
+  // Overdue list
+  const overdueList = allCards
+    .filter((c) => c.status !== "COMPLETE" && c.targetEndDate && new Date(c.targetEndDate) < now)
+    .map((c) => ({
+      id: c.id, projectNumber: c.project.projectNumber,
+      productDescription: c.product.description,
+      designer: c.assignedDesigner?.name || "—",
+      daysOverdue: Math.floor((now.getTime() - new Date(c.targetEndDate!).getTime()) / (1000 * 60 * 60 * 24)),
+      targetDate: c.targetEndDate?.toISOString() || null,
+    }))
+    .sort((a, b) => b.daysOverdue - a.daysOverdue)
+    .slice(0, 15)
+
+  // Handovers pending
+  const handoversPending = handovers.map((h) => ({
+    projectNumber: h.project.projectNumber,
+    projectName: h.project.name,
+    submittedAt: h.submittedAt?.toISOString() || "",
+    daysWaiting: h.submittedAt ? Math.floor((now.getTime() - new Date(h.submittedAt).getTime()) / (1000 * 60 * 60 * 24)) : 0,
+  }))
+
+  return { activeCards, completedCards, overdueCards, avgCycleTimeDays, cardsByStatus, designerWorkload, byWorkstream, overdueList, handoversPending }
+}
+
+// ─── Production Tab Data ────────────────────────────────────────────────────
+async function getProductionTabData() {
+  const now = new Date()
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+  const ninetyDaysAgo = new Date(); ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90)
+
+  const [productsInProd, completedTasks, openNcrs] = await Promise.all([
+    prisma.product.findMany({
+      where: { currentDepartment: "PRODUCTION" },
+      select: {
+        id: true, productionStatus: true, productionTargetDate: true,
+        productionCompletionDate: true, description: true,
+        project: {
+          select: {
+            id: true, projectNumber: true, workStream: true, contractValue: true,
+            _count: { select: { products: true } },
+          },
+        },
+      },
+    }),
+    prisma.productionTask.findMany({
+      where: { status: "COMPLETED", completedAt: { gte: ninetyDaysAgo } },
+      select: { stage: true, startedAt: true, completedAt: true },
+    }),
+    prisma.nonConformanceReport.findMany({
+      where: { status: { in: ["OPEN", "INVESTIGATING"] }, parentProject: { projectStatus: "MANUFACTURE" } },
+      select: { severity: true, parentProject: { select: { projectNumber: true } } },
+    }),
+  ])
+
+  // Products by stage
+  const stageCounts = new Map<string, number>()
+  for (const p of productsInProd) {
+    const stage = p.productionStatus || "AWAITING"
+    stageCounts.set(stage, (stageCounts.get(stage) || 0) + 1)
+  }
+  const productsByStage = Array.from(stageCounts.entries()).map(([stage, count]) => ({ stage, count }))
+  const inProduction = productsInProd.length
+
+  // Bottleneck
+  const activeStages = productsByStage.filter((s) => !["COMPLETED", "N_A", "DISPATCHED"].includes(s.stage))
+  const bottleneckStage = activeStages.sort((a, b) => b.count - a.count)[0]?.stage || null
+
+  // Completing this month — products with target in current month OR in late stages
+  const lateStages = ["PAINTING", "PACKING"]
+  const completingProducts = productsInProd.filter((p) => {
+    if (p.productionTargetDate) {
+      const target = new Date(p.productionTargetDate)
+      if (target >= startOfMonth && target <= endOfMonth) return true
+    }
+    if (p.productionStatus && lateStages.includes(p.productionStatus)) return true
+    return false
+  })
+
+  // Estimate invoice value: prorate project contract value
+  let estInvoiceValue = 0
+  const completingThisMonthList = completingProducts.map((p) => {
+    const projectValue = Number(p.project.contractValue || 0)
+    const totalProducts = p.project._count.products || 1
+    const prorated = projectValue / totalProducts
+    estInvoiceValue += prorated
+    return {
+      projectId: p.project.id,
+      projectNumber: p.project.projectNumber,
+      productDescription: p.description,
+      targetDate: p.productionTargetDate?.toISOString() || null,
+      contractValue: prorated,
+    }
+  })
+
+  // Stage throughput
+  const throughputMap = new Map<string, { totalDays: number; count: number }>()
+  for (const t of completedTasks) {
+    if (!t.startedAt || !t.completedAt) continue
+    const days = (new Date(t.completedAt).getTime() - new Date(t.startedAt).getTime()) / (1000 * 60 * 60 * 24)
+    if (!throughputMap.has(t.stage)) throughputMap.set(t.stage, { totalDays: 0, count: 0 })
+    const e = throughputMap.get(t.stage)!
+    e.totalDays += days; e.count++
+  }
+  const stageThroughput = Array.from(throughputMap.entries())
+    .map(([stage, d]) => ({ stage, avgDays: d.totalDays / d.count }))
+    .sort((a, b) => b.avgDays - a.avgDays)
+
+  // Overdue production
+  const overdueProduction = productsInProd
+    .filter((p) => p.productionTargetDate && new Date(p.productionTargetDate) < now && p.productionStatus !== "COMPLETED" && p.productionStatus !== "DISPATCHED")
+    .map((p) => ({
+      projectId: p.project.id,
+      projectNumber: p.project.projectNumber,
+      productDescription: p.description,
+      daysOverdue: Math.floor((now.getTime() - new Date(p.productionTargetDate!).getTime()) / (1000 * 60 * 60 * 24)),
+      targetDate: p.productionTargetDate?.toISOString() || null,
+    }))
+    .sort((a, b) => b.daysOverdue - a.daysOverdue)
+    .slice(0, 15)
+
+  // By workstream
+  const wsMap = new Map<string, number>()
+  for (const p of productsInProd) {
+    const ws = p.project.workStream
+    if (!ws) continue
+    const label = WS_LABELS[ws] || ws
+    wsMap.set(label, (wsMap.get(label) || 0) + 1)
+  }
+  const byWorkstream = Array.from(wsMap.entries())
+    .map(([workstream, count]) => ({ workstream, count }))
+    .sort((a, b) => b.count - a.count)
+
+  // Open NCRs
+  const ncrMap = new Map<string, Map<string, number>>()
+  for (const ncr of openNcrs) {
+    const pn = ncr.parentProject.projectNumber
+    if (!ncrMap.has(pn)) ncrMap.set(pn, new Map())
+    const sevMap = ncrMap.get(pn)!
+    sevMap.set(ncr.severity, (sevMap.get(ncr.severity) || 0) + 1)
+  }
+  const openNcrList: { projectNumber: string; severity: string; count: number }[] = []
+  for (const [pn, sevMap] of ncrMap) {
+    for (const [severity, count] of sevMap) {
+      openNcrList.push({ projectNumber: pn, severity, count })
+    }
+  }
+
+  return {
+    inProduction, bottleneckStage, completingThisMonth: completingProducts.length, estInvoiceValue,
+    productsByStage, completingThisMonthList, stageThroughput, overdueProduction, byWorkstream, openNcrs: openNcrList,
+  }
+}
+
+// ─── Installation Tab Data ──────────────────────────────────────────────────
+async function getInstallationTabData() {
+  const now = new Date()
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+  const sixMonthsAgo = new Date(); sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
+  const thirtyDaysFromNow = new Date(); thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30)
+
+  const [installProjects, completedProjects, upcomingProjects] = await Promise.all([
+    prisma.project.findMany({
+      where: { projectStatus: "INSTALLATION" },
+      select: {
+        id: true, projectNumber: true, name: true, workStream: true,
+        contractValue: true, priority: true, targetCompletion: true, departmentStatus: true,
+        customer: { select: { name: true } },
+        projectManager: { select: { name: true } },
+      },
+    }),
+    prisma.project.findMany({
+      where: { projectStatus: "COMPLETE", actualCompletion: { gte: sixMonthsAgo } },
+      select: { workStream: true, p4Date: true, actualCompletion: true, contractValue: true },
+    }),
+    prisma.project.findMany({
+      where: {
+        projectStatus: { in: ["MANUFACTURE", "DESIGN"] },
+        targetCompletion: { lte: thirtyDaysFromNow, gte: now },
+      },
+      orderBy: { targetCompletion: "asc" }, take: 10,
+      select: {
+        id: true, projectNumber: true, name: true, targetCompletion: true,
+        customer: { select: { name: true } },
+      },
+    }),
+  ])
+
+  // Active installs
+  const activeInstalls = installProjects.length
+
+  // Completing this month
+  const completingList = installProjects
+    .filter((p) => p.targetCompletion && new Date(p.targetCompletion) >= startOfMonth && new Date(p.targetCompletion) <= endOfMonth)
+  let estInvoiceValue = 0
+  const completingThisMonthList = completingList.map((p) => {
+    const val = Number(p.contractValue || 0)
+    estInvoiceValue += val
+    const daysRemaining = p.targetCompletion ? Math.ceil((new Date(p.targetCompletion).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : 0
+    return {
+      projectId: p.id, projectNumber: p.projectNumber, name: p.name,
+      customer: p.customer?.name || "—",
+      targetCompletion: p.targetCompletion?.toISOString() || null,
+      contractValue: val, daysRemaining,
+    }
+  })
+
+  // Overdue
+  const overdueList = installProjects
+    .filter((p) => p.targetCompletion && new Date(p.targetCompletion) < now)
+    .map((p) => ({
+      projectId: p.id, projectNumber: p.projectNumber, name: p.name,
+      customer: p.customer?.name || "—",
+      targetCompletion: p.targetCompletion?.toISOString() || null,
+      daysOverdue: Math.floor((now.getTime() - new Date(p.targetCompletion!).getTime()) / (1000 * 60 * 60 * 24)),
+    }))
+    .sort((a, b) => b.daysOverdue - a.daysOverdue)
+
+  // Active install list
+  const activeInstallList = installProjects.map((p) => ({
+    projectId: p.id, projectNumber: p.projectNumber, name: p.name,
+    customer: p.customer?.name || "—",
+    status: p.departmentStatus,
+    projectManager: p.projectManager?.name || "—",
+    priority: p.priority,
+    targetCompletion: p.targetCompletion?.toISOString() || null,
+  }))
+
+  // Upcoming installs (projects nearing install phase)
+  const upcomingInstalls = upcomingProjects.map((p) => ({
+    projectId: p.id, projectNumber: p.projectNumber, name: p.name,
+    customer: p.customer?.name || "—",
+    targetCompletion: p.targetCompletion?.toISOString() || null,
+    daysUntil: p.targetCompletion ? Math.ceil((new Date(p.targetCompletion).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : 0,
+  }))
+
+  // By workstream
+  const wsMap = new Map<string, number>()
+  for (const p of installProjects) {
+    const ws = p.workStream; if (!ws) continue
+    const label = WS_LABELS[ws] || ws
+    wsMap.set(label, (wsMap.get(label) || 0) + 1)
+  }
+  const byWorkstream = Array.from(wsMap.entries())
+    .map(([workstream, count]) => ({ workstream, count }))
+    .sort((a, b) => b.count - a.count)
+
+  // Duration tracking by workstream (completed projects)
+  const durationMap = new Map<string, { totalDays: number; count: number }>()
+  for (const p of completedProjects) {
+    if (!p.p4Date || !p.actualCompletion) continue
+    const ws = p.workStream; if (!ws) continue
+    const label = WS_LABELS[ws] || ws
+    const days = (new Date(p.actualCompletion).getTime() - new Date(p.p4Date).getTime()) / (1000 * 60 * 60 * 24)
+    if (days < 0 || days > 365) continue // skip invalid
+    if (!durationMap.has(label)) durationMap.set(label, { totalDays: 0, count: 0 })
+    const e = durationMap.get(label)!
+    e.totalDays += days; e.count++
+  }
+  const durationByWorkstream = Array.from(durationMap.entries())
+    .map(([workstream, d]) => ({ workstream, avgDays: d.totalDays / d.count, count: d.count }))
+
+  return {
+    activeInstalls, completingThisMonth: completingList.length, overdueInstalls: overdueList.length,
+    estInvoiceValue, completingThisMonthList, activeInstallList, upcomingInstalls,
+    overdueList, byWorkstream, durationByWorkstream,
+  }
+}
+
+// ─── Main Page ──────────────────────────────────────────────────────────────
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>
+}) {
+  const params = await searchParams
+  const tab = params.tab || "overview"
+
+  const session = await auth()
   const userRole = (session?.user as any)?.role || "STAFF"
   const showManagement = isManagerOrDirector(userRole)
 
+  // Only fetch data for the active tab
+  if (tab === "sales") {
+    const data = await getSalesTabData()
+    return (
+      <div className="space-y-6">
+        <DashboardTabs activeTab="sales" />
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900">Sales Dashboard</h1>
+          <p className="text-sm text-gray-500">Pipeline, opportunities, and conversion metrics</p>
+        </div>
+        <TabSales data={data} />
+      </div>
+    )
+  }
+
+  if (tab === "design") {
+    const data = await getDesignTabData()
+    return (
+      <div className="space-y-6">
+        <DashboardTabs activeTab="design" />
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900">Design Dashboard</h1>
+          <p className="text-sm text-gray-500">Design cards, workload, and workstream performance</p>
+        </div>
+        <TabDesign data={data} />
+      </div>
+    )
+  }
+
+  if (tab === "production") {
+    const data = await getProductionTabData()
+    return (
+      <div className="space-y-6">
+        <DashboardTabs activeTab="production" />
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900">Production Dashboard</h1>
+          <p className="text-sm text-gray-500">Stage pipeline, throughput, and month-end forecast</p>
+        </div>
+        <TabProduction data={data} />
+      </div>
+    )
+  }
+
+  if (tab === "installation") {
+    const data = await getInstallationTabData()
+    return (
+      <div className="space-y-6">
+        <DashboardTabs activeTab="installation" />
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900">Installation Dashboard</h1>
+          <p className="text-sm text-gray-500">Active installs, completions, and invoicing forecast</p>
+        </div>
+        <TabInstallation data={data} />
+      </div>
+    )
+  }
+
+  // Default: Overview tab
+  const data = await getOverviewData()
+
   return (
     <div className="space-y-6">
-      <DashboardTabs />
+      <DashboardTabs activeTab="overview" />
 
-      {/* Page header with quick actions */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
-          <p className="text-sm text-gray-500">MM Engineered Solutions — Overview</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Link href="/quotes/new">
-            <Button variant="outline">
-              <FileText className="mr-2 h-4 w-4" />
-              New Quote
-            </Button>
-          </Link>
-          <Link href="/projects/new">
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              New Project
-            </Button>
-          </Link>
-        </div>
+      {/* Page header */}
+      <div>
+        <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
+        <p className="text-sm text-gray-500">MM Engineered Solutions — Overview</p>
       </div>
 
       {/* ICU Carousel */}
