@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Calculate total from lines if provided and no explicit totalValue
-  const lines: { description: string; quantity: number; unitCost: number; totalCost: number }[] = body.lines || []
+  const lines: { description: string; quantity: number; unitCost: number; totalCost: number; bomLineId?: string }[] = body.lines || []
   const linesTotalValue = lines.reduce((sum: number, l: { totalCost: number }) => sum + (l.totalCost || 0), 0)
   const totalValue = body.totalValue
     ? parseFloat(body.totalValue)
@@ -59,11 +59,12 @@ export async function POST(request: NextRequest) {
       ...(lines.length > 0
         ? {
             poLines: {
-              create: lines.map((l: { description: string; quantity: number; unitCost: number; totalCost: number }) => ({
+              create: lines.map((l: { description: string; quantity: number; unitCost: number; totalCost: number; bomLineId?: string }) => ({
                 description: l.description,
                 quantity: l.quantity || 1,
                 unitCost: l.unitCost || null,
                 totalCost: l.totalCost || null,
+                bomLineId: l.bomLineId || null,
               })),
             },
           }

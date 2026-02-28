@@ -28,22 +28,64 @@
 
 ---
 
-## In Progress
+## Completed
 
 ### Finance Module Integration
 **Status:** All 8 phases complete. Full double-entry accounting system live.
+**Commits:** accdcc2 (Phase 1), b41ce23 (Phases 2-8), f88ca3d (PDFKit fix)
 
 **Completed:**
-- [x] Phase 1: Schema merge + migration + seed data (commit accdcc2)
-  - 30 new finance tables, 21 enums, 69 chart of accounts, 8 VAT codes, 12 periods
-  - Extended Customer, Supplier, PO, POLine, SalesInvoice with optional finance fields
-  - decimal.js, sequences.ts, validation.ts utilities
+- [x] Phase 1: Schema merge + migration + seed data
 - [x] Phase 2: Finance sub-navigation + layout (collapsible sidebar with 7 sections)
 - [x] Phase 3: Core accounting (chart of accounts, journals, periods, VAT codes, cost centres)
 - [x] Phase 4: Purchase ledger (purchase invoices, aged creditors, supplier statements)
 - [x] Phase 5: Sales ledger + construction contracts (NEC/JCT, applications, retention, credit control)
 - [x] Phase 6: Banking (accounts, transactions, reconciliation, bank rules, pay/receive/transfer)
-- [x] Phase 7: Tax, fixed assets, depreciation, recurring entries, prepayments, budgets, reports (P&L, balance sheet, trial balance, nominal activity, job costing)
-- [x] Phase 8: Integration hooks (auto-journal on invoice post, payment, bank transfer, application certified, credit note, year-end)
+- [x] Phase 7: Tax, fixed assets, depreciation, recurring entries, prepayments, budgets, reports
+- [x] Phase 8: Integration hooks (auto-journal on invoice post, payment, bank transfer, etc.)
 
-**Stats:** 52 API routes, 68 pages, 1 layout, 8 auto-journal functions
+**Stats:** 66 API routes, 68 pages, 1 layout, 8 auto-journal functions
+
+### Missing Finance API Endpoints — DONE
+- [x] 14 missing API routes built (customers, suppliers, bank receipts/payments/transfers, sales invoices, VAT returns, year-end, depreciation, prepayments, bank rules, invoice PDFs)
+
+### Smart PO Features — DONE
+- [x] BOM↔PO linking (bomLineId FK on PurchaseOrderLine)
+- [x] Quick PO from BOM (auto-groups unpurchased items by supplier)
+- [x] Cost variance alerts (BOM estimate vs actual PO price)
+- [x] PO approval workflow (threshold-based manager sign-off)
+- [x] Repeat PO suggestions (historical purchase data)
+- [x] BOM procurement status badges in PO dialog
+
+### Procurement Enquiry / RFQ System — DONE
+- [x] 4 new Prisma models (ProcurementEnquiry, EnquiryLine, EnquiryResponse, EnquiryResponseLine)
+- [x] 6 API routes (CRUD, send, responses, compare, award)
+- [x] 3 pages (list, new wizard, detail with email/compare/award)
+- [x] Email template generation per supplier
+- [x] Side-by-side quote comparison
+- [x] One-click award → auto-create PO
+
+### Data Import Wizards — DONE
+- [x] Pure TypeScript CSV parser (no dependencies)
+- [x] 7-step import wizard UI (type → upload → map → validate → preview → confirm → complete)
+- [x] 7 import types (Customers, Suppliers, Chart of Accounts, Opening Balances, Products, POs, Invoices)
+- [x] Dry-run mode, field mapping, validation, downloadable CSV templates
+
+---
+
+## Backlog (Prioritised)
+
+### 1. Docs Page + SOPs
+**Priority:** MEDIUM — documentation
+- In-app docs page (`/docs`) with download buttons per module
+- PDF SOPs: System Overview, CRM & Quoting, Production & Workshop, Purchasing, Finance, Planning, Project Management
+- Design SOP already exists (`/api/docs/design-sop`)
+
+### 2. Run Migration Scripts on Supabase
+**Priority:** HIGH — new schema changes need deploying
+- `scripts/migrate-smart-po.ts` (bomLineId, approval_threshold)
+- `scripts/migrate-enquiries.ts` (4 new enquiry tables, enums, indexes, sequence counter)
+
+### 3. Production Time Logging System
+**Priority:** PARKED — awaiting feedback from production manager
+- See "Awaiting Information" section above

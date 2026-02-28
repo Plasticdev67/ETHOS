@@ -29,6 +29,7 @@ import {
   ChevronRight,
   Briefcase,
   CreditCard,
+  ClipboardList,
 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -68,6 +69,7 @@ const navSections: NavSection[] = [
     icon: ShoppingCart,
     items: [
       { name: 'Purchase Invoices', href: '/finance/purchases', icon: ShoppingCart },
+      { name: 'Enquiries', href: '/purchasing/enquiries', icon: ClipboardList },
     ],
   },
   {

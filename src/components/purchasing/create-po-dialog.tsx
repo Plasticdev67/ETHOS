@@ -13,7 +13,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Plus, ChevronDown, ChevronUp } from "lucide-react"
+import { Plus, ChevronDown, ChevronUp, Zap, CheckCircle, AlertCircle, Loader2 } from "lucide-react"
 import { formatCurrency } from "@/lib/utils"
 
 type BomSuggestion = {
@@ -25,6 +25,12 @@ type BomSuggestion = {
   unit: string
   unitCost: number
   category: string
+}
+
+type BomStatusItem = {
+  bomLineId: string
+  status: "purchased" | "unpurchased"
+  poNumber: string | null
 }
 
 export function CreatePoDialog({
@@ -54,14 +60,27 @@ export function CreatePoDialog({
   const [bomLoading, setBomLoading] = useState(false)
   const [bomExpanded, setBomExpanded] = useState(false)
 
-  // Fetch BOM suggestions when project changes
+  // BOM procurement status
+  const [bomStatus, setBomStatus] = useState<Map<string, BomStatusItem>>(new Map())
+  const [bomStatusLoading, setBomStatusLoading] = useState(false)
+
+  // Quick PO state
+  const [quickPoLoading, setQuickPoLoading] = useState(false)
+  const [quickPoResult, setQuickPoResult] = useState<{
+    created: { poNumber: string; supplier: string; lineCount: number; totalValue: number }[]
+  } | null>(null)
+
+  // Fetch BOM suggestions and status when project changes
   useEffect(() => {
     if (!selectedProject) {
       setBomSuggestions([])
       setSelectedBomLines(new Set())
+      setBomStatus(new Map())
+      setQuickPoResult(null)
       return
     }
     let cancelled = false
+
     async function fetchBom() {
       setBomLoading(true)
       const res = await fetch(`/api/purchase-orders/suggest-bom?projectId=${selectedProject}`)
@@ -73,7 +92,23 @@ export function CreatePoDialog({
       }
       if (!cancelled) setBomLoading(false)
     }
+
+    async function fetchBomStatus() {
+      setBomStatusLoading(true)
+      const res = await fetch(`/api/purchase-orders/bom-status?projectId=${selectedProject}`)
+      if (res.ok && !cancelled) {
+        const data: { items: BomStatusItem[] } = await res.json()
+        const statusMap = new Map<string, BomStatusItem>()
+        for (const item of data.items) {
+          statusMap.set(item.bomLineId, item)
+        }
+        setBomStatus(statusMap)
+      }
+      if (!cancelled) setBomStatusLoading(false)
+    }
+
     fetchBom()
+    fetchBomStatus()
     return () => { cancelled = true }
   }, [selectedProject])
 
@@ -88,6 +123,40 @@ export function CreatePoDialog({
     setBomSuggestions([])
     setSelectedBomLines(new Set())
     setBomExpanded(false)
+    setBomStatus(new Map())
+    setQuickPoResult(null)
+  }
+
+  async function handleQuickPo() {
+    if (!selectedProject) return
+    setQuickPoLoading(true)
+    setQuickPoResult(null)
+
+    try {
+      const res = await fetch("/api/purchase-orders/quick-po", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId: selectedProject }),
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        setQuickPoResult(data)
+        // Refresh BOM status after creating quick POs
+        const statusRes = await fetch(`/api/purchase-orders/bom-status?projectId=${selectedProject}`)
+        if (statusRes.ok) {
+          const statusData: { items: BomStatusItem[] } = await statusRes.json()
+          const statusMap = new Map<string, BomStatusItem>()
+          for (const item of statusData.items) {
+            statusMap.set(item.bomLineId, item)
+          }
+          setBomStatus(statusMap)
+        }
+        router.refresh()
+      }
+    } finally {
+      setQuickPoLoading(false)
+    }
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -118,10 +187,11 @@ export function CreatePoDialog({
         }
       }
 
-      // Build PO lines from selected BOM items
+      // Build PO lines from selected BOM items — include bomLineId
       const lines = bomSuggestions
         .filter((s) => selectedBomLines.has(s.bomLineId))
         .map((s) => ({
+          bomLineId: s.bomLineId,
           description: s.description,
           quantity: s.quantity,
           unitCost: s.unitCost,
@@ -165,6 +235,28 @@ export function CreatePoDialog({
     })
   }
 
+  function getStatusBadge(bomLineId: string) {
+    const status = bomStatus.get(bomLineId)
+    if (bomStatusLoading) return null
+    if (!status) return null
+
+    if (status.status === "purchased") {
+      return (
+        <span className="inline-flex items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 border border-green-200">
+          <CheckCircle className="h-3 w-3" />
+          {status.poNumber || "Purchased"}
+        </span>
+      )
+    }
+
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 border border-amber-200">
+        <AlertCircle className="h-3 w-3" />
+        Unpurchased
+      </span>
+    )
+  }
+
   const selectClass =
     "w-full rounded-lg border border-border bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
 
@@ -200,6 +292,50 @@ export function CreatePoDialog({
               ))}
             </select>
           </div>
+
+          {/* Quick PO Button */}
+          {selectedProject && (
+            <div className="space-y-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleQuickPo}
+                disabled={quickPoLoading}
+                className="w-full border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800"
+              >
+                {quickPoLoading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Zap className="mr-2 h-4 w-4" />
+                )}
+                {quickPoLoading ? "Creating POs..." : "Quick PO — Buy All Unpurchased"}
+              </Button>
+
+              {quickPoResult && quickPoResult.created.length > 0 && (
+                <div className="rounded-lg border border-green-200 bg-green-50 p-3 space-y-1">
+                  <p className="text-xs font-medium text-green-800">
+                    Created {quickPoResult.created.length} purchase order{quickPoResult.created.length !== 1 ? "s" : ""}:
+                  </p>
+                  {quickPoResult.created.map((po) => (
+                    <div key={po.poNumber} className="text-xs text-green-700 flex justify-between">
+                      <span>
+                        {po.poNumber} — {po.supplier} ({po.lineCount} line{po.lineCount !== 1 ? "s" : ""})
+                      </span>
+                      <span className="font-mono">{formatCurrency(po.totalValue)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {quickPoResult && quickPoResult.created.length === 0 && (
+                <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                  <p className="text-xs text-gray-600">
+                    All purchasable BOM items already have POs, or no BOM items found.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Supplier */}
           <div className="space-y-2">
@@ -324,7 +460,10 @@ export function CreatePoDialog({
                             className="rounded border-gray-300"
                           />
                           <div className="flex-1 min-w-0">
-                            <div className="text-sm text-gray-900 truncate">{s.description}</div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm text-gray-900 truncate">{s.description}</span>
+                              {getStatusBadge(s.bomLineId)}
+                            </div>
                             <div className="text-xs text-gray-500">
                               {s.partNumber && <span className="font-mono mr-2">{s.partNumber}</span>}
                               {s.quantity} {s.unit}
