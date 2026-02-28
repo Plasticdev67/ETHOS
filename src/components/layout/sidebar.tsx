@@ -223,7 +223,7 @@ export function Sidebar() {
                       ? "bg-[#FCE300] text-[#1A1A1E] font-bold shadow-[0_0_12px_rgba(252,227,0,0.3)] rounded-none border-l-2 border-[#00F0FF]"
                       : isSage
                         ? "bg-[#00B140]/15 text-[#00B140] font-semibold border-l-3 border-[#00B140] rounded-l-none"
-                        : "bg-blue-50 text-blue-700"
+                        : "text-[#e95445] font-semibold border-l-[3px] border-[#e95445] rounded-r-lg rounded-l-none bg-red-50/50"
                     : isCyber
                       ? "text-[#888] hover:bg-[#2A2A30] hover:text-[#FCE300] rounded-none"
                       : isSage
@@ -239,7 +239,7 @@ export function Sidebar() {
                       ? isCyber ? "text-purple-300" : isSage ? "text-gray-300" : "text-amber-600"
                       : isCyber ? "text-purple-500/60" : isSage ? "text-gray-500" : "text-amber-400/60"
                     : isActive
-                      ? isCyber ? "text-[#1A1A1E]" : isSage ? "text-[#00B140]" : "text-blue-600"
+                      ? isCyber ? "text-[#1A1A1E]" : isSage ? "text-[#00B140]" : "text-[#e95445]"
                       : isCyber ? "text-[#666]" : isSage ? "text-[#999]" : "text-gray-400"
                 )} />
                 {badgeCount > 0 && (collapsed && !mobileOpen) && (
@@ -290,10 +290,13 @@ export function Sidebar() {
     <>
       {/* Mobile hamburger button */}
       <button
-        className="fixed top-4 left-4 z-50 md:hidden rounded-lg bg-white border border-border p-2 shadow-sm"
+        className={cn(
+          "fixed top-4 left-4 z-50 md:hidden rounded-lg border p-2 shadow-sm",
+          isCyber ? "bg-white border-border" : isSage ? "bg-white border-border" : "bg-[#23293a] border-[#3d4560]"
+        )}
         onClick={() => setMobileOpen(true)}
       >
-        <Menu className="h-5 w-5 text-gray-700" />
+        <Menu className={cn("h-5 w-5", isCyber || isSage ? "text-gray-700" : "text-white")} />
       </button>
 
       {/* Mobile overlay */}
