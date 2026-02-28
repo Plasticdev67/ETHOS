@@ -37,6 +37,12 @@ export function formatDateShort(date: Date | string | null | undefined): string 
   })
 }
 
+export function formatDateISO(date: Date | string | null | undefined): string {
+  if (!date) return new Date().toISOString().split('T')[0]
+  const d = typeof date === 'string' ? new Date(date) : date
+  return d.toISOString().split('T')[0]
+}
+
 export function getInitials(name: string): string {
   return name
     .split(" ")

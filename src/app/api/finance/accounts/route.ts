@@ -1,0 +1,81 @@
+import { prisma } from "@/lib/db"
+import { NextRequest, NextResponse } from "next/server"
+import { revalidatePath } from "next/cache"
+
+export async function GET(_request: NextRequest) {
+  try {
+    const accounts = await prisma.account.findMany({
+      orderBy: { code: "asc" },
+      include: {
+        _count: {
+          select: { journalLines: true },
+        },
+      },
+    })
+
+    return NextResponse.json(accounts)
+  } catch (error) {
+    console.error("Accounts GET error:", error)
+    return NextResponse.json(
+      { error: "Failed to fetch accounts" },
+      { status: 500 }
+    )
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json()
+
+    const {
+      code,
+      name,
+      type,
+      subType,
+      normalBalance,
+      parentId,
+      vatCode,
+      description,
+      isSystemAccount,
+    } = body
+
+    if (!code || !name || !type || !normalBalance) {
+      return NextResponse.json(
+        { error: "code, name, type, and normalBalance are required" },
+        { status: 400 }
+      )
+    }
+
+    // Check for duplicate code
+    const existing = await prisma.account.findUnique({ where: { code } })
+    if (existing) {
+      return NextResponse.json(
+        { error: `Account code '${code}' already exists` },
+        { status: 409 }
+      )
+    }
+
+    const account = await prisma.account.create({
+      data: {
+        code,
+        name,
+        type,
+        subType: subType || null,
+        normalBalance,
+        parentId: parentId || null,
+        vatCode: vatCode || null,
+        description: description || null,
+        isSystemAccount: isSystemAccount ?? false,
+      },
+    })
+
+    revalidatePath("/finance")
+    return NextResponse.json(account, { status: 201 })
+  } catch (error) {
+    console.error("Account POST error:", error)
+    return NextResponse.json(
+      { error: "Failed to create account" },
+      { status: 500 }
+    )
+  }
+}
