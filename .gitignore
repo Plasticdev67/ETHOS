@@ -59,3 +59,10 @@ next-env.d.ts
 
 # Testing
 /coverage
+test-results/
+tests/
+playwright.config.ts
+playwright-report/
+
+# Business data files
+*.xlsx
