@@ -1,7 +1,7 @@
 "use client"
 
 import { Input } from "@/components/ui/input"
-import { Search, Bell, LogOut, Zap, Leaf, Minus, Plus } from "lucide-react"
+import { Search, Bell, LogOut, Minus, Plus } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useRef, useState } from "react"
 import { useSession, signOut } from "next-auth/react"
@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils"
 export function Header() {
   const router = useRouter()
   const { data: session } = useSession()
-  const { theme, setTheme, fontSize, setFontSize } = useLayout()
+  const { theme, fontSize, setFontSize } = useLayout()
   const [searchValue, setSearchValue] = useState("")
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -48,13 +48,6 @@ export function Header() {
         : "border-b border-border bg-white/95 backdrop-blur"
     )}>
       <div className="flex items-center gap-4 ml-10 md:ml-0">
-        {/* MMengineering branding — light theme only */}
-        {isLight && (
-          <div className="hidden md:flex items-center mr-3">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/mme-logo-coral.svg" alt="MMengineering" className="h-5 w-auto" />
-          </div>
-        )}
         <div className="relative">
           <Search className={cn(
             "absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2",
@@ -71,38 +64,8 @@ export function Header() {
             onKeyDown={handleKeyDown}
           />
         </div>
-        <span className={cn(
-          "hidden md:block text-sm font-medium italic",
-          isLight ? "text-gray-400" : "text-gray-400"
-        )}>Health, Wealth and Success!</span>
       </div>
       <div className="flex items-center gap-2 sm:gap-4">
-        <button
-          onClick={() => setTheme(theme === "sage" ? "light" : "sage")}
-          className={`relative p-2 transition-all font-bold text-xs ${
-            theme === "sage"
-              ? "bg-[#00B140] text-white hover:bg-[#009935] rounded-md border-2 border-[#008C2E] shadow-[0_2px_8px_rgba(0,177,64,0.4)]"
-              : isLight
-                ? "text-gray-400 hover:bg-[#2d3548] hover:text-white rounded-lg"
-                : "text-gray-400 hover:bg-gray-50 hover:text-gray-600 rounded-lg"
-          }`}
-          title={theme === "sage" ? "Switch to normal mode" : "Activate Sage mode"}
-        >
-          <Leaf className="h-5 w-5" />
-        </button>
-        <button
-          onClick={() => setTheme(theme === "cyberpunk" ? "light" : "cyberpunk")}
-          className={`relative p-2 transition-all font-bold text-xs ${
-            theme === "cyberpunk"
-              ? "bg-[#1A1A1E] text-[#FCE300] hover:bg-[#333] rounded-none border-2 border-[#FCE300] shadow-[0_0_12px_rgba(252,227,0,0.4)]"
-              : isLight
-                ? "text-gray-400 hover:bg-[#2d3548] hover:text-white rounded-lg"
-                : "text-gray-400 hover:bg-gray-50 hover:text-gray-600 rounded-lg"
-          }`}
-          title={theme === "cyberpunk" ? "Switch to normal mode" : "Activate Cyberpunk mode"}
-        >
-          <Zap className="h-5 w-5" />
-        </button>
         <div className={cn(
           "hidden sm:flex items-center gap-0.5 rounded-lg border px-1 py-0.5",
           isLight ? "border-[#3d4560]" : "border-border"

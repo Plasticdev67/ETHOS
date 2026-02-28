@@ -122,7 +122,7 @@ export function Sidebar() {
       {/* Logo */}
       <div className={cn(
         "shrink-0 flex items-center justify-between border-b border-border px-3",
-        isCyber ? "h-20 bg-[#1A1A1E]" : isSage ? "h-20 bg-[#2D2D2D]" : "h-[72px]"
+        isCyber ? "h-20 bg-[#1A1A1E]" : isSage ? "h-20 bg-[#2D2D2D]" : "h-16 bg-[#23293a]"
       )}>
         {(!collapsed || mobileOpen) ? (
           isCyber ? (
@@ -146,7 +146,7 @@ export function Sidebar() {
                 <>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src="/mme-logo-coral.svg" alt="MMengineering" className="h-5 w-auto" />
-                  <span className="text-[11px] font-bold tracking-[0.25em] text-gray-800 mt-1.5">ETHOS</span>
+                  <span className="text-[11px] font-bold tracking-[0.25em] text-white/60 mt-1.5">ETHOS</span>
                 </>
               )}
             </div>
@@ -171,8 +171,8 @@ export function Sidebar() {
                 </>
               ) : (
                 <>
-                  <span className="text-[10px] font-light tracking-[3px] text-gray-700">E</span>
-                  <span className="text-[6px] text-[#C8941E] tracking-[1px]">MK.1</span>
+                  <span className="text-[10px] font-light tracking-[3px] text-white/60">E</span>
+                  <span className="text-[6px] text-[#e95445] tracking-[1px]">MK.1</span>
                 </>
               )}
             </div>
@@ -180,7 +180,7 @@ export function Sidebar() {
         )}
         {/* Mobile close button */}
         <button
-          className="md:hidden rounded-lg p-1 text-gray-400 hover:bg-gray-100"
+          className="md:hidden rounded-lg p-1 text-white/50 hover:bg-white/10"
           onClick={() => setMobileOpen(false)}
         >
           <X className="h-5 w-5" />
