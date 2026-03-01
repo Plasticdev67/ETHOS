@@ -1,8 +1,15 @@
 import { prisma } from "@/lib/db"
 import { NextRequest, NextResponse } from "next/server"
 import { revalidatePath } from "next/cache"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
+import { getNextSequenceNumber } from "@/lib/finance/sequences"
 
 export async function POST(request: NextRequest) {
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
+  const denied = await requirePermission("purchasing:create")
+  if (denied) return denied
+
   const body = await request.json()
   const { projectId } = body
 
@@ -65,17 +72,7 @@ export async function POST(request: NextRequest) {
     supplierGroups.get(supplierName)!.push(line)
   }
 
-  // Get the last PO number to auto-increment
-  const lastPo = await prisma.purchaseOrder.findFirst({
-    orderBy: { poNumber: "desc" },
-    select: { poNumber: true },
-  })
-
-  let nextNum = 1001
-  if (lastPo) {
-    const match = lastPo.poNumber.match(/\d+/)
-    if (match) nextNum = parseInt(match[0], 10) + 1
-  }
+  // PO numbers will be generated per supplier group below
 
   // Look up existing suppliers by name for linking
   const supplierNames = [...supplierGroups.keys()].filter((n) => n !== "Unassigned")
@@ -95,8 +92,7 @@ export async function POST(request: NextRequest) {
   const created: { poId: string; poNumber: string; supplier: string; lineCount: number; totalValue: number }[] = []
 
   for (const [supplierName, lines] of supplierGroups) {
-    const poNumber = `PO-${String(nextNum).padStart(4, "0")}`
-    nextNum++
+    const poNumber = await getNextSequenceNumber("purchase_order")
 
     const supplierId = supplierLookup.get(supplierName.toLowerCase()) || null
 

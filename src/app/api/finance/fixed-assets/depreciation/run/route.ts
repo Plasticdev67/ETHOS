@@ -1,7 +1,14 @@
 import { prisma } from "@/lib/db"
 import { NextRequest, NextResponse } from "next/server"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
+import { getNextSequenceNumber } from "@/lib/finance/sequences"
 
 export async function POST(request: NextRequest) {
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
+  const denied = await requirePermission("finance:edit")
+  if (denied) return denied
+
   try {
     const body = await request.json()
     const { periodId, date } = body
@@ -191,15 +198,8 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Generate journal entry number
-      const last = await tx.journalEntry.findFirst({
-        orderBy: { entryNumber: "desc" },
-        select: { entryNumber: true },
-      })
-      const lastNum = last
-        ? parseInt(last.entryNumber.replace("JNL-", ""))
-        : 0
-      const entryNumber = `JNL-${String(lastNum + 1).padStart(6, "0")}`
+      // Generate journal entry number (concurrency-safe)
+      const entryNumber = await getNextSequenceNumber("journal")
 
       const journalLines: Array<{
         accountId: string

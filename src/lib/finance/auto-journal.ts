@@ -8,6 +8,7 @@
  * Each function creates a POSTED journal entry with the appropriate source.
  */
 import { prisma } from '@/lib/db'
+import { getNextSequenceNumber } from '@/lib/finance/sequences'
 
 // Well-known account codes from the seed data
 const SYSTEM_ACCOUNTS = {
@@ -27,12 +28,7 @@ async function getAccountId(code: string): Promise<string> {
 }
 
 async function getNextJournalNumber(): Promise<string> {
-  const last = await prisma.journalEntry.findFirst({
-    orderBy: { entryNumber: 'desc' },
-    select: { entryNumber: true },
-  })
-  const lastNum = last ? parseInt(last.entryNumber.replace('JNL-', '')) : 0
-  return `JNL-${String(lastNum + 1).padStart(6, '0')}`
+  return getNextSequenceNumber('journal')
 }
 
 async function findCurrentPeriod(): Promise<string> {

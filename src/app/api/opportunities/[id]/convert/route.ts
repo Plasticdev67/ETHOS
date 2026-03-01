@@ -2,12 +2,19 @@ import { prisma } from "@/lib/db"
 import { NextRequest, NextResponse } from "next/server"
 import { logAudit } from "@/lib/audit"
 import { revalidatePath } from "next/cache"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
+import { getNextSequenceNumber } from "@/lib/finance/sequences"
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
+
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
+  const denied = await requirePermission("crm:convert")
+  if (denied) return denied
 
   // Fetch opportunity with prospect and quote lines
   const opportunity = await prisma.opportunity.findUnique({
@@ -63,24 +70,13 @@ export async function POST(
     })
   }
 
-  // Step 2: Auto-generate project number (same pattern as /api/projects)
-  const lastProject = await prisma.project.findFirst({
-    orderBy: { projectNumber: "desc" },
-    select: { projectNumber: true },
-  })
-
-  let nextNumber = 100001
-  if (lastProject) {
-    const lastNum = parseInt(lastProject.projectNumber, 10)
-    if (!isNaN(lastNum)) {
-      nextNumber = lastNum + 1
-    }
-  }
+  // Step 2: Auto-generate project number (concurrency-safe via sequence counter)
+  const projectNumber = await getNextSequenceNumber("project")
 
   // Step 3: Create Project at P0 / OPPORTUNITY stage
   const project = await prisma.project.create({
     data: {
-      projectNumber: String(nextNumber),
+      projectNumber,
       name: opportunity.name,
       customerId: customerId,
       projectType: "STANDARD",
@@ -99,17 +95,8 @@ export async function POST(
 
   // Step 4: Migrate quote lines into a formal Quote
   if (opportunity.quoteLines.length > 0) {
-    // Auto-generate quote number (same pattern as /api/quotes)
-    const lastQuote = await prisma.quote.findFirst({
-      orderBy: { quoteNumber: "desc" },
-      select: { quoteNumber: true },
-    })
-
-    let nextQuoteNum = 1001
-    if (lastQuote) {
-      const match = lastQuote.quoteNumber.match(/Q-(\d+)/)
-      if (match) nextQuoteNum = parseInt(match[1], 10) + 1
-    }
+    // Auto-generate quote number (concurrency-safe via sequence counter)
+    const quoteNumber = await getNextSequenceNumber("quote")
 
     // Calculate totals from opportunity
     const totalCost = opportunity.quoteLines.reduce(
@@ -127,7 +114,7 @@ export async function POST(
       data: {
         customerId: customerId,
         projectId: project.id,
-        quoteNumber: `Q-${String(nextQuoteNum).padStart(4, "0")}`,
+        quoteNumber,
         status: "ACCEPTED",
         subject: opportunity.name,
         dateCreated: new Date(),
@@ -190,7 +177,7 @@ export async function POST(
   // Step 4b: Create Product records on the project from quote lines
   for (let i = 0; i < opportunity.quoteLines.length; i++) {
     const oppLine = opportunity.quoteLines[i]
-    const jobNum = `${String(nextNumber)}-${String(i + 1).padStart(2, "0")}`
+    const jobNum = `${projectNumber}-${String(i + 1).padStart(2, "0")}`
 
     // Look up variant's Sage stock code for the partCode and catalogue link
     let partCode = `ITEM-${i + 1}`

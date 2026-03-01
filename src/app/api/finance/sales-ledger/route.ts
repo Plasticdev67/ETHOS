@@ -1,8 +1,13 @@
 import { prisma } from "@/lib/db"
 import { NextRequest, NextResponse } from "next/server"
 import { revalidatePath } from "next/cache"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
+import { getNextSequenceNumber } from "@/lib/finance/sequences"
 
 export async function GET(request: NextRequest) {
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
+
   try {
     const { searchParams } = new URL(request.url)
     const status = searchParams.get("status")
@@ -58,6 +63,11 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const authUser = await requireAuth()
+  if (authUser instanceof NextResponse) return authUser
+  const denied = await requirePermission("finance:edit")
+  if (denied) return denied
+
   try {
     const body = await request.json()
     const { customerId, invoiceDate, dueDate, projectId, notes, lines, createdBy } = body
@@ -69,18 +79,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Auto-generate invoice number
-    const lastInvoice = await prisma.salesInvoice.findFirst({
-      orderBy: { invoiceNumber: "desc" },
-      select: { invoiceNumber: true },
-    })
-
-    let nextNum = 1
-    if (lastInvoice) {
-      const match = lastInvoice.invoiceNumber.match(/INV-(\d+)/)
-      if (match) nextNum = parseInt(match[1], 10) + 1
-    }
-    const invoiceNumber = `INV-${String(nextNum).padStart(4, "0")}`
+    // Auto-generate invoice number (concurrency-safe)
+    const invoiceNumber = await getNextSequenceNumber("sales_invoice")
 
     // Calculate line amounts and totals
     let subtotal = 0

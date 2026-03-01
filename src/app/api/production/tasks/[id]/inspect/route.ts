@@ -3,13 +3,16 @@ import { NextRequest, NextResponse } from "next/server"
 import { logAudit } from "@/lib/audit"
 import { getNextStage } from "@/lib/production-utils"
 import type { ProductionStage } from "@/generated/prisma/client"
-import { requirePermission } from "@/lib/api-auth"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
 import { revalidatePath } from "next/cache"
+import { getNextSequenceNumber } from "@/lib/finance/sequences"
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
   const denied = await requirePermission("production:inspect")
   if (denied) return denied
 
@@ -139,15 +142,8 @@ export async function POST(
   }
 
   // REJECTED — create NCR and rework task
-  // Generate NCR number
-  const lastNcr = await prisma.nonConformanceReport.findFirst({
-    orderBy: { ncrNumber: "desc" },
-    select: { ncrNumber: true },
-  })
-  const lastNum = lastNcr
-    ? parseInt(lastNcr.ncrNumber.replace("NCR-", ""), 10)
-    : 0
-  const ncrNumber = `NCR-${String(lastNum + 1).padStart(4, "0")}`
+  // Generate NCR number (concurrency-safe)
+  const ncrNumber = await getNextSequenceNumber("ncr")
 
   // Create NCR
   const ncr = await prisma.nonConformanceReport.create({

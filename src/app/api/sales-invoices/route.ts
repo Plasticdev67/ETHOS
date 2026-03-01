@@ -1,8 +1,13 @@
 import { prisma } from "@/lib/db"
 import { NextRequest, NextResponse } from "next/server"
 import { revalidatePath } from "next/cache"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
+import { getNextSequenceNumber } from "@/lib/finance/sequences"
+import { toDecimal } from "@/lib/api-utils"
 
 export async function GET(request: NextRequest) {
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
   const { searchParams } = new URL(request.url)
   const projectId = searchParams.get("projectId")
   const status = searchParams.get("status")
@@ -22,25 +27,20 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
+  const denied = await requirePermission("finance:edit")
+  if (denied) return denied
+
   const body = await request.json()
 
-  // Auto-generate invoice number: INV-0001
-  const lastInvoice = await prisma.salesInvoice.findFirst({
-    orderBy: { invoiceNumber: "desc" },
-    select: { invoiceNumber: true },
-  })
-
-  let nextNum = 1
-  if (lastInvoice) {
-    const match = lastInvoice.invoiceNumber.match(/INV-(\d+)/)
-    if (match) nextNum = parseInt(match[1], 10) + 1
-  }
-  const invoiceNumber = `INV-${String(nextNum).padStart(4, "0")}`
+  // Auto-generate invoice number (concurrency-safe)
+  const invoiceNumber = await getNextSequenceNumber("sales_invoice")
 
   // Calculate net payable
-  const applicationAmount = body.applicationAmount ? parseFloat(body.applicationAmount) : 0
-  const retentionHeld = body.retentionHeld ? parseFloat(body.retentionHeld) : 0
-  const cisDeduction = body.cisDeduction ? parseFloat(body.cisDeduction) : 0
+  const applicationAmount = Number(toDecimal(body.applicationAmount) ?? 0)
+  const retentionHeld = Number(toDecimal(body.retentionHeld) ?? 0)
+  const cisDeduction = Number(toDecimal(body.cisDeduction) ?? 0)
   const netPayable = applicationAmount - retentionHeld - cisDeduction
 
   const invoice = await prisma.salesInvoice.create({
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
       type: body.type || "APPLICATION",
       status: body.status || "DRAFT",
       applicationAmount: applicationAmount || null,
-      certifiedAmount: body.certifiedAmount ? parseFloat(body.certifiedAmount) : null,
+      certifiedAmount: toDecimal(body.certifiedAmount),
       retentionHeld: retentionHeld || null,
       cisDeduction: cisDeduction || null,
       netPayable: netPayable || null,

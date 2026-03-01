@@ -1,9 +1,15 @@
 import { prisma } from "@/lib/db"
 import { NextRequest, NextResponse } from "next/server"
 import { randomBytes } from "crypto"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
 
 // Generate portal access token for a customer
 export async function POST(request: NextRequest) {
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
+  const denied = await requirePermission("customers:create")
+  if (denied) return denied
+
   const body = await request.json()
   const { customerId, projectId, expiryDays } = body
 
@@ -32,6 +38,8 @@ export async function POST(request: NextRequest) {
 
 // List portal tokens
 export async function GET(request: NextRequest) {
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
   const customerId = request.nextUrl.searchParams.get("customerId")
 
   const tokens = await prisma.customerPortalToken.findMany({

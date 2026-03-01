@@ -7,9 +7,9 @@ import { Prisma } from "@/generated/prisma/client"
  */
 export function toDecimal(value: unknown): Prisma.Decimal | null {
   if (value === null || value === undefined || value === "") return null
-  const n = typeof value === "number" ? value : Number(value)
-  if (isNaN(n)) return null
-  return new Prisma.Decimal(n)
+  const str = String(value)
+  if (isNaN(Number(str))) return null
+  return new Prisma.Decimal(str)
 }
 
 /**
@@ -18,5 +18,5 @@ export function toDecimal(value: unknown): Prisma.Decimal | null {
  */
 export function toDecimalOrDefault(value: unknown, defaultValue: number = 0): Prisma.Decimal {
   const d = toDecimal(value)
-  return d ?? new Prisma.Decimal(defaultValue)
+  return d ?? new Prisma.Decimal(String(defaultValue))
 }

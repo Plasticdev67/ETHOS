@@ -1,12 +1,20 @@
 import { prisma } from "@/lib/db"
 import { NextRequest, NextResponse } from "next/server"
 import { revalidatePath } from "next/cache"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
+import { getNextSequenceNumber } from "@/lib/finance/sequences"
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
+
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
+  const denied = await requirePermission("purchasing:create")
+  if (denied) return denied
+
   const body = await request.json()
   const { responseId } = body as { responseId: string }
 
@@ -64,17 +72,8 @@ export async function POST(
     data: { status: "AWARDED" },
   })
 
-  // Auto-generate PO number
-  const lastPo = await prisma.purchaseOrder.findFirst({
-    orderBy: { poNumber: "desc" },
-    select: { poNumber: true },
-  })
-
-  let nextNum = 1001
-  if (lastPo) {
-    const match = lastPo.poNumber.match(/\d+/)
-    if (match) nextNum = parseInt(match[0], 10) + 1
-  }
+  // Auto-generate PO number (concurrency-safe)
+  const poNumber = await getNextSequenceNumber("purchase_order")
 
   // Calculate total value from response lines
   const totalValue = winningResponse.lines.reduce(
@@ -85,7 +84,7 @@ export async function POST(
   // Create PurchaseOrder from the winning response
   const po = await prisma.purchaseOrder.create({
     data: {
-      poNumber: `PO-${String(nextNum).padStart(4, "0")}`,
+      poNumber,
       projectId: enquiry.projectId,
       supplierId: winningResponse.supplierId,
       status: "DRAFT",

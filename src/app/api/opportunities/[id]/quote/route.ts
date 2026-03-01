@@ -1,25 +1,32 @@
 import { prisma } from "@/lib/db"
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
+import { toDecimal } from "@/lib/api-utils"
 
 // Update quoting fields (rdCost, riskCost, marginPercent) and recalculate quotedPrice
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
+  const denied = await requirePermission("crm:edit")
+  if (denied) return denied
+
   const { id } = await params
   const body = await request.json()
 
   const data: Record<string, unknown> = {}
 
   if (body.rdCost !== undefined) {
-    data.rdCost = body.rdCost !== "" && body.rdCost !== null ? parseFloat(body.rdCost) : null
+    data.rdCost = toDecimal(body.rdCost)
   }
   if (body.riskCost !== undefined) {
-    data.riskCost = body.riskCost !== "" && body.riskCost !== null ? parseFloat(body.riskCost) : null
+    data.riskCost = toDecimal(body.riskCost)
   }
   if (body.marginPercent !== undefined) {
-    data.marginPercent = body.marginPercent !== "" && body.marginPercent !== null ? parseFloat(body.marginPercent) : null
+    data.marginPercent = toDecimal(body.marginPercent)
   }
 
   // Recalculate quotedPrice: (lineItemsTotal + rdCost + riskCost) * (1 + margin/100)
@@ -57,6 +64,12 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
+
+  const authUser = await requireAuth()
+  if (authUser instanceof NextResponse) return authUser
+  const permDenied = await requirePermission("crm:edit")
+  if (permDenied) return permDenied
+
   const body = await request.json()
   const action = body.action // "submit" | "approve" | "reject"
 
@@ -75,22 +88,17 @@ export async function POST(
       return NextResponse.json({ error: "Add at least one line item before submitting" }, { status: 400 })
     }
 
-    // Auto-generate quote number if not already set
+    // Auto-generate quote number if not already set (concurrency-safe)
     let quoteNumber = opp.quoteNumber
     if (!quoteNumber) {
       const year = new Date().getFullYear()
-      const prefix = `QUO-${year}-`
-      const lastOpp = await prisma.opportunity.findFirst({
-        where: { quoteNumber: { startsWith: prefix } },
-        orderBy: { quoteNumber: "desc" },
-        select: { quoteNumber: true },
+      const seqName = `opp_quote_${year}`
+      const counter = await prisma.sequenceCounter.upsert({
+        where: { name: seqName },
+        create: { name: seqName, current: 1, prefix: `QUO-${year}-`, padding: 4 },
+        update: { current: { increment: 1 } },
       })
-      let nextSeq = 1
-      if (lastOpp?.quoteNumber) {
-        const match = lastOpp.quoteNumber.match(/QUO-\d{4}-(\d+)/)
-        if (match) nextSeq = parseInt(match[1], 10) + 1
-      }
-      quoteNumber = `${prefix}${String(nextSeq).padStart(4, "0")}`
+      quoteNumber = `QUO-${year}-${String(counter.current).padStart(4, "0")}`
     }
 
     const updated = await prisma.opportunity.update({
