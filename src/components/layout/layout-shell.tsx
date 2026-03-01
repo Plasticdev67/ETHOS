@@ -7,10 +7,8 @@ import { Sidebar } from "./sidebar"
 import { Header } from "./header"
 
 export function LayoutShell({ children }: { children: React.ReactNode }) {
-  const { collapsed, theme } = useLayout()
+  const { collapsed } = useLayout()
   const pathname = usePathname()
-  const isCyber = theme === "cyberpunk"
-  const isSage = theme === "sage"
 
   // Login page and portal — no sidebar/header
   if (pathname === "/login" || pathname.startsWith("/portal")) {
@@ -29,7 +27,7 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
         "pl-0"
       )}>
         <Header />
-        <main className={cn("p-3 sm:p-4 md:p-6 overflow-x-hidden", isCyber && "cyber-graffiti-bg", isSage && "sage-watermark-bg")}>{children}</main>
+        <main className="p-3 sm:p-4 md:p-6 overflow-x-hidden">{children}</main>
       </div>
     </div>
   )

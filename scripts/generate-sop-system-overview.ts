@@ -236,7 +236,7 @@ async function main() {
     "3.  Dashboard",
     "4.  Navigation",
     "5.  User Roles & Permissions",
-    "6.  Themes",
+    "6.  Branding & Visual Design",
     "7.  Settings & Configuration",
     "8.  System Architecture",
   ]
@@ -447,37 +447,25 @@ async function main() {
   callout("Only Admin users can access system settings and manage team members. The Staff role is read-only — it cannot edit any data.")
 
   // ── 6 ──
-  sectionHeading("6", "Themes")
-  p("ETHOS supports three visual themes. Users can switch between themes at any time. The selected theme is stored in the browser (localStorage) and persists across sessions.")
+  sectionHeading("6", "Branding & Visual Design")
+  p("ETHOS follows the MM Engineered Solutions brand guidelines throughout. The visual design is consistent across all modules.")
 
-  sub("Light Theme (Default)")
-  p("The standard MME-branded theme used by most staff.")
-  b("Dark navy header and sidebar (#23293a)")
-  b("White content area with clean typography")
-  b("MME coral (#e95445) for accents, active states, and primary actions")
-  b("Cyan (#00b1eb) for secondary highlights")
-  b("PX Grotesk font family (light, regular, bold) with Inter as fallback")
-  b("MME logo in coral displayed in the sidebar header")
+  sub("Brand Colours")
+  b("Dark navy (#23293a) — header, sidebar, and primary backgrounds")
+  b("MME coral (#e95445) — accents, active states, primary actions, and call-to-action buttons")
+  b("Cyan (#00b1eb) — secondary highlights and informational elements")
+  b("White content area with clean, accessible typography")
 
-  sub("Cyberpunk Theme")
-  p("A dark, neon-styled alternative theme for users who prefer dark mode.")
-  b("Dark background (#1A1A1E) throughout")
-  b("Yellow (#FCE300) as the primary accent colour")
-  b("Cyan (#00F0FF) for secondary accents and active borders")
-  b("ETHOS styled as \"ETHOS MK.1 SYSTEM\" in a tech-inspired logo treatment")
-  b("Scanline overlay effect on the body for retro CRT aesthetic")
-  b("Orbitron font used for headings")
+  sub("Typography")
+  b("PX Grotesk — primary brand font (light, regular, bold weights)")
+  b("Inter — fallback font for system compatibility")
+  b("Consistent font sizing across all modules for readability")
 
-  sub("Sage Theme")
-  p("A dark theme with a green accent, inspired by classic accounting software.")
-  b("Dark grey background (#2D2D2D)")
-  b("Green accent (#00B140) for active states and highlights")
-  b("\"sage 200\" branding in sidebar replacing the MME logo")
-  b("Subtle, understated design language")
-
-  sub("Theme Switching")
-  p("Themes are toggled via the layout context. The selected theme class is applied to the HTML root element. Theme preference is saved to localStorage under the key \"ethos-theme\" and loaded automatically on next visit.")
-  callout("Theme selection is per-user, per-browser. It does not sync across devices.")
+  sub("Layout")
+  b("MME coral logo displayed in the sidebar header")
+  b("Fixed sidebar navigation with collapsible option on desktop")
+  b("Responsive design — full mobile support with slide-out navigation")
+  b("Branded login page with MME logo and \"Engineer-To-Order Hub\" subtitle")
 
   // ── 7 ──
   sectionHeading("7", "Settings & Configuration")

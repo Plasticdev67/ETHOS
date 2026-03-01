@@ -64,11 +64,9 @@ type BadgeCounts = {
 
 export function Sidebar() {
   const pathname = usePathname()
-  const { collapsed, toggleCollapsed, theme } = useLayout()
+  const { collapsed, toggleCollapsed } = useLayout()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [badges, setBadges] = useState<BadgeCounts>({ designHandovers: 0, productionIncoming: 0 })
-  const isCyber = theme === "cyberpunk"
-  const isSage = theme === "sage"
 
   // Easter egg: click logo 10 times to activate onion mode (resets on refresh)
   const [onionMode, setOnionMode] = useState(false)
@@ -118,61 +116,37 @@ export function Sidebar() {
       {/* Logo */}
       <div className={cn(
         "shrink-0 flex items-center justify-between border-b border-border px-3",
-        isCyber ? "h-20 bg-[#1A1A1E]" : isSage ? "h-20 bg-[#2D2D2D]" : "h-16 bg-[#23293a]"
+        "h-16 bg-[#23293a]"
       )}>
         {(!collapsed || mobileOpen) ? (
-          isCyber ? (
-            <Link href="/" className="flex flex-col items-start gap-0" onClick={() => setMobileOpen(false)}>
-              <span className="cyber-logo text-2xl leading-none">ETHOS</span>
-              <span className="cyber-logo-sub text-[10px] leading-none mt-1">MK.1 SYSTEM</span>
-            </Link>
-          ) : isSage ? (
-            <Link href="/" className="flex flex-col items-start gap-0" onClick={() => setMobileOpen(false)}>
-              <span className="sage-logo text-[32px] leading-none">sage</span>
-              <span className="sage-logo-version text-[14px] leading-none mt-0.5">200</span>
-            </Link>
-          ) : (
-            <div className="flex flex-col items-start cursor-pointer select-none" onClick={handleLogoClick}>
-              {onionMode ? (
-                <>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/onion-201.svg" alt="Onion 201" className="h-12 w-auto drop-shadow-[0_0_8px_rgba(212,168,67,0.5)]" />
-                </>
-              ) : (
-                <>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/mme-logo-coral.svg" alt="MMengineering" className="h-5 w-auto" />
-                  <span className="text-[11px] font-bold tracking-[0.25em] text-white/60 mt-1.5">ETHOS</span>
-                </>
-              )}
-            </div>
-          )
+          <div className="flex flex-col items-start cursor-pointer select-none" onClick={handleLogoClick}>
+            {onionMode ? (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/onion-201.svg" alt="Onion 201" className="h-12 w-auto drop-shadow-[0_0_8px_rgba(212,168,67,0.5)]" />
+              </>
+            ) : (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/mme-logo-coral.svg" alt="MMengineering" className="h-5 w-auto" />
+                <span className="text-[11px] font-bold tracking-[0.25em] text-white/60 mt-1.5">ETHOS</span>
+              </>
+            )}
+          </div>
         ) : (
-          isCyber ? (
-            <Link href="/" className="mx-auto flex flex-col items-center" onClick={() => setMobileOpen(false)}>
-              <span className="cyber-logo text-lg leading-none">E</span>
-              <span className="cyber-logo-sub text-[6px] leading-none mt-0.5">MK.1</span>
-            </Link>
-          ) : isSage ? (
-            <Link href="/" className="mx-auto flex flex-col items-center" onClick={() => setMobileOpen(false)}>
-              <span className="sage-logo text-xl leading-none">S</span>
-              <span className="text-[8px] text-[#00DC00] tracking-[1px] font-bold">200</span>
-            </Link>
-          ) : (
-            <div className="mx-auto flex flex-col items-center cursor-pointer select-none" onClick={handleLogoClick}>
-              {onionMode ? (
-                <>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/onion-201.svg" alt="Onion 201" className="h-8 w-auto" />
-                </>
-              ) : (
-                <>
-                  <span className="text-[10px] font-light tracking-[3px] text-white/60">E</span>
-                  <span className="text-[6px] text-[#e95445] tracking-[1px]">MK.1</span>
-                </>
-              )}
-            </div>
-          )
+          <div className="mx-auto flex flex-col items-center cursor-pointer select-none" onClick={handleLogoClick}>
+            {onionMode ? (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/onion-201.svg" alt="Onion 201" className="h-8 w-auto" />
+              </>
+            ) : (
+              <>
+                <span className="text-[10px] font-light tracking-[3px] text-white/60">E</span>
+                <span className="text-[6px] text-[#e95445] tracking-[1px]">MK.1</span>
+              </>
+            )}
+          </div>
         )}
         {/* Mobile close button */}
         <button
@@ -207,39 +181,19 @@ export function Sidebar() {
                 "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                 isFood
                   ? isActive
-                    ? isCyber
-                      ? "bg-purple-600/20 text-purple-300 font-bold shadow-[0_0_12px_rgba(168,85,247,0.3)] rounded-none border-l-2 border-purple-400"
-                      : isSage
-                        ? "bg-gray-500/15 text-gray-300 font-semibold border-l-3 border-gray-400 rounded-l-none"
-                        : "bg-amber-50 text-amber-700"
-                    : isCyber
-                      ? "text-purple-400/60 hover:bg-purple-900/20 hover:text-purple-300 rounded-none"
-                      : isSage
-                        ? "text-gray-400 hover:bg-gray-600/20 hover:text-gray-200"
-                        : "text-amber-600/60 hover:bg-amber-50 hover:text-amber-700"
+                    ? "bg-amber-50 text-amber-700"
+                    : "text-amber-600/60 hover:bg-amber-50 hover:text-amber-700"
                   : isActive
-                    ? isCyber
-                      ? "bg-[#FCE300] text-[#1A1A1E] font-bold shadow-[0_0_12px_rgba(252,227,0,0.3)] rounded-none border-l-2 border-[#00F0FF]"
-                      : isSage
-                        ? "bg-[#00B140]/15 text-[#00B140] font-semibold border-l-3 border-[#00B140] rounded-l-none"
-                        : "text-[#e95445] font-semibold border-l-[3px] border-[#e95445] rounded-r-lg rounded-l-none bg-red-50/50"
-                    : isCyber
-                      ? "text-[#888] hover:bg-[#2A2A30] hover:text-[#FCE300] rounded-none"
-                      : isSage
-                        ? "text-[#ccc] hover:bg-[#3A3A3A] hover:text-white"
-                        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                    ? "text-[#e95445] font-semibold border-l-[3px] border-[#e95445] rounded-r-lg rounded-l-none bg-red-50/50"
+                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
               )}
               title={collapsed && !mobileOpen ? item.name : undefined}
             >
               <div className="relative shrink-0">
                 <item.icon className={cn("h-5 w-5",
                   isFood
-                    ? isActive
-                      ? isCyber ? "text-purple-300" : isSage ? "text-gray-300" : "text-amber-600"
-                      : isCyber ? "text-purple-500/60" : isSage ? "text-gray-500" : "text-amber-400/60"
-                    : isActive
-                      ? isCyber ? "text-[#1A1A1E]" : isSage ? "text-[#00B140]" : "text-[#e95445]"
-                      : isCyber ? "text-[#666]" : isSage ? "text-[#999]" : "text-gray-400"
+                    ? isActive ? "text-amber-600" : "text-amber-400/60"
+                    : isActive ? "text-[#e95445]" : "text-gray-400"
                 )} />
                 {badgeCount > 0 && (collapsed && !mobileOpen) && (
                   <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center h-3.5 min-w-3.5 rounded-full bg-red-500 px-0.5 text-[8px] font-bold text-white">
@@ -253,11 +207,7 @@ export function Sidebar() {
                   {badgeCount > 0 && (
                     <span className={cn(
                       "flex items-center justify-center h-5 min-w-5 rounded-full px-1.5 text-[10px] font-semibold",
-                      isCyber
-                        ? "bg-red-600 text-white"
-                        : isSage
-                          ? "bg-red-500 text-white"
-                          : "bg-red-100 text-red-700"
+                      "bg-red-100 text-red-700"
                     )}>
                       {badgeCount}
                     </span>
@@ -276,7 +226,7 @@ export function Sidebar() {
           onClick={toggleCollapsed}
           className={cn(
             "hidden md:flex w-full items-center justify-center rounded-lg p-2 transition-colors",
-            isCyber ? "text-[#666] hover:bg-[#2A2A30] hover:text-[#FCE300]" : isSage ? "text-[#999] hover:bg-[#3A3A3A] hover:text-white" : "text-gray-400 hover:bg-gray-50 hover:text-gray-600"
+            "text-gray-400 hover:bg-gray-50 hover:text-gray-600"
           )}
         >
           {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
@@ -291,11 +241,11 @@ export function Sidebar() {
       <button
         className={cn(
           "fixed top-4 left-4 z-50 md:hidden rounded-lg border p-2 shadow-sm",
-          isCyber ? "bg-white border-border" : isSage ? "bg-white border-border" : "bg-[#23293a] border-[#3d4560]"
+          "bg-[#23293a] border-[#3d4560]"
         )}
         onClick={() => setMobileOpen(true)}
       >
-        <Menu className={cn("h-5 w-5", isCyber || isSage ? "text-gray-700" : "text-white")} />
+        <Menu className={cn("h-5 w-5", "text-white")} />
       </button>
 
       {/* Mobile overlay */}

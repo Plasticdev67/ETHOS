@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Orbitron } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import { LayoutProvider } from "@/components/layout/layout-context";
 import { LayoutShell } from "@/components/layout/layout-shell";
@@ -9,12 +9,6 @@ import { SessionProvider } from "@/components/session-provider";
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
-});
-
-const orbitron = Orbitron({
-  variable: "--font-orbitron",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800", "900"],
 });
 
 export const metadata: Metadata = {
@@ -29,7 +23,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${inter.variable} ${orbitron.variable} font-sans antialiased`}>
+      <body className={`${inter.variable} font-sans antialiased`}>
         <SessionProvider>
           <TooltipProvider>
             <LayoutProvider>

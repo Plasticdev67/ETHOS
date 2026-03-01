@@ -65,6 +65,14 @@
 - [x] Side-by-side quote comparison
 - [x] One-click award → auto-create PO
 
+### Docs Page + SOPs — DONE
+- [x] 7 SOP PDFs: System Overview, CRM & Quoting, Design, Production, Purchasing, Finance, Project Management
+- [x] PX Grotesk branding, coral MME logo, board-quality formatting
+- [x] `/docs` page with card grid and download buttons
+- [x] Sidebar navigation link
+- [x] Generator scripts in `scripts/generate-sop-*.ts`
+- **Commit:** 94b225e
+
 ### Data Import Wizards — DONE
 - [x] Pure TypeScript CSV parser (no dependencies)
 - [x] 7-step import wizard UI (type → upload → map → validate → preview → confirm → complete)
@@ -75,11 +83,36 @@
 
 ## Backlog (Prioritised)
 
-### 1. Docs Page + SOPs
-**Priority:** MEDIUM — documentation
-- In-app docs page (`/docs`) with download buttons per module
-- PDF SOPs: System Overview, CRM & Quoting, Production & Workshop, Purchasing, Finance, Planning, Project Management
-- Design SOP already exists (`/api/docs/design-sop`)
+### 1. ISO 9001 Document Control System
+**Priority:** MEDIUM — quality management
+**Status:** For discussion — how far to take it
+
+ETHOS could handle ISO 9001:2015 Clause 7.5 (Documented Information) requirements for SOPs and potentially the wider QMS. Three levels under consideration:
+
+**Lightweight** (revision block + refs):
+- Add revision history table to page 2 of each SOP PDF (rev number, date, change description, prepared by, approved by)
+- Document reference numbers (e.g. MME-SOP-001)
+- Footer shows "UNCONTROLLED COPY WHEN PRINTED"
+- `/docs` page = controlled document register, git = audit trail
+
+**Medium** (database-backed):
+- `DocumentRegister` Prisma model (ref, title, revision, status DRAFT/APPROVED/OBSOLETE, reviewDate, approvedBy, nextReviewDate)
+- Auto-populate revision block in PDFs from database
+- `/docs` page shows review due dates, flags overdue reviews
+- Version history visible in-app
+
+**Full** (workflow):
+- Approval workflow — prepared by / reviewed by / approved by with timestamps
+- Review scheduling with dashboard notifications (annual review cycle)
+- Obsolete version archiving — old revisions kept but clearly marked
+- Distribution control — track who has downloaded/viewed
+- Digital sign-off (manager approval before new revision goes live)
+
+**Questions to decide:**
+- Which level suits MME right now?
+- Should the wider QMS docs (quality manual, procedures, work instructions, forms) live in ETHOS too, or just the system SOPs?
+- Who approves document changes? (Quality Manager? Directors?)
+- What review cycle? (Annual? 6-monthly?)
 
 ### 2. Run Migration Scripts on Supabase
 **Priority:** HIGH — new schema changes need deploying

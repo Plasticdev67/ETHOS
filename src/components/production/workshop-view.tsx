@@ -9,7 +9,6 @@ import {
   STAGE_BORDER_COLORS,
   ALL_STAGE_DISPLAY_NAMES,
 } from "@/lib/production-utils"
-import { useLayout } from "@/components/layout/layout-context"
 
 // ─── Types ───
 
@@ -118,12 +117,11 @@ export type WorkshopWorker = {
   isAvailable: boolean
 }
 
-// ─── Theme helpers ───
+// ─── Lane style helpers ───
 
-type AppTheme = "light" | "cyberpunk" | "sage"
 type ThemeColor = "cyan" | "amber" | "green" | "slate"
 
-function useLaneStyles(themeColor: ThemeColor, appTheme: AppTheme) {
+function useLaneStyles(themeColor: ThemeColor) {
   const base = {
     cyan:  { border: "border-cyan-500",  accent: "text-cyan-600",  line: "bg-cyan-500" },
     amber: { border: "border-amber-500", accent: "text-amber-600", line: "bg-amber-500" },
@@ -131,49 +129,6 @@ function useLaneStyles(themeColor: ThemeColor, appTheme: AppTheme) {
     slate: { border: "border-slate-400", accent: "text-slate-600", line: "bg-slate-400" },
   }[themeColor]
 
-  if (appTheme === "cyberpunk") {
-    const accentMap: Record<ThemeColor, string> = {
-      cyan: "text-cyan-400", amber: "text-amber-400", green: "text-green-400", slate: "text-slate-400",
-    }
-    const borderMap: Record<ThemeColor, string> = {
-      cyan: "border-cyan-700", amber: "border-amber-700", green: "border-green-700", slate: "border-slate-600",
-    }
-    return {
-      ...base,
-      accent: accentMap[themeColor],
-      laneBg: "bg-[#1A1A1E]",
-      cardBg: "bg-[#2A2A30]",
-      cardBorder: borderMap[themeColor],
-      titleText: "text-white",
-      subtitleText: "text-gray-500",
-      bodyText: "text-gray-300",
-      mutedText: "text-gray-500",
-      emptyText: "text-gray-600",
-    }
-  }
-
-  if (appTheme === "sage") {
-    const accentMap: Record<ThemeColor, string> = {
-      cyan: "text-cyan-500", amber: "text-amber-500", green: "text-green-500", slate: "text-slate-400",
-    }
-    const borderMap: Record<ThemeColor, string> = {
-      cyan: "border-cyan-700", amber: "border-amber-700", green: "border-green-700", slate: "border-slate-600",
-    }
-    return {
-      ...base,
-      accent: accentMap[themeColor],
-      laneBg: "bg-[#2D2D2D]",
-      cardBg: "bg-[#3A3A3A]",
-      cardBorder: borderMap[themeColor],
-      titleText: "text-white",
-      subtitleText: "text-gray-400",
-      bodyText: "text-gray-200",
-      mutedText: "text-gray-400",
-      emptyText: "text-gray-500",
-    }
-  }
-
-  // Light theme
   const bgMap: Record<ThemeColor, string> = {
     cyan: "bg-cyan-50", amber: "bg-amber-50", green: "bg-green-50", slate: "bg-slate-50",
   }
@@ -210,8 +165,6 @@ export function WorkshopView({
   const [data, setData] = useState(initialData)
   const [allocated, setAllocated] = useState<AllocatedProduct[]>(initialAllocated)
   const [loading, setLoading] = useState(false)
-  const { theme: appTheme } = useLayout()
-
   // Split tasks into 3 lanes
   const liveTasks = data.tasks.filter((t) => t.status === "IN_PROGRESS")
   const readyTasks = data.tasks.filter(
@@ -328,7 +281,7 @@ export function WorkshopView({
                 cardType="live"
                 workers={workers}
                 onAction={refresh}
-                appTheme={appTheme}
+
               />
             </div>
 
@@ -344,7 +297,7 @@ export function WorkshopView({
                 cardType="completed"
                 workers={workers}
                 onAction={refresh}
-                appTheme={appTheme}
+
               />
             </div>
           </div>
@@ -358,13 +311,13 @@ export function WorkshopView({
             cardType="ready"
             workers={workers}
             onAction={refresh}
-            appTheme={appTheme}
+
           />
 
           {/* Row 3: ALLOCATED — full width */}
           <AllocatedLane
             products={allocated}
-            appTheme={appTheme}
+
             activeStage={activeStage}
           />
         </div>
@@ -383,7 +336,6 @@ function SwimLane({
   cardType,
   workers,
   onAction,
-  appTheme,
 }: {
   title: string
   subtitle: string
@@ -392,9 +344,8 @@ function SwimLane({
   cardType: "live" | "ready" | "completed"
   workers: WorkshopWorker[]
   onAction: () => void
-  appTheme: AppTheme
 }) {
-  const styles = useLaneStyles(themeColor, appTheme)
+  const styles = useLaneStyles(themeColor)
 
   return (
     <div className={cn("rounded-lg border-2 overflow-hidden h-full", styles.border, styles.laneBg)}>
@@ -430,7 +381,7 @@ function SwimLane({
             themeColor={themeColor}
             workers={workers}
             onAction={onAction}
-            appTheme={appTheme}
+
           />
         ))}
       </div>
@@ -442,14 +393,12 @@ function SwimLane({
 
 function AllocatedLane({
   products,
-  appTheme,
   activeStage,
 }: {
   products: AllocatedProduct[]
-  appTheme: AppTheme
   activeStage: string
 }) {
-  const styles = useLaneStyles("slate", appTheme)
+  const styles = useLaneStyles("slate")
 
   return (
     <div className={cn("rounded-lg border-2 overflow-hidden", styles.border, styles.laneBg)}>
@@ -483,7 +432,7 @@ function AllocatedLane({
           <AllocatedCard
             key={product.id}
             product={product}
-            appTheme={appTheme}
+
           />
         ))}
       </div>
@@ -495,12 +444,10 @@ function AllocatedLane({
 
 function AllocatedCard({
   product,
-  appTheme,
 }: {
   product: AllocatedProduct
-  appTheme: AppTheme
 }) {
-  const styles = useLaneStyles("slate", appTheme)
+  const styles = useLaneStyles("slate")
   const currentStageName = product.productionStatus
     ? (ALL_STAGE_DISPLAY_NAMES[product.productionStatus] || product.productionStatus)
     : "Unknown"
@@ -551,17 +498,15 @@ function TaskCard({
   themeColor,
   workers,
   onAction,
-  appTheme,
 }: {
   task: WorkshopTask
   cardType: "live" | "ready" | "completed"
   themeColor: string
   workers: WorkshopWorker[]
   onAction: () => void
-  appTheme: AppTheme
 }) {
   const [actionLoading, setActionLoading] = useState(false)
-  const styles = useLaneStyles(themeColor as ThemeColor, appTheme)
+  const styles = useLaneStyles(themeColor as ThemeColor)
 
   async function handleStart() {
     setActionLoading(true)
@@ -686,10 +631,7 @@ function TaskCard({
             <button
               onClick={() => handleInspect("REJECTED")}
               disabled={actionLoading}
-              className={cn(
-                "rounded-md border border-red-500 px-2 py-1.5 text-xs font-semibold text-red-500 hover:bg-red-50 disabled:opacity-50 transition-colors",
-                appTheme !== "light" && "hover:bg-red-950"
-              )}
+              className="rounded-md border border-red-500 px-2 py-1.5 text-xs font-semibold text-red-500 hover:bg-red-50 disabled:opacity-50 transition-colors"
             >
               Reject
             </button>
