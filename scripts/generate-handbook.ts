@@ -427,7 +427,7 @@ h2("Production Dashboard")
 b("Design Complete column — Read-only incoming from design")
 b("Pending Handover column — Review and accept/return handovers")
 b("Active Projects — Products moving through workshop stages")
-b("Two product lanes: Normal and Mega (large/complex projects)")
+b("Single production flow with work stream categorisation (Utility, Bespoke, Community, Blast, Refurbishment)")
 
 h2("Workshop Stages")
 simpleTable(

@@ -336,7 +336,7 @@ async function main() {
   p("Projects can also be created manually from the Projects page via the New Project button. The form captures:")
   b("Project name (required)")
   b("Customer, Project Coordinator, Project Manager, Install Manager")
-  b("Priority (Normal, High, Critical) and Classification (Normal, Mega, Sub-contract)")
+  b("Priority (Normal, High, Critical) and Work Stream (Utility, Bespoke, Community, Blast, Refurbishment)")
   b("Project Type (Standard or Bespoke/Major)")
   b("Work Stream: Community, Utilities, Bespoke, Blast, Bund Containment, or Refurbishment")
   b("Sales Stage (Opportunity, Quoted, Order) and Contract Type (Standard, NEC, Framework Call-off, Other)")
@@ -383,7 +383,7 @@ async function main() {
   b("Design to Design Freeze: all design cards must be Complete")
   b("Manufacture to Installation: all products must have production completed")
   b("Installation to Review: all products must be through production")
-  p("Cards show project name, number, customer, assigned manager, product count, and priority/classification badges (ICU, Critical, High, Mega, Sub-contract).")
+  p("Cards show project name, number, customer, assigned manager, product count, priority badges (ICU, Critical, High), and work stream badges (Utility, Bespoke, Community, Blast, Refurbishment).")
 
   sub("Table View")
   p("A traditional tabular listing of all projects with sortable columns and filters. Useful for searching and bulk reviewing project data.")
@@ -448,7 +448,7 @@ async function main() {
   p("Projects are tagged with priority and classification for board filtering and visual emphasis:")
   bb("Priority:", "Normal (default), High (amber badge), Critical (red badge with flame icon)")
   bb("ICU Flag:", "a special escalation flag shown as a red siren badge — indicates the project needs immediate attention")
-  bb("Classification:", "Normal, Mega (purple badge — large/complex projects), Sub-contract (teal badge)")
+  bb("Work Stream:", "Utility (blue badge), Bespoke (purple badge), Community (green badge), Blast (orange badge), Refurbishment (teal badge)")
 
   sub("Work Streams")
   p("Each project belongs to one of MME's work streams, reflecting the type of engineering work:")

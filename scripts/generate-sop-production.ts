@@ -260,7 +260,7 @@ async function main() {
   sectionHeading("1", "Overview")
   p("The ETHOS Production & Workshop module manages the complete manufacturing lifecycle — from the moment a project is handed over from the Design team through every workshop stage until products are packed, dispatched, and the project advances to Installation.")
   p("Every product on a project is tracked individually through a defined stage pipeline. The module provides three complementary views: a high-level Production Board for project managers, a granular Workshop View for shopfloor supervisors, and a Dashboard with KPIs, drag-and-drop stage management, and filtering.")
-  p("Products are split into two production lanes: Configure to Order (standard products) and Innovate to Order (mega/bespoke products), each with their own swim lane on the dashboard.")
+  p("All products flow through a single production lane, categorised by work stream (Utility, Bespoke, Community, Blast, Refurbishment). ICU is a separate escalation flag for projects needing immediate attention.")
 
   // ── 2. Who Does What ──
   sectionHeading("2", "Who Does What")
@@ -469,7 +469,7 @@ async function main() {
 
   sub("Toolbar & Filtering")
   b("Search across project numbers, names, customers, and product descriptions")
-  b("Filter by classification: All, ICU, Mega, Normal")
+  b("Filter by work stream: All, ICU, Utility, Bespoke, Community, Blast, Refurbishment")
   b("Filter by schedule status: All, Overdue, At Risk (within 7 days), On Track")
   b("Filter by Project Manager")
   b("Filter by Client/Customer")
@@ -488,15 +488,14 @@ async function main() {
   b("Complete Production button when all products are finished")
 
   sub("Product Stage Grid (Drag-and-Drop)")
-  p("Below the project section, two product lane rows display all products grouped by stage:")
-  bb("Configure to Order —", "standard production flow (grey theme)")
-  bb("Innovate to Order —", "mega/bespoke products (indigo theme)")
+  p("Below the project section, a product stage grid displays all products grouped by their current workshop stage:")
+  bb("Work Stream badge —", "each product card shows its work stream (Utility, Bespoke, Community, Blast, Refurbishment)")
   b("Products can be dragged between stage columns to update their production status")
   b("Each column corresponds to a workshop stage: Cutting through Packing")
   b("Product cards show description, part code, project number, deadline, and schedule colour indicator")
 
   sub("Sub-Contract Section")
-  p("Projects classified as SUB_CONTRACT are displayed in a separate section below the main grid, keeping the primary view focused on in-house production.")
+  p("Products with a Sub-Contract production status are displayed in a separate section below the main grid, keeping the primary view focused on in-house production.")
 
   // ── 9. Scheduling & Time Estimates ──
   sectionHeading("9", "Scheduling & Time Estimates")
@@ -578,7 +577,7 @@ async function main() {
   td(["Sub-contracted projects", "Dashboard > Sub-Contract section (bottom)"], [n1, n2])
   td(["Drag products between stages", "Dashboard > Product Stage Grid (drag & drop)"], [n1, n2])
   td(["NCR from failed inspection", "Workshop > Completed lane > Reject > enters NCR reason"], [n1, n2])
-  td(["Filter production projects", "Dashboard > Toolbar (search, classification, status, PM, client)"], [n1, n2])
+  td(["Filter production projects", "Dashboard > Toolbar (search, work stream, status, PM, client)"], [n1, n2])
 
   // ════════════════════════════════════════════════════════════════
   //  HEADERS + FOOTERS (painted last via bufferPages)
