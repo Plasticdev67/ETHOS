@@ -2,8 +2,10 @@ import { prisma } from "@/lib/db"
 import { NextRequest, NextResponse } from "next/server"
 import { requireAuth, requirePermission } from "@/lib/api-auth"
 import { toDecimalOrDefault } from "@/lib/api-utils"
+import type { Prisma } from "@/generated/prisma/client"
 
-// Fields to return — explicit select breaks Prisma's recursive type inference
+// Fields to return — explicit select avoids Prisma's recursive type inference
+// on BaseBomItem (caused by self-referencing SpecBomModifier relation)
 const BOM_ITEM_SELECT = {
   id: true,
   variantId: true,
@@ -34,16 +36,19 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Pre-type the input to avoid Prisma's recursive type inference
+    const data: Prisma.BaseBomItemUncheckedCreateInput = {
+      variantId: body.variantId,
+      description: body.description,
+      category: body.category || "MATERIALS",
+      unitCost: toDecimalOrDefault(body.unitCost, 0),
+      quantity: toDecimalOrDefault(body.quantity, 1),
+      scalesWithSize: body.scalesWithSize ?? false,
+      sortOrder: body.sortOrder ?? 0,
+    }
+
     const item = await prisma.baseBomItem.create({
-      data: {
-        variantId: body.variantId,
-        description: body.description,
-        category: body.category || "MATERIALS",
-        unitCost: toDecimalOrDefault(body.unitCost, 0),
-        quantity: toDecimalOrDefault(body.quantity, 1),
-        scalesWithSize: body.scalesWithSize ?? false,
-        sortOrder: body.sortOrder ?? 0,
-      },
+      data,
       select: BOM_ITEM_SELECT,
     })
 
@@ -70,7 +75,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "id required" }, { status: 400 })
     }
 
-    const data: Record<string, unknown> = {}
+    const data: Prisma.BaseBomItemUncheckedUpdateInput = {}
     if (body.description !== undefined) data.description = body.description
     if (body.category !== undefined) data.category = body.category
     if (body.unitCost !== undefined) data.unitCost = toDecimalOrDefault(body.unitCost, 0)
