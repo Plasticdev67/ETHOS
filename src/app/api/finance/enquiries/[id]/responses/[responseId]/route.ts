@@ -74,123 +74,129 @@ export async function PATCH(
     }[]
   }
 
-  // Verify the response belongs to this enquiry
-  const existing = await prisma.enquiryResponse.findFirst({
-    where: { id: responseId, enquiryId: id },
-  })
+  try {
+    // Verify the response belongs to this enquiry
+    const existing = await prisma.enquiryResponse.findFirst({
+      where: { id: responseId, enquiryId: id },
+    })
 
-  if (!existing) {
-    return NextResponse.json({ error: "Response not found" }, { status: 404 })
-  }
+    if (!existing) {
+      return NextResponse.json({ error: "Response not found" }, { status: 404 })
+    }
 
-  // Build update data
-  const updateData: Record<string, unknown> = {}
-  if (status !== undefined) updateData.status = status
-  if (totalQuoted !== undefined) updateData.totalQuoted = totalQuoted
-  if (leadTimeDays !== undefined) updateData.leadTimeDays = leadTimeDays
-  if (validUntil !== undefined) updateData.validUntil = new Date(validUntil)
-  if (notes !== undefined) updateData.notes = notes
+    // Build update data
+    const updateData: Record<string, unknown> = {}
+    if (status !== undefined) updateData.status = status
+    if (totalQuoted !== undefined) updateData.totalQuoted = totalQuoted
+    if (leadTimeDays !== undefined) updateData.leadTimeDays = leadTimeDays
+    if (validUntil !== undefined) updateData.validUntil = new Date(validUntil)
+    if (notes !== undefined) updateData.notes = notes
 
-  // If entering quotes, set respondedAt and status to QUOTED
-  if (lines && lines.length > 0) {
-    updateData.respondedAt = new Date()
-    if (!status) updateData.status = "QUOTED"
-  }
+    // If entering quotes, set respondedAt and status to QUOTED
+    if (lines && lines.length > 0) {
+      updateData.respondedAt = new Date()
+      if (!status) updateData.status = "QUOTED"
+    }
 
-  // Update the response
-  await prisma.enquiryResponse.update({
-    where: { id: responseId },
-    data: updateData,
-  })
+    // Update the response
+    await prisma.enquiryResponse.update({
+      where: { id: responseId },
+      data: updateData,
+    })
 
-  // Upsert response lines if provided
-  if (lines && lines.length > 0) {
-    for (const line of lines) {
-      const totalPrice =
-        line.unitPrice !== undefined
-          ? line.unitPrice *
-            Number(
-              (
-                await prisma.enquiryLine.findUnique({
-                  where: { id: line.enquiryLineId },
-                  select: { quantity: true },
-                })
-              )?.quantity || 0
-            )
-          : undefined
+    // Upsert response lines if provided
+    if (lines && lines.length > 0) {
+      for (const line of lines) {
+        const totalPrice =
+          line.unitPrice !== undefined
+            ? line.unitPrice *
+              Number(
+                (
+                  await prisma.enquiryLine.findUnique({
+                    where: { id: line.enquiryLineId },
+                    select: { quantity: true },
+                  })
+                )?.quantity || 0
+              )
+            : undefined
 
-      // Check if response line already exists
-      const existingLine = await prisma.enquiryResponseLine.findFirst({
-        where: { responseId, enquiryLineId: line.enquiryLineId },
-      })
-
-      if (existingLine) {
-        await prisma.enquiryResponseLine.update({
-          where: { id: existingLine.id },
-          data: {
-            unitPrice: line.unitPrice ?? null,
-            totalPrice: totalPrice ?? null,
-            leadTimeDays: line.leadTimeDays ?? null,
-            available: line.available ?? true,
-            notes: line.notes ?? null,
-          },
+        // Check if response line already exists
+        const existingLine = await prisma.enquiryResponseLine.findFirst({
+          where: { responseId, enquiryLineId: line.enquiryLineId },
         })
-      } else {
-        await prisma.enquiryResponseLine.create({
-          data: {
-            responseId,
-            enquiryLineId: line.enquiryLineId,
-            unitPrice: line.unitPrice ?? null,
-            totalPrice: totalPrice ?? null,
-            leadTimeDays: line.leadTimeDays ?? null,
-            available: line.available ?? true,
-            notes: line.notes ?? null,
-          },
-        })
+
+        if (existingLine) {
+          await prisma.enquiryResponseLine.update({
+            where: { id: existingLine.id },
+            data: {
+              unitPrice: line.unitPrice ?? null,
+              totalPrice: totalPrice ?? null,
+              leadTimeDays: line.leadTimeDays ?? null,
+              available: line.available ?? true,
+              notes: line.notes ?? null,
+            },
+          })
+        } else {
+          await prisma.enquiryResponseLine.create({
+            data: {
+              responseId,
+              enquiryLineId: line.enquiryLineId,
+              unitPrice: line.unitPrice ?? null,
+              totalPrice: totalPrice ?? null,
+              leadTimeDays: line.leadTimeDays ?? null,
+              available: line.available ?? true,
+              notes: line.notes ?? null,
+            },
+          })
+        }
       }
     }
-  }
 
-  // Check if all responses are now quoted to update enquiry status
-  const allResponses = await prisma.enquiryResponse.findMany({
-    where: { enquiryId: id },
-    select: { status: true },
-  })
-
-  const allQuoted = allResponses.every(
-    (r) => r.status === "QUOTED" || r.status === "DECLINED"
-  )
-  const someQuoted = allResponses.some(
-    (r) => r.status === "QUOTED" || r.status === "DECLINED"
-  )
-
-  if (allQuoted) {
-    await prisma.procurementEnquiry.update({
-      where: { id },
-      data: { status: "ALL_RESPONDED" },
+    // Check if all responses are now quoted to update enquiry status
+    const allResponses = await prisma.enquiryResponse.findMany({
+      where: { enquiryId: id },
+      select: { status: true },
     })
-  } else if (someQuoted) {
-    await prisma.procurementEnquiry.update({
-      where: { id },
-      data: { status: "PARTIALLY_RESPONDED" },
-    })
-  }
 
-  // Fetch and return the updated response
-  const result = await prisma.enquiryResponse.findUnique({
-    where: { id: responseId },
-    include: {
-      supplier: { select: { id: true, name: true } },
-      lines: {
-        include: {
-          enquiryLine: {
-            select: { id: true, description: true, partNumber: true, quantity: true, unit: true },
+    const allQuoted = allResponses.every(
+      (r) => r.status === "QUOTED" || r.status === "DECLINED"
+    )
+    const someQuoted = allResponses.some(
+      (r) => r.status === "QUOTED" || r.status === "DECLINED"
+    )
+
+    if (allQuoted) {
+      await prisma.procurementEnquiry.update({
+        where: { id },
+        data: { status: "ALL_RESPONDED" },
+      })
+    } else if (someQuoted) {
+      await prisma.procurementEnquiry.update({
+        where: { id },
+        data: { status: "PARTIALLY_RESPONDED" },
+      })
+    }
+
+    // Fetch and return the updated response
+    const result = await prisma.enquiryResponse.findUnique({
+      where: { id: responseId },
+      include: {
+        supplier: { select: { id: true, name: true } },
+        lines: {
+          include: {
+            enquiryLine: {
+              select: { id: true, description: true, partNumber: true, quantity: true, unit: true },
+            },
           },
         },
       },
-    },
-  })
+    })
 
-  revalidatePath("/purchasing/enquiries")
-  return NextResponse.json(result)
+    revalidatePath("/purchasing/enquiries")
+    return NextResponse.json(result)
+
+  } catch (error) {
+    console.error("PATCH /api/finance/enquiries/[id]/responses/[responseId] error:", error)
+    return NextResponse.json({ error: "Failed to update response" }, { status: 500 })
+  }
 }

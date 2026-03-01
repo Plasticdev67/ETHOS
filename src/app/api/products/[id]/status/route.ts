@@ -53,34 +53,40 @@ export async function PATCH(
 
   const data: Record<string, unknown> = {}
 
-  for (const [key, value] of Object.entries(body)) {
-    if (value === undefined) continue
+  try {
+    for (const [key, value] of Object.entries(body)) {
+      if (value === undefined) continue
 
-    if (ENUM_FIELDS.has(key)) {
-      data[key] = value
-    } else if (STRING_FIELDS.has(key)) {
-      data[key] = value === null ? null : String(value)
-    } else if (DATE_FIELDS.has(key)) {
-      data[key] = value ? new Date(value as string) : null
-    } else if (DECIMAL_FIELDS.has(key)) {
-      data[key] = value === null || value === "" ? null : Number(value)
-    } else if (BOOLEAN_FIELDS.has(key)) {
-      data[key] = Boolean(value)
-    } else if (key === "quantity") {
-      data[key] = Number(value) || 1
-    } else if (key === "allocatedDesignerId" || key === "coordinatorId" || key === "catalogueItemId") {
-      data[key] = value || null
+      if (ENUM_FIELDS.has(key)) {
+        data[key] = value
+      } else if (STRING_FIELDS.has(key)) {
+        data[key] = value === null ? null : String(value)
+      } else if (DATE_FIELDS.has(key)) {
+        data[key] = value ? new Date(value as string) : null
+      } else if (DECIMAL_FIELDS.has(key)) {
+        data[key] = value === null || value === "" ? null : Number(value)
+      } else if (BOOLEAN_FIELDS.has(key)) {
+        data[key] = Boolean(value)
+      } else if (key === "quantity") {
+        data[key] = Number(value) || 1
+      } else if (key === "allocatedDesignerId" || key === "coordinatorId" || key === "catalogueItemId") {
+        data[key] = value || null
+      }
     }
+
+    if (Object.keys(data).length === 0) {
+      return NextResponse.json({ error: "No valid fields to update" }, { status: 400 })
+    }
+
+    const product = await prisma.product.update({
+      where: { id },
+      data,
+    })
+
+    return NextResponse.json(JSON.parse(JSON.stringify(product)))
+
+  } catch (error) {
+    console.error("PATCH /api/products/[id]/status error:", error)
+    return NextResponse.json({ error: "Failed to update product status" }, { status: 500 })
   }
-
-  if (Object.keys(data).length === 0) {
-    return NextResponse.json({ error: "No valid fields to update" }, { status: 400 })
-  }
-
-  const product = await prisma.product.update({
-    where: { id },
-    data,
-  })
-
-  return NextResponse.json(JSON.parse(JSON.stringify(product)))
 }

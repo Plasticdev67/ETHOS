@@ -25,10 +25,16 @@ export async function POST(request: NextRequest) {
     })
   )
 
-  await Promise.all(updates)
+  try {
+    await Promise.all(updates)
 
-  revalidatePath("/production")
-  revalidatePath("/production/dashboard")
+    revalidatePath("/production")
+    revalidatePath("/production/dashboard")
 
-  return NextResponse.json({ success: true, count: taskIds.length })
+    return NextResponse.json({ success: true, count: taskIds.length })
+
+  } catch (error) {
+    console.error("POST /api/production/tasks/reorder error:", error)
+    return NextResponse.json({ error: "Failed to reorder tasks" }, { status: 500 })
+  }
 }

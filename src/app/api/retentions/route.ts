@@ -27,16 +27,22 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json()
 
-  const retention = await prisma.retentionHoldback.create({
-    data: {
-      projectId: body.projectId,
-      retentionPercent: toDecimal(body.retentionPercent),
-      retentionAmount: toDecimal(body.retentionAmount),
-      releaseDate: body.releaseDate ? new Date(body.releaseDate) : null,
-      status: body.status || "HELD",
-      notes: body.notes || null,
-    },
-  })
-  revalidatePath("/finance")
-  return NextResponse.json(retention, { status: 201 })
+  try {
+    const retention = await prisma.retentionHoldback.create({
+      data: {
+        projectId: body.projectId,
+        retentionPercent: toDecimal(body.retentionPercent),
+        retentionAmount: toDecimal(body.retentionAmount),
+        releaseDate: body.releaseDate ? new Date(body.releaseDate) : null,
+        status: body.status || "HELD",
+        notes: body.notes || null,
+      },
+    })
+    revalidatePath("/finance")
+    return NextResponse.json(retention, { status: 201 })
+
+  } catch (error) {
+    console.error("POST /api/retentions error:", error)
+    return NextResponse.json({ error: "Failed to create retention" }, { status: 500 })
+  }
 }

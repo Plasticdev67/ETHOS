@@ -19,21 +19,27 @@ export async function POST(request: NextRequest) {
 
   const token = randomBytes(32).toString("hex")
   const expiresAt = new Date()
-  expiresAt.setDate(expiresAt.getDate() + (expiryDays || 30))
+  try {
+    expiresAt.setDate(expiresAt.getDate() + (expiryDays || 30))
 
-  const portalToken = await prisma.customerPortalToken.create({
-    data: {
-      customerId,
-      projectId: projectId || null,
-      token,
-      expiresAt,
-    },
-  })
+    const portalToken = await prisma.customerPortalToken.create({
+      data: {
+        customerId,
+        projectId: projectId || null,
+        token,
+        expiresAt,
+      },
+    })
 
-  return NextResponse.json({
-    ...portalToken,
-    portalUrl: `/portal/${token}`,
-  })
+    return NextResponse.json({
+      ...portalToken,
+      portalUrl: `/portal/${token}`,
+    })
+
+  } catch (error) {
+    console.error("POST /api/portal error:", error)
+    return NextResponse.json({ error: "Failed to verify portal token" }, { status: 500 })
+  }
 }
 
 // List portal tokens

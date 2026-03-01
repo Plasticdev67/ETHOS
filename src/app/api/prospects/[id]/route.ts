@@ -50,12 +50,17 @@ export async function PATCH(
     }
   }
 
-  const prospect = await prisma.prospect.update({
-    where: { id },
-    data,
-  })
+  try {
+    const prospect = await prisma.prospect.update({
+      where: { id },
+      data,
+    })
 
-  return NextResponse.json(prospect)
+    return NextResponse.json(prospect)
+  } catch (error) {
+    console.error("PATCH /api/prospects/[id] error:", error)
+    return NextResponse.json({ error: "Failed to update prospect" }, { status: 500 })
+  }
 }
 
 export async function DELETE(
@@ -68,6 +73,12 @@ export async function DELETE(
   if (denied) return denied
 
   const { id } = await params
-  await prisma.prospect.delete({ where: { id } })
-  return NextResponse.json({ success: true })
+  try {
+    await prisma.prospect.delete({ where: { id } })
+    return NextResponse.json({ success: true })
+
+  } catch (error) {
+    console.error("DELETE /api/prospects/[id] error:", error)
+    return NextResponse.json({ error: "Failed to delete prospect" }, { status: 500 })
+  }
 }

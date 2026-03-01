@@ -134,32 +134,37 @@ export async function PATCH(
     data.deadHistory = history
   }
 
-  const opportunity = await prisma.opportunity.update({
-    where: { id },
-    data,
-    include: { convertedProject: { select: { id: true } } },
-  })
+  try {
+    const opportunity = await prisma.opportunity.update({
+      where: { id },
+      data,
+      include: { convertedProject: { select: { id: true } } },
+    })
 
-  // Sync linked project status when CRM status changes
-  if (body.status && opportunity.convertedProject) {
-    const statusMap: Record<string, "OPPORTUNITY" | "QUOTATION" | "DESIGN"> = {
-      ACTIVE_LEAD: "OPPORTUNITY",
-      PENDING_APPROVAL: "QUOTATION",
-      QUOTED: "QUOTATION",
-      WON: "DESIGN",
+    // Sync linked project status when CRM status changes
+    if (body.status && opportunity.convertedProject) {
+      const statusMap: Record<string, "OPPORTUNITY" | "QUOTATION" | "DESIGN"> = {
+        ACTIVE_LEAD: "OPPORTUNITY",
+        PENDING_APPROVAL: "QUOTATION",
+        QUOTED: "QUOTATION",
+        WON: "DESIGN",
+      }
+      const projectStatus = statusMap[body.status as string]
+      if (projectStatus) {
+        await prisma.project.update({
+          where: { id: opportunity.convertedProject.id },
+          data: { projectStatus },
+        })
+      }
     }
-    const projectStatus = statusMap[body.status as string]
-    if (projectStatus) {
-      await prisma.project.update({
-        where: { id: opportunity.convertedProject.id },
-        data: { projectStatus },
-      })
-    }
+
+    revalidatePath("/crm")
+
+    return NextResponse.json(opportunity)
+  } catch (error) {
+    console.error("PATCH /api/opportunities/[id] error:", error)
+    return NextResponse.json({ error: "Failed to update opportunity" }, { status: 500 })
   }
-
-  revalidatePath("/crm")
-
-  return NextResponse.json(opportunity)
 }
 
 export async function DELETE(
@@ -172,9 +177,15 @@ export async function DELETE(
   if (denied) return denied
 
   const { id } = await params
-  await prisma.opportunity.delete({ where: { id } })
 
-  revalidatePath("/crm")
+  try {
+    await prisma.opportunity.delete({ where: { id } })
 
-  return NextResponse.json({ success: true })
+    revalidatePath("/crm")
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error("DELETE /api/opportunities/[id] error:", error)
+    return NextResponse.json({ error: "Failed to delete opportunity" }, { status: 500 })
+  }
 }

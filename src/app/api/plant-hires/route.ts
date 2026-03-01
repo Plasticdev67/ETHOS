@@ -27,18 +27,24 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json()
 
-  const hire = await prisma.plantHire.create({
-    data: {
-      projectId: body.projectId,
-      supplierId: body.supplierId || null,
-      description: body.description,
-      hireStart: body.hireStart ? new Date(body.hireStart) : null,
-      hireEnd: body.hireEnd ? new Date(body.hireEnd) : null,
-      weeklyRate: toDecimal(body.weeklyRate),
-      totalCost: toDecimal(body.totalCost),
-      status: body.status || "ON_HIRE",
-      notes: body.notes || null,
-    },
-  })
-  return NextResponse.json(hire, { status: 201 })
+  try {
+    const hire = await prisma.plantHire.create({
+      data: {
+        projectId: body.projectId,
+        supplierId: body.supplierId || null,
+        description: body.description,
+        hireStart: body.hireStart ? new Date(body.hireStart) : null,
+        hireEnd: body.hireEnd ? new Date(body.hireEnd) : null,
+        weeklyRate: toDecimal(body.weeklyRate),
+        totalCost: toDecimal(body.totalCost),
+        status: body.status || "ON_HIRE",
+        notes: body.notes || null,
+      },
+    })
+    return NextResponse.json(hire, { status: 201 })
+
+  } catch (error) {
+    console.error("POST /api/plant-hires error:", error)
+    return NextResponse.json({ error: "Failed to create plant hire" }, { status: 500 })
+  }
 }

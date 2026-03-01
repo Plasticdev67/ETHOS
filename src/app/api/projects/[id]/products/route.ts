@@ -14,22 +14,28 @@ export async function POST(
   const { id: projectId } = await params
   const body = await request.json()
 
-  const product = await prisma.product.create({
-    data: {
-      projectId,
-      catalogueItemId: body.catalogueItemId || null,
-      partCode: body.partCode,
-      description: body.description,
-      additionalDetails: body.additionalDetails || null,
-      quantity: body.quantity || 1,
-      allocatedDesignerId: body.allocatedDesignerId || null,
-      coordinatorId: body.coordinatorId || null,
-      requiredCompletionDate: body.requiredCompletionDate ? new Date(body.requiredCompletionDate) : null,
-      currentDepartment: "PLANNING",
-    },
-  })
+  try {
+    const product = await prisma.product.create({
+      data: {
+        projectId,
+        catalogueItemId: body.catalogueItemId || null,
+        partCode: body.partCode,
+        description: body.description,
+        additionalDetails: body.additionalDetails || null,
+        quantity: body.quantity || 1,
+        allocatedDesignerId: body.allocatedDesignerId || null,
+        coordinatorId: body.coordinatorId || null,
+        requiredCompletionDate: body.requiredCompletionDate ? new Date(body.requiredCompletionDate) : null,
+        currentDepartment: "PLANNING",
+      },
+    })
 
-  return NextResponse.json(product, { status: 201 })
+    return NextResponse.json(product, { status: 201 })
+
+  } catch (error) {
+    console.error("POST /api/projects/[id]/products error:", error)
+    return NextResponse.json({ error: "Failed to add product to project" }, { status: 500 })
+  }
 }
 
 export async function GET(

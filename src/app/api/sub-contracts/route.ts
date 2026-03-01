@@ -29,18 +29,24 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json()
 
-  const sub = await prisma.subContractorWork.create({
-    data: {
-      projectId: body.projectId,
-      supplierId: body.supplierId || null,
-      productId: body.productId || null,
-      description: body.description,
-      agreedValue: toDecimal(body.agreedValue),
-      invoicedToDate: toDecimal(body.invoicedToDate),
-      status: body.status || "IN_PROGRESS",
-      notes: body.notes || null,
-    },
-  })
-  revalidatePath("/finance")
-  return NextResponse.json(sub, { status: 201 })
+  try {
+    const sub = await prisma.subContractorWork.create({
+      data: {
+        projectId: body.projectId,
+        supplierId: body.supplierId || null,
+        productId: body.productId || null,
+        description: body.description,
+        agreedValue: toDecimal(body.agreedValue),
+        invoicedToDate: toDecimal(body.invoicedToDate),
+        status: body.status || "IN_PROGRESS",
+        notes: body.notes || null,
+      },
+    })
+    revalidatePath("/finance")
+    return NextResponse.json(sub, { status: 201 })
+
+  } catch (error) {
+    console.error("POST /api/sub-contracts error:", error)
+    return NextResponse.json({ error: "Failed to create sub-contract" }, { status: 500 })
+  }
 }

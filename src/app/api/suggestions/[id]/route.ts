@@ -14,12 +14,18 @@ export async function DELETE(
 
   const { id } = await params
 
-  const existing = await prisma.suggestion.findUnique({ where: { id } })
-  if (!existing) {
-    return NextResponse.json({ error: "Suggestion not found" }, { status: 404 })
+  try {
+    const existing = await prisma.suggestion.findUnique({ where: { id } })
+    if (!existing) {
+      return NextResponse.json({ error: "Suggestion not found" }, { status: 404 })
+    }
+
+    await prisma.suggestion.delete({ where: { id } })
+
+    return NextResponse.json({ success: true })
+
+  } catch (error) {
+    console.error("DELETE /api/suggestions/[id] error:", error)
+    return NextResponse.json({ error: "Failed to delete suggestion" }, { status: 500 })
   }
-
-  await prisma.suggestion.delete({ where: { id } })
-
-  return NextResponse.json({ success: true })
 }

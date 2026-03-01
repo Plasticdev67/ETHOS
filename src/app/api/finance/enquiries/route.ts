@@ -64,57 +64,63 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  // Auto-generate enquiry number using sequence counter
-  const sequence = await prisma.sequenceCounter.upsert({
-    where: { name: "enquiry" },
-    create: { name: "enquiry", current: 1, prefix: "ENQ-", padding: 6 },
-    update: { current: { increment: 1 } },
-  })
+  try {
+    // Auto-generate enquiry number using sequence counter
+    const sequence = await prisma.sequenceCounter.upsert({
+      where: { name: "enquiry" },
+      create: { name: "enquiry", current: 1, prefix: "ENQ-", padding: 6 },
+      update: { current: { increment: 1 } },
+    })
 
-  const nextNum = sequence.current
-  const enquiryNumber = `ENQ-${String(nextNum).padStart(6, "0")}`
+    const nextNum = sequence.current
+    const enquiryNumber = `ENQ-${String(nextNum).padStart(6, "0")}`
 
-  // Fetch BOM lines
-  const bomLines = await prisma.designBomLine.findMany({
-    where: { id: { in: bomLineIds } },
-    orderBy: { sortOrder: "asc" },
-  })
+    // Fetch BOM lines
+    const bomLines = await prisma.designBomLine.findMany({
+      where: { id: { in: bomLineIds } },
+      orderBy: { sortOrder: "asc" },
+    })
 
-  // Create enquiry with lines and responses
-  const enquiry = await prisma.procurementEnquiry.create({
-    data: {
-      enquiryNumber,
-      projectId,
-      subject,
-      notes: notes || null,
-      status: "DRAFT",
-      lines: {
-        create: bomLines.map((bl, idx) => ({
-          bomLineId: bl.id,
-          description: bl.description,
-          partNumber: bl.partNumber || null,
-          quantity: bl.quantity,
-          unit: bl.unit,
-          notes: bl.notes || null,
-          sortOrder: idx,
-        })),
+    // Create enquiry with lines and responses
+    const enquiry = await prisma.procurementEnquiry.create({
+      data: {
+        enquiryNumber,
+        projectId,
+        subject,
+        notes: notes || null,
+        status: "DRAFT",
+        lines: {
+          create: bomLines.map((bl, idx) => ({
+            bomLineId: bl.id,
+            description: bl.description,
+            partNumber: bl.partNumber || null,
+            quantity: bl.quantity,
+            unit: bl.unit,
+            notes: bl.notes || null,
+            sortOrder: idx,
+          })),
+        },
+        responses: {
+          create: supplierIds.map((supplierId: string) => ({
+            supplierId,
+            status: "PENDING",
+          })),
+        },
       },
-      responses: {
-        create: supplierIds.map((supplierId: string) => ({
-          supplierId,
-          status: "PENDING",
-        })),
+      include: {
+        project: { select: { id: true, projectNumber: true, name: true } },
+        lines: true,
+        responses: {
+          include: { supplier: { select: { id: true, name: true } } },
+        },
       },
-    },
-    include: {
-      project: { select: { id: true, projectNumber: true, name: true } },
-      lines: true,
-      responses: {
-        include: { supplier: { select: { id: true, name: true } } },
-      },
-    },
-  })
+    })
 
-  revalidatePath("/purchasing/enquiries")
-  return NextResponse.json(enquiry, { status: 201 })
+    revalidatePath("/purchasing/enquiries")
+    return NextResponse.json(enquiry, { status: 201 })
+
+  } catch (error) {
+    console.error("POST /api/finance/enquiries error:", error)
+    return NextResponse.json({ error: "Failed to create enquiry" }, { status: 500 })
+  }
 }

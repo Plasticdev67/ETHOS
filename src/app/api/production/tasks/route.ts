@@ -68,35 +68,41 @@ export async function POST(request: NextRequest) {
   }
 
   // Auto-set queue position to max + 1
-  const maxPos = await prisma.productionTask.findFirst({
-    where: { stage },
-    orderBy: { queuePosition: "desc" },
-    select: { queuePosition: true },
-  })
-  const queuePosition = (maxPos?.queuePosition ?? -1) + 1
+  try {
+    const maxPos = await prisma.productionTask.findFirst({
+      where: { stage },
+      orderBy: { queuePosition: "desc" },
+      select: { queuePosition: true },
+    })
+    const queuePosition = (maxPos?.queuePosition ?? -1) + 1
 
-  const task = await prisma.productionTask.create({
-    data: {
-      productId,
-      projectId,
-      stage,
-      queuePosition,
-      estimatedMins: estimatedMins || null,
-      assignedTo: assignedTo || null,
-      notes: notes || null,
-    },
-  })
+    const task = await prisma.productionTask.create({
+      data: {
+        productId,
+        projectId,
+        stage,
+        queuePosition,
+        estimatedMins: estimatedMins || null,
+        assignedTo: assignedTo || null,
+        notes: notes || null,
+      },
+    })
 
-  await logAudit({
-    action: "CREATE",
-    entity: "ProductionTask",
-    entityId: task.id,
-    field: "stage",
-    newValue: stage,
-  })
+    await logAudit({
+      action: "CREATE",
+      entity: "ProductionTask",
+      entityId: task.id,
+      field: "stage",
+      newValue: stage,
+    })
 
-  revalidatePath("/production")
-  revalidatePath("/production/dashboard")
+    revalidatePath("/production")
+    revalidatePath("/production/dashboard")
 
-  return NextResponse.json(task, { status: 201 })
+    return NextResponse.json(task, { status: 201 })
+
+  } catch (error) {
+    console.error("POST /api/production/tasks error:", error)
+    return NextResponse.json({ error: "Failed to create task" }, { status: 500 })
+  }
 }

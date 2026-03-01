@@ -30,89 +30,95 @@ export async function POST(
 
   // Fetch variant with BOM and type spec data
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const variant = await (prisma.productVariant as any).findUnique({
-    where: { id: variantId },
-    include: {
-      type: {
-        include: {
-          specFields: {
-            include: {
-              choices: true,
+  try {
+    const variant = await (prisma.productVariant as any).findUnique({
+      where: { id: variantId },
+      include: {
+        type: {
+          include: {
+            specFields: {
+              include: {
+                choices: true,
+              },
             },
           },
         },
-      },
-      baseBomItems: {
-        orderBy: { sortOrder: "asc" },
-        include: {
-          modifiers: true,
+        baseBomItems: {
+          orderBy: { sortOrder: "asc" },
+          include: {
+            modifiers: true,
+          },
         },
       },
-    },
-  })
+    })
 
-  if (!variant) {
-    return NextResponse.json({ error: "Variant not found" }, { status: 404 })
+    if (!variant) {
+      return NextResponse.json({ error: "Variant not found" }, { status: 404 })
+    }
+
+    // Collect all choices and modifiers
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const allChoices: CatalogueSpecChoice[] = variant.type.specFields.flatMap((f: any) =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      f.choices.map((c: any) => ({
+        id: c.id,
+        fieldId: c.fieldId,
+        label: c.label,
+        value: c.value,
+        isDefault: c.isDefault,
+        costModifier: Number(c.costModifier),
+        costMultiplier: Number(c.costMultiplier),
+        sortOrder: c.sortOrder,
+      }))
+    )
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const baseBom: BomItem[] = variant.baseBomItems.map((b: any) => ({
+      id: b.id,
+      variantId: b.variantId,
+      description: b.description,
+      category: b.category as BomItem["category"],
+      unitCost: Number(b.unitCost),
+      quantity: Number(b.quantity),
+      scalesWithSize: b.scalesWithSize,
+      sortOrder: b.sortOrder,
+    }))
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const modifiers: BomModifier[] = variant.baseBomItems.flatMap((b: any) =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      b.modifiers.map((m: any) => ({
+        id: m.id,
+        bomItemId: m.bomItemId,
+        choiceId: m.choiceId,
+        action: m.action as BomModifier["action"],
+        value: Number(m.value),
+        description: m.description,
+      }))
+    )
+
+    const result = computeBomCost(
+      baseBom,
+      specSelections || {},
+      modifiers,
+      allChoices,
+      width ?? variant.defaultWidth,
+      height ?? variant.defaultHeight,
+      variant.defaultWidth,
+      variant.defaultHeight
+    )
+
+    return NextResponse.json({
+      variantCode: variant.code,
+      variantName: variant.name,
+      defaultWidth: variant.defaultWidth,
+      defaultHeight: variant.defaultHeight,
+      computedBom: result.items,
+      computedCost: result.totalCost,
+    })
+
+  } catch (error) {
+    console.error("POST /api/quotes/[id]/lines/configure error:", error)
+    return NextResponse.json({ error: "Failed to configure quote line" }, { status: 500 })
   }
-
-  // Collect all choices and modifiers
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const allChoices: CatalogueSpecChoice[] = variant.type.specFields.flatMap((f: any) =>
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    f.choices.map((c: any) => ({
-      id: c.id,
-      fieldId: c.fieldId,
-      label: c.label,
-      value: c.value,
-      isDefault: c.isDefault,
-      costModifier: Number(c.costModifier),
-      costMultiplier: Number(c.costMultiplier),
-      sortOrder: c.sortOrder,
-    }))
-  )
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const baseBom: BomItem[] = variant.baseBomItems.map((b: any) => ({
-    id: b.id,
-    variantId: b.variantId,
-    description: b.description,
-    category: b.category as BomItem["category"],
-    unitCost: Number(b.unitCost),
-    quantity: Number(b.quantity),
-    scalesWithSize: b.scalesWithSize,
-    sortOrder: b.sortOrder,
-  }))
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const modifiers: BomModifier[] = variant.baseBomItems.flatMap((b: any) =>
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    b.modifiers.map((m: any) => ({
-      id: m.id,
-      bomItemId: m.bomItemId,
-      choiceId: m.choiceId,
-      action: m.action as BomModifier["action"],
-      value: Number(m.value),
-      description: m.description,
-    }))
-  )
-
-  const result = computeBomCost(
-    baseBom,
-    specSelections || {},
-    modifiers,
-    allChoices,
-    width ?? variant.defaultWidth,
-    height ?? variant.defaultHeight,
-    variant.defaultWidth,
-    variant.defaultHeight
-  )
-
-  return NextResponse.json({
-    variantCode: variant.code,
-    variantName: variant.name,
-    defaultWidth: variant.defaultWidth,
-    defaultHeight: variant.defaultHeight,
-    computedBom: result.items,
-    computedCost: result.totalCost,
-  })
 }

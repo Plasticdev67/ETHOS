@@ -21,30 +21,36 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
   }
 
-  const startDate = new Date(newStartDate)
+  try {
+    const startDate = new Date(newStartDate)
 
-  if (stage === "DESIGN") {
-    // Update design planned start
-    await prisma.product.update({
-      where: { id: productId },
-      data: { designPlannedStart: startDate },
-    })
+    if (stage === "DESIGN") {
+      // Update design planned start
+      await prisma.product.update({
+        where: { id: productId },
+        data: { designPlannedStart: startDate },
+      })
 
-    // If designer changed, update the design card
-    if (designerId) {
-      await prisma.productDesignCard.updateMany({
-        where: { productId },
-        data: { assignedDesignerId: designerId },
+      // If designer changed, update the design card
+      if (designerId) {
+        await prisma.productDesignCard.updateMany({
+          where: { productId },
+          data: { assignedDesignerId: designerId },
+        })
+      }
+    } else {
+      // For production stages, update the product's production planned start
+      // This is a hint for the scheduler
+      await prisma.product.update({
+        where: { id: productId },
+        data: { productionPlannedStart: startDate },
       })
     }
-  } else {
-    // For production stages, update the product's production planned start
-    // This is a hint for the scheduler
-    await prisma.product.update({
-      where: { id: productId },
-      data: { productionPlannedStart: startDate },
-    })
-  }
 
-  return NextResponse.json({ ok: true })
+    return NextResponse.json({ ok: true })
+
+  } catch (error) {
+    console.error("PATCH /api/planning/aggregated/schedule error:", error)
+    return NextResponse.json({ error: "Failed to update schedule" }, { status: 500 })
+  }
 }

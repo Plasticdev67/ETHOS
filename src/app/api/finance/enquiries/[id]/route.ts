@@ -68,22 +68,27 @@ export async function PATCH(
   if (notes !== undefined) updateData.notes = notes
   if (status !== undefined) updateData.status = status
 
-  const enquiry = await prisma.procurementEnquiry.update({
-    where: { id },
-    data: updateData,
-    include: {
-      project: { select: { id: true, projectNumber: true, name: true } },
-      lines: { orderBy: { sortOrder: "asc" } },
-      responses: {
-        include: {
-          supplier: { select: { id: true, name: true } },
+  try {
+    const enquiry = await prisma.procurementEnquiry.update({
+      where: { id },
+      data: updateData,
+      include: {
+        project: { select: { id: true, projectNumber: true, name: true } },
+        lines: { orderBy: { sortOrder: "asc" } },
+        responses: {
+          include: {
+            supplier: { select: { id: true, name: true } },
+          },
         },
       },
-    },
-  })
+    })
 
-  revalidatePath("/purchasing/enquiries")
-  return NextResponse.json(enquiry)
+    revalidatePath("/purchasing/enquiries")
+    return NextResponse.json(enquiry)
+  } catch (error) {
+    console.error("PATCH /api/finance/enquiries/[id] error:", error)
+    return NextResponse.json({ error: "Failed to update enquiry" }, { status: 500 })
+  }
 }
 
 export async function DELETE(
@@ -98,24 +103,30 @@ export async function DELETE(
   const { id } = await params
 
   // Only allow deleting DRAFT enquiries
-  const enquiry = await prisma.procurementEnquiry.findUnique({
-    where: { id },
-    select: { status: true },
-  })
+  try {
+    const enquiry = await prisma.procurementEnquiry.findUnique({
+      where: { id },
+      select: { status: true },
+    })
 
-  if (!enquiry) {
-    return NextResponse.json({ error: "Enquiry not found" }, { status: 404 })
+    if (!enquiry) {
+      return NextResponse.json({ error: "Enquiry not found" }, { status: 404 })
+    }
+
+    if (enquiry.status !== "DRAFT") {
+      return NextResponse.json(
+        { error: "Only DRAFT enquiries can be deleted" },
+        { status: 400 }
+      )
+    }
+
+    await prisma.procurementEnquiry.delete({ where: { id } })
+
+    revalidatePath("/purchasing/enquiries")
+    return NextResponse.json({ success: true })
+
+  } catch (error) {
+    console.error("DELETE /api/finance/enquiries/[id] error:", error)
+    return NextResponse.json({ error: "Failed to delete enquiry" }, { status: 500 })
   }
-
-  if (enquiry.status !== "DRAFT") {
-    return NextResponse.json(
-      { error: "Only DRAFT enquiries can be deleted" },
-      { status: 400 }
-    )
-  }
-
-  await prisma.procurementEnquiry.delete({ where: { id } })
-
-  revalidatePath("/purchasing/enquiries")
-  return NextResponse.json({ success: true })
 }

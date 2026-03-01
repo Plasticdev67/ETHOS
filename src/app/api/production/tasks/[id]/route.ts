@@ -54,40 +54,46 @@ export async function PATCH(
   const { id } = await params
   const body = await request.json()
 
-  const task = await prisma.productionTask.findUnique({ where: { id } })
-  if (!task) {
-    return NextResponse.json({ error: "Task not found" }, { status: 404 })
-  }
-
-  const allowedFields = [
-    "status",
-    "assignedTo",
-    "queuePosition",
-    "notes",
-    "estimatedMins",
-  ]
-  const data: Record<string, unknown> = {}
-  for (const field of allowedFields) {
-    if (body[field] !== undefined) {
-      data[field] = body[field]
+  try {
+    const task = await prisma.productionTask.findUnique({ where: { id } })
+    if (!task) {
+      return NextResponse.json({ error: "Task not found" }, { status: 404 })
     }
-  }
 
-  const updated = await prisma.productionTask.update({
-    where: { id },
-    data,
-  })
+    const allowedFields = [
+      "status",
+      "assignedTo",
+      "queuePosition",
+      "notes",
+      "estimatedMins",
+    ]
+    const data: Record<string, unknown> = {}
+    for (const field of allowedFields) {
+      if (body[field] !== undefined) {
+        data[field] = body[field]
+      }
+    }
 
-  if (data.status) {
-    await logAudit({
-      action: "UPDATE",
-      entity: "ProductionTask",
-      entityId: id,
-      field: "status",
-      oldValue: task.status,
-      newValue: data.status as string,
+    const updated = await prisma.productionTask.update({
+      where: { id },
+      data,
     })
-  }
 
-  return NextResponse.json(updated)
+    if (data.status) {
+      await logAudit({
+        action: "UPDATE",
+        entity: "ProductionTask",
+        entityId: id,
+        field: "status",
+        oldValue: task.status,
+        newValue: data.status as string,
+      })
+    }
+
+    return NextResponse.json(updated)
+
+  } catch (error) {
+    console.error("PATCH /api/production/tasks/[id] error:", error)
+    return NextResponse.json({ error: "Failed to update task" }, { status: 500 })
+  }
 }

@@ -21,51 +21,57 @@ export async function POST(
   }
 
   // Update the PO line
-  const line = await prisma.purchaseOrderLine.findUnique({
-    where: { id: lineId },
-    select: { poId: true, quantity: true },
-  })
-
-  if (!line || line.poId !== poId) {
-    return NextResponse.json({ error: "Line not found" }, { status: 404 })
-  }
-
-  const qty = parseInt(receivedQty, 10)
-  const fullyReceived = qty >= line.quantity
-
-  await prisma.purchaseOrderLine.update({
-    where: { id: lineId },
-    data: {
-      receivedQty: qty,
-      receivedDate: new Date(),
-      receivedNotes: notes || null,
-      received: fullyReceived,
-    },
-  })
-
-  // Check all lines on this PO to update PO status
-  const allLines = await prisma.purchaseOrderLine.findMany({
-    where: { poId },
-    select: { quantity: true, receivedQty: true },
-  })
-
-  const allFullyReceived = allLines.every((l) => l.receivedQty >= l.quantity)
-  const someReceived = allLines.some((l) => l.receivedQty > 0)
-
-  let newStatus: string | undefined
-  if (allFullyReceived && allLines.length > 0) {
-    newStatus = "COMPLETE"
-  } else if (someReceived) {
-    newStatus = "PARTIALLY_RECEIVED"
-  }
-
-  if (newStatus) {
-    await prisma.purchaseOrder.update({
-      where: { id: poId },
-      data: { status: newStatus as "COMPLETE" | "PARTIALLY_RECEIVED" },
+  try {
+    const line = await prisma.purchaseOrderLine.findUnique({
+      where: { id: lineId },
+      select: { poId: true, quantity: true },
     })
-  }
 
-  revalidatePath("/finance")
-  return NextResponse.json({ success: true, poStatus: newStatus })
+    if (!line || line.poId !== poId) {
+      return NextResponse.json({ error: "Line not found" }, { status: 404 })
+    }
+
+    const qty = parseInt(receivedQty, 10)
+    const fullyReceived = qty >= line.quantity
+
+    await prisma.purchaseOrderLine.update({
+      where: { id: lineId },
+      data: {
+        receivedQty: qty,
+        receivedDate: new Date(),
+        receivedNotes: notes || null,
+        received: fullyReceived,
+      },
+    })
+
+    // Check all lines on this PO to update PO status
+    const allLines = await prisma.purchaseOrderLine.findMany({
+      where: { poId },
+      select: { quantity: true, receivedQty: true },
+    })
+
+    const allFullyReceived = allLines.every((l) => l.receivedQty >= l.quantity)
+    const someReceived = allLines.some((l) => l.receivedQty > 0)
+
+    let newStatus: string | undefined
+    if (allFullyReceived && allLines.length > 0) {
+      newStatus = "COMPLETE"
+    } else if (someReceived) {
+      newStatus = "PARTIALLY_RECEIVED"
+    }
+
+    if (newStatus) {
+      await prisma.purchaseOrder.update({
+        where: { id: poId },
+        data: { status: newStatus as "COMPLETE" | "PARTIALLY_RECEIVED" },
+      })
+    }
+
+    revalidatePath("/finance")
+    return NextResponse.json({ success: true, poStatus: newStatus })
+
+  } catch (error) {
+    console.error("POST /api/purchase-orders/[id]/receive error:", error)
+    return NextResponse.json({ error: "Failed to receive purchase order" }, { status: 500 })
+  }
 }

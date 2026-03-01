@@ -22,63 +22,69 @@ export async function POST(
   }
 
   // Verify the PO exists
-  const po = await prisma.purchaseOrder.findUnique({
-    where: { id },
-    select: { id: true, status: true, poNumber: true },
-  })
-
-  if (!po) {
-    return NextResponse.json({ error: "Purchase order not found" }, { status: 404 })
-  }
-
-  if (approved) {
-    // Approve the PO
-    const updated = await prisma.purchaseOrder.update({
+  try {
+    const po = await prisma.purchaseOrder.findUnique({
       where: { id },
-      data: {
-        status: "APPROVED",
-        approvedById: user.id,
-        approvedAt: new Date(),
-        notes: notes
-          ? `${po.status === "DRAFT" ? "" : "(Re-approved) "}${notes}`
-          : undefined,
-      },
+      select: { id: true, status: true, poNumber: true },
     })
 
-    revalidatePath("/purchasing")
-    revalidatePath("/finance")
+    if (!po) {
+      return NextResponse.json({ error: "Purchase order not found" }, { status: 404 })
+    }
 
-    return NextResponse.json({
-      success: true,
-      action: "approved",
-      poNumber: updated.poNumber,
-      status: updated.status,
-      approvedAt: updated.approvedAt,
-    })
-  } else {
-    // Reject — keep as DRAFT, add rejection notes
-    const existingNotes = po.status !== "DRAFT" ? `[Rejected back to DRAFT] ` : ""
-    const rejectionNote = notes ? `${existingNotes}Rejection: ${notes}` : `${existingNotes}Rejected`
+    if (approved) {
+      // Approve the PO
+      const updated = await prisma.purchaseOrder.update({
+        where: { id },
+        data: {
+          status: "APPROVED",
+          approvedById: user.id,
+          approvedAt: new Date(),
+          notes: notes
+            ? `${po.status === "DRAFT" ? "" : "(Re-approved) "}${notes}`
+            : undefined,
+        },
+      })
 
-    const updated = await prisma.purchaseOrder.update({
-      where: { id },
-      data: {
-        status: "DRAFT",
+      revalidatePath("/purchasing")
+      revalidatePath("/finance")
+
+      return NextResponse.json({
+        success: true,
+        action: "approved",
+        poNumber: updated.poNumber,
+        status: updated.status,
+        approvedAt: updated.approvedAt,
+      })
+    } else {
+      // Reject — keep as DRAFT, add rejection notes
+      const existingNotes = po.status !== "DRAFT" ? `[Rejected back to DRAFT] ` : ""
+      const rejectionNote = notes ? `${existingNotes}Rejection: ${notes}` : `${existingNotes}Rejected`
+
+      const updated = await prisma.purchaseOrder.update({
+        where: { id },
+        data: {
+          status: "DRAFT",
+          notes: rejectionNote,
+          approvedById: null,
+          approvedAt: null,
+        },
+      })
+
+      revalidatePath("/purchasing")
+      revalidatePath("/finance")
+
+      return NextResponse.json({
+        success: true,
+        action: "rejected",
+        poNumber: updated.poNumber,
+        status: updated.status,
         notes: rejectionNote,
-        approvedById: null,
-        approvedAt: null,
-      },
-    })
+      })
+    }
 
-    revalidatePath("/purchasing")
-    revalidatePath("/finance")
-
-    return NextResponse.json({
-      success: true,
-      action: "rejected",
-      poNumber: updated.poNumber,
-      status: updated.status,
-      notes: rejectionNote,
-    })
+  } catch (error) {
+    console.error("POST /api/purchase-orders/[id]/approve error:", error)
+    return NextResponse.json({ error: "Failed to approve purchase order" }, { status: 500 })
   }
 }

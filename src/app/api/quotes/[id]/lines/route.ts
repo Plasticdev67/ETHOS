@@ -38,46 +38,52 @@ export async function POST(
   const costTotal = calculateCostTotal(unitCost, quantity)
   const sellPrice = calculateSellPrice(costTotal, marginPercent)
 
-  const line = await prisma.quoteLine.create({
-    data: {
-      quoteId,
-      productId: body.productId || null,
-      catalogueItemId: body.catalogueItemId || null,
-      description: body.description,
-      dimensions: body.dimensions || null,
-      quantity,
-      units: body.units || "nr",
-      unitCost,
-      costTotal,
-      marginPercent,
-      sellPrice,
-      isOptional: body.isOptional || false,
-      sortOrder: body.sortOrder || 0,
-      marginOverride: body.marginOverride || false,
-      // Create QuoteLineSpec if specConfig is provided (from cascading builder)
-      ...(body.specConfig && {
-        spec: {
-          create: {
-            variantId: body.specConfig.variantId,
-            width: body.specConfig.width || null,
-            height: body.specConfig.height || null,
-            specSelections: body.specConfig.specSelections || {},
-            computedBom: body.specConfig.computedBom || [],
-            computedCost: body.specConfig.computedCost || 0,
-            includesRd: body.specConfig.includesRd || false,
-            rdCostAmount: body.specConfig.rdCostAmount || 0,
+  try {
+    const line = await prisma.quoteLine.create({
+      data: {
+        quoteId,
+        productId: body.productId || null,
+        catalogueItemId: body.catalogueItemId || null,
+        description: body.description,
+        dimensions: body.dimensions || null,
+        quantity,
+        units: body.units || "nr",
+        unitCost,
+        costTotal,
+        marginPercent,
+        sellPrice,
+        isOptional: body.isOptional || false,
+        sortOrder: body.sortOrder || 0,
+        marginOverride: body.marginOverride || false,
+        // Create QuoteLineSpec if specConfig is provided (from cascading builder)
+        ...(body.specConfig && {
+          spec: {
+            create: {
+              variantId: body.specConfig.variantId,
+              width: body.specConfig.width || null,
+              height: body.specConfig.height || null,
+              specSelections: body.specConfig.specSelections || {},
+              computedBom: body.specConfig.computedBom || [],
+              computedCost: body.specConfig.computedCost || 0,
+              includesRd: body.specConfig.includesRd || false,
+              rdCostAmount: body.specConfig.rdCostAmount || 0,
+            },
           },
-        },
-      }),
-    },
-  })
+        }),
+      },
+    })
 
-  await recalcQuoteTotals(quoteId)
+    await recalcQuoteTotals(quoteId)
 
-  revalidatePath("/quotes")
-  revalidatePath("/finance")
+    revalidatePath("/quotes")
+    revalidatePath("/finance")
 
-  return NextResponse.json(line, { status: 201 })
+    return NextResponse.json(line, { status: 201 })
+
+  } catch (error) {
+    console.error("POST /api/quotes/[id]/lines error:", error)
+    return NextResponse.json({ error: "Failed to create quote line" }, { status: 500 })
+  }
 }
 
 export async function GET(

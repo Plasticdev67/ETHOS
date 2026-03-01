@@ -34,14 +34,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Message is required" }, { status: 400 })
   }
 
-  const suggestion = await prisma.suggestion.create({
-    data: {
-      userId,
-      userName,
-      category: category || "General",
-      message: message.trim(),
-    },
-  })
+  try {
+    const suggestion = await prisma.suggestion.create({
+      data: {
+        userId,
+        userName,
+        category: category || "General",
+        message: message.trim(),
+      },
+    })
 
-  return NextResponse.json(suggestion, { status: 201 })
+    return NextResponse.json(suggestion, { status: 201 })
+
+  } catch (error) {
+    console.error("POST /api/suggestions error:", error)
+    return NextResponse.json({ error: "Failed to create suggestion" }, { status: 500 })
+  }
 }

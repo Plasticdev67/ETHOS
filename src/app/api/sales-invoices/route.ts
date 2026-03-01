@@ -35,34 +35,40 @@ export async function POST(request: NextRequest) {
   const body = await request.json()
 
   // Auto-generate invoice number (concurrency-safe)
-  const invoiceNumber = await getNextSequenceNumber("sales_invoice")
+  try {
+    const invoiceNumber = await getNextSequenceNumber("sales_invoice")
 
-  // Calculate net payable
-  const applicationAmount = Number(toDecimal(body.applicationAmount) ?? 0)
-  const retentionHeld = Number(toDecimal(body.retentionHeld) ?? 0)
-  const cisDeduction = Number(toDecimal(body.cisDeduction) ?? 0)
-  const netPayable = applicationAmount - retentionHeld - cisDeduction
+    // Calculate net payable
+    const applicationAmount = Number(toDecimal(body.applicationAmount) ?? 0)
+    const retentionHeld = Number(toDecimal(body.retentionHeld) ?? 0)
+    const cisDeduction = Number(toDecimal(body.cisDeduction) ?? 0)
+    const netPayable = applicationAmount - retentionHeld - cisDeduction
 
-  const invoice = await prisma.salesInvoice.create({
-    data: {
-      invoiceNumber,
-      projectId: body.projectId,
-      type: body.type || "APPLICATION",
-      status: body.status || "DRAFT",
-      applicationAmount: applicationAmount || null,
-      certifiedAmount: toDecimal(body.certifiedAmount),
-      retentionHeld: retentionHeld || null,
-      cisDeduction: cisDeduction || null,
-      netPayable: netPayable || null,
-      periodFrom: body.periodFrom ? new Date(body.periodFrom) : null,
-      periodTo: body.periodTo ? new Date(body.periodTo) : null,
-      dateSubmitted: body.dateSubmitted ? new Date(body.dateSubmitted) : null,
-      dateDue: body.dateDue ? new Date(body.dateDue) : null,
-      certRef: body.certRef || null,
-      notes: body.notes || null,
-    },
-  })
+    const invoice = await prisma.salesInvoice.create({
+      data: {
+        invoiceNumber,
+        projectId: body.projectId,
+        type: body.type || "APPLICATION",
+        status: body.status || "DRAFT",
+        applicationAmount: applicationAmount || null,
+        certifiedAmount: toDecimal(body.certifiedAmount),
+        retentionHeld: retentionHeld || null,
+        cisDeduction: cisDeduction || null,
+        netPayable: netPayable || null,
+        periodFrom: body.periodFrom ? new Date(body.periodFrom) : null,
+        periodTo: body.periodTo ? new Date(body.periodTo) : null,
+        dateSubmitted: body.dateSubmitted ? new Date(body.dateSubmitted) : null,
+        dateDue: body.dateDue ? new Date(body.dateDue) : null,
+        certRef: body.certRef || null,
+        notes: body.notes || null,
+      },
+    })
 
-  revalidatePath("/finance")
-  return NextResponse.json(invoice, { status: 201 })
+    revalidatePath("/finance")
+    return NextResponse.json(invoice, { status: 201 })
+
+  } catch (error) {
+    console.error("POST /api/sales-invoices error:", error)
+    return NextResponse.json({ error: "Failed to create sales invoice" }, { status: 500 })
+  }
 }

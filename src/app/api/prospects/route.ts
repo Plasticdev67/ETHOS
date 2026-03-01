@@ -30,26 +30,32 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json()
 
-  const prospect = await prisma.prospect.create({
-    data: {
-      companyName: body.companyName,
-      contactName: body.contactName || null,
-      contactEmail: body.contactEmail || null,
-      contactPhone: body.contactPhone || null,
-      address: body.address || null,
-      sector: body.sector || null,
-      source: body.source || "OTHER",
-      status: body.status || "ACTIVE",
-      notes: body.notes || null,
-    },
-  })
+  try {
+    const prospect = await prisma.prospect.create({
+      data: {
+        companyName: body.companyName,
+        contactName: body.contactName || null,
+        contactEmail: body.contactEmail || null,
+        contactPhone: body.contactPhone || null,
+        address: body.address || null,
+        sector: body.sector || null,
+        source: body.source || "OTHER",
+        status: body.status || "ACTIVE",
+        notes: body.notes || null,
+      },
+    })
 
-  await logAudit({
-    action: "CREATE",
-    entity: "Prospect",
-    entityId: prospect.id,
-    metadata: prospect.companyName,
-  })
+    await logAudit({
+      action: "CREATE",
+      entity: "Prospect",
+      entityId: prospect.id,
+      metadata: prospect.companyName,
+    })
 
-  return NextResponse.json(prospect, { status: 201 })
+    return NextResponse.json(prospect, { status: 201 })
+
+  } catch (error) {
+    console.error("POST /api/prospects error:", error)
+    return NextResponse.json({ error: "Failed to create prospect" }, { status: 500 })
+  }
 }
