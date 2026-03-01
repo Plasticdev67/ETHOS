@@ -1,5 +1,20 @@
 # ETHOS ERP — Changelog
 
+## 2026-03-01 — Replace Classification with Work Streams
+
+### Work Stream Refactor
+- Removed old `ProjectClassification` (Normal/Mega/Sub-contract) from all UI filters, forms, badges, and production lanes
+- All project categorisation now uses the 5 MME work streams: **Utility**, **Bespoke**, **Community**, **Blast**, **Refurbishment**
+- ICU remains as a separate boolean flag for urgent projects
+- Production dashboard uses a single production lane instead of Normal/Mega split
+- Colour-coded work stream badges across project cards, kanban board, and detail pages
+- Updated 16 source files: filters, forms, toolbars, cards, API routes, production utils
+
+### SOP Updates
+- Production SOP: replaced classification filter with work stream filter, removed CTO/ITO lane concept
+- Projects SOP: replaced classification badges and form fields with work stream equivalents
+- Both PDFs regenerated (Production 10 pages, Projects 11 pages)
+
 ## 2026-03-01 — Remove Cyberpunk & Sage Themes
 
 ### Theme Removal
