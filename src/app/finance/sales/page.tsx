@@ -8,7 +8,6 @@ import {
   Receipt,
   Plus,
   UserPlus,
-  Search,
   FileText,
   Users,
   AlertTriangle,

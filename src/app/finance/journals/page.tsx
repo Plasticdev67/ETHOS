@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { cn, formatCurrency, formatDate } from '@/lib/utils'
+import { formatCurrency, formatDate } from '@/lib/utils'
 import {
   Plus,
   Search,
@@ -61,6 +61,7 @@ export default function JournalsPage() {
 
   useEffect(() => {
     fetchJournals()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, source, dateFrom, dateTo, search, page])
 
   async function fetchJournals() {

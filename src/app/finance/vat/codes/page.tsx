@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import {
   ArrowLeft,
@@ -28,7 +27,6 @@ interface VATCode {
 }
 
 export default function VATCodesPage() {
-  const router = useRouter()
   const [codes, setCodes] = useState<VATCode[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

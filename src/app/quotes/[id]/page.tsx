@@ -111,6 +111,7 @@ export default function QuoteDetailPage() {
 
   useEffect(() => {
     Promise.all([loadQuote(), loadCatalogue()]).then(() => setLoading(false))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [quoteId])
 
   function handleLineChanged() {

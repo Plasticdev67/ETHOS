@@ -28,7 +28,6 @@ import {
   ChevronDown,
   ChevronRight,
   Briefcase,
-  CreditCard,
   ClipboardList,
 } from 'lucide-react'
 import { useState } from 'react'

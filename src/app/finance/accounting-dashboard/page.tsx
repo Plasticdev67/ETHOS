@@ -11,7 +11,6 @@ import {
   Plus,
   FileText,
   Receipt,
-  ShoppingCart,
   HardHat,
   ShieldCheck,
   Clock,

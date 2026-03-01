@@ -30,13 +30,6 @@ interface BreakdownLine {
   hmrcBox: string
 }
 
-interface SubmissionDetails {
-  submittedAt: string | null
-  submittedBy: string | null
-  hmrcCorrelationId: string | null
-  hmrcReceiptId: string | null
-}
-
 interface VATReturnDetail {
   id: string
   periodId: string
@@ -107,6 +100,7 @@ export default function VATReturnDetailPage() {
 
   useEffect(() => {
     fetchReturn()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
   async function fetchReturn() {

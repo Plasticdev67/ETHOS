@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db"
 import { NextRequest, NextResponse } from "next/server"
 import { revalidatePath } from "next/cache"
 
-export async function GET(_request: NextRequest) {
+export async function GET() {
   try {
     const vatCodes = await prisma.vatCode.findMany({
       orderBy: { code: "asc" },

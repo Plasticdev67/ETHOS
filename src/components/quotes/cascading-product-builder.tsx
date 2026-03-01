@@ -89,7 +89,7 @@ export function CascadingProductBuilder({
         .then((r) => r.json())
         .then(setFamilies)
     }
-  }, [open])
+  }, [open, families.length])
 
   // Load type detail when type is selected
   useEffect(() => {

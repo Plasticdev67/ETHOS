@@ -7,8 +7,6 @@ import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-p
 import { Badge } from "@/components/ui/badge"
 import {
   formatCurrency,
-  getProjectStatusColor,
-  prettifyEnum,
   cn,
 } from "@/lib/utils"
 
@@ -66,15 +64,12 @@ function groupByDeptStatus(projects: DeptProject[]) {
   return grouped
 }
 
-export function DepartmentBoard({
-  projects: initialProjects,
-  departmentLabel,
-  doneLabel,
-}: {
+export function DepartmentBoard(props: {
   projects: DeptProject[]
   departmentLabel: string
   doneLabel: string
 }) {
+  const { projects: initialProjects, doneLabel } = props
   const router = useRouter()
   const [projects, setProjects] = useState(initialProjects)
 

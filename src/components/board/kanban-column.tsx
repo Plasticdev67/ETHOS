@@ -10,7 +10,7 @@ type BoardProject = {
   customer: { name: string } | null
   priority: string
   isICUFlag: boolean
-  classification: string
+  workStream: string
   ragStatus: string | null
   estimatedValue: string | number | null
   contractValue: string | number | null

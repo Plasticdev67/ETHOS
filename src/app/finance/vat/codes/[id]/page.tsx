@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { cn } from '@/lib/utils'
 import {
   ArrowLeft,
   Save,
@@ -12,7 +11,6 @@ import {
   Trash2,
   AlertTriangle,
   Tag,
-  Loader2,
 } from 'lucide-react'
 
 // --- Type definitions ---
@@ -65,6 +63,7 @@ export default function VATCodeDetailPage() {
 
   useEffect(() => {
     fetchVATCode()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
   async function fetchVATCode() {

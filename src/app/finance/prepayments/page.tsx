@@ -93,6 +93,7 @@ export default function PrepaymentsListPage() {
 
   useEffect(() => {
     fetchData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [typeFilter])
 
   async function handleProcessDue() {
@@ -112,7 +113,7 @@ export default function PrepaymentsListPage() {
         `Processed ${data.processed} release(s)${data.errors > 0 ? `, ${data.errors} error(s)` : ''}`
       )
       fetchData()
-    } catch (err) {
+    } catch {
       setProcessResult('Failed to process releases')
     } finally {
       setProcessing(false)

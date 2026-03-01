@@ -1,8 +1,8 @@
 import { prisma } from "@/lib/db"
-import { NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server"
 
 // GET /api/design/queue — Projects with QUEUED design cards (unassigned backlog)
-export async function GET(_request: NextRequest) {
+export async function GET() {
   try {
     const cards = await prisma.productDesignCard.findMany({
       where: { status: "QUEUED" },

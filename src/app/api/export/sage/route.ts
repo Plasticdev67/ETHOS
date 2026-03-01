@@ -77,8 +77,8 @@ export async function GET(request: NextRequest) {
       "Invoice No,Project,Customer,Type,Status,Application Amount,Certified Amount,Retention,CIS,Net Payable,Paid,Date Submitted,Date Due,Date Paid",
       ...invoices.map((inv) => [
         inv.invoiceNumber,
-        quote(`${inv.project.projectNumber} ${inv.project.name}`),
-        quote(inv.project.customer?.name || ""),
+        quote(`${inv.project?.projectNumber || ""} ${inv.project?.name || ""}`),
+        quote(inv.project?.customer?.name || ""),
         inv.type,
         inv.status,
         num(inv.applicationAmount),

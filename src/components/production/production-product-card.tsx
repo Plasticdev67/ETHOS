@@ -20,7 +20,7 @@ export type FlatProduct = {
     name: string
     priority: string
     isICUFlag: boolean
-    classification: string
+    workStream: string
     customer: { name: string } | null
     projectManager: { name: string } | null
     targetCompletion: string | null

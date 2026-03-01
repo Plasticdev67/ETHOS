@@ -115,7 +115,7 @@ export function TimelineChart({ projects }: { projects: TimelineProjectData[] })
         <div
           ref={scrollRef}
           className="flex-1 overflow-auto"
-          onScroll={(e) => {
+          onScroll={() => {
             // Could sync left panel scroll here if needed
           }}
         >

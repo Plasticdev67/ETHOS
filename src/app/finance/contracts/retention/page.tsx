@@ -73,6 +73,7 @@ export default function RetentionTrackerPage() {
 
   useEffect(() => {
     fetchRetention()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter, search])
 
   async function fetchRetention() {

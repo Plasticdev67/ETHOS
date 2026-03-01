@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Save } from 'lucide-react'
+import { Save } from 'lucide-react'
 
 const HMRC_BOXES = [
   { value: '', label: 'None' },

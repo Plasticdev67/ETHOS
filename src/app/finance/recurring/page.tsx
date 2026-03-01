@@ -6,8 +6,6 @@ import { cn, formatCurrency, formatDate } from '@/lib/utils'
 import {
   RefreshCw,
   Plus,
-  Play,
-  Pause,
   Clock,
   CheckCircle,
   AlertCircle,
@@ -99,6 +97,7 @@ export default function RecurringEntriesListPage() {
 
   useEffect(() => {
     fetchTemplates()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter])
 
   async function handleProcessDue() {

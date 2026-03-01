@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { cn, formatCurrency, formatDate } from '@/lib/utils'
 import {
@@ -13,22 +13,12 @@ import {
   AlertTriangle,
   X,
   TrendingUp,
-  Building2,
   BarChart3,
   ClipboardCheck,
-  Clock,
   Eye,
 } from 'lucide-react'
 
 // --- Type definitions ---
-
-interface ApplicationLine {
-  id: string
-  description: string
-  cumulativeValue: number
-  previousValue: number
-  thisPeriod: number
-}
 
 interface Application {
   id: string
@@ -142,7 +132,6 @@ type TabId = 'applications' | 'variations' | 'retention' | 'financial'
 
 export default function ContractDetailPage() {
   const params = useParams()
-  const router = useRouter()
   const id = params.id as string
 
   const [contract, setContract] = useState<ContractDetail | null>(null)
@@ -170,6 +159,7 @@ export default function ContractDetailPage() {
 
   useEffect(() => {
     fetchContract()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
   async function fetchContract() {

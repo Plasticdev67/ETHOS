@@ -5,7 +5,6 @@ import { Badge } from "@/components/ui/badge"
 import {
   JOB_TYPE_LABELS,
   JOB_TYPE_ORDER,
-  getDesignJobStatusColor,
   getDesignCardStatusColor,
   getDesignCardStatusLabel,
 } from "@/lib/design-utils"

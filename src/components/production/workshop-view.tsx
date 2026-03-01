@@ -45,7 +45,7 @@ export type WorkshopTask = {
     name: string
     priority: string
     isICUFlag: boolean
-    classification: string
+    workStream: string
     targetCompletion: string | null
     ragStatus: string | null
     contractValue: string | number | null
@@ -68,7 +68,7 @@ export type AllocatedProduct = {
     name: string
     priority: string
     isICUFlag: boolean
-    classification: string
+    workStream: string
     targetCompletion: string | null
     ragStatus: string | null
     contractValue: string | number | null
@@ -83,7 +83,7 @@ export type WorkshopProject = {
   name: string
   priority: string
   isICUFlag: boolean
-  classification: string
+  workStream: string
   targetCompletion: string | null
   ragStatus: string | null
   contractValue: string | number | null
@@ -496,7 +496,6 @@ function TaskCard({
   task,
   cardType,
   themeColor,
-  workers,
   onAction,
 }: {
   task: WorkshopTask

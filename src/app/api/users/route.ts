@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db"
 import { NextRequest, NextResponse } from "next/server"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
 
 export async function GET() {
   const users = await prisma.user.findMany({
@@ -23,16 +24,29 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const body = await request.json()
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
+  const denied = await requirePermission("settings:admin")
+  if (denied) return denied
 
-  const user = await prisma.user.create({
-    data: {
-      name: body.name,
-      email: body.email,
-      passwordHash: "placeholder",
-      role: body.role || "STAFF",
-    },
-  })
+  try {
+    const body = await request.json()
 
-  return NextResponse.json(user, { status: 201 })
+    const newUser = await prisma.user.create({
+      data: {
+        name: body.name,
+        email: body.email,
+        passwordHash: "placeholder",
+        role: body.role || "STAFF",
+      },
+    })
+
+    return NextResponse.json(newUser, { status: 201 })
+  } catch (error) {
+    console.error("POST /api/users error:", error)
+    return NextResponse.json(
+      { error: "Failed to create user" },
+      { status: 500 }
+    )
+  }
 }

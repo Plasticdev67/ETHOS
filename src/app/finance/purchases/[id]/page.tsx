@@ -11,7 +11,6 @@ import {
   Trash2,
   CreditCard,
   Receipt,
-  BookOpen,
   X,
   Check,
   Minus,

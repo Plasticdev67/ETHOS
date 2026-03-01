@@ -84,7 +84,7 @@ export default function NewEnquiryPage() {
         const data: BomLine[] = await res.json()
         setBomLines(data)
         // Select all by default
-        setSelectedBomIds(new Set(data.map((d) => d.id || d.bomLineId)))
+        setSelectedBomIds(new Set(data.map((d) => d.id)))
       }
       if (!cancelled) setBomLoading(false)
     }

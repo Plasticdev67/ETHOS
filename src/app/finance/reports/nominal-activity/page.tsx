@@ -4,13 +4,11 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { cn, formatCurrency, formatDate, formatDateISO } from '@/lib/utils'
 import {
-  ArrowLeft,
   BarChart3,
   Printer,
   Download,
   Clock,
   BookOpen,
-  Search,
   ArrowUpRight,
   ArrowDownRight,
 } from 'lucide-react'
@@ -75,7 +73,7 @@ export default function NominalActivityPage() {
   const [loading, setLoading] = useState(false)
   const [loadingAccounts, setLoadingAccounts] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [accountSearch, setAccountSearch] = useState('')
+  const accountSearch: string = ''
 
   // Load accounts on mount
   useEffect(() => {

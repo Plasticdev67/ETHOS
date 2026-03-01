@@ -8,7 +8,6 @@ import {
   ShoppingCart,
   Plus,
   Truck,
-  Search,
   FileText,
   Receipt,
   AlertTriangle,

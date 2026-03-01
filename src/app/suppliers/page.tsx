@@ -1,8 +1,6 @@
 export const dynamic = 'force-dynamic'
 import { prisma } from "@/lib/db"
 import { Card, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Plus } from "lucide-react"
 import Link from "next/link"
 import { NewSupplierDialog } from "@/components/suppliers/new-supplier-dialog"
 

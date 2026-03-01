@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { cn, formatCurrency, formatDate, formatDateISO } from '@/lib/utils'
-import { ArrowLeft, BarChart3, Download, Printer, Clock } from 'lucide-react'
+import { BarChart3, Download, Printer, Clock } from 'lucide-react'
 
 interface Period {
   id: string

@@ -1,18 +1,18 @@
 import { prisma } from "@/lib/db"
-import { auth } from "@/lib/auth"
 import { NextRequest, NextResponse } from "next/server"
 import { revalidatePath } from "next/cache"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params
-  const session = await auth()
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
+  const denied = await requirePermission("purchasing:approve-high")
+  if (denied) return denied
 
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Authentication required" }, { status: 401 })
-  }
+  const { id } = await params
 
   const body = await request.json()
   const { approved, notes } = body
@@ -37,7 +37,7 @@ export async function POST(
       where: { id },
       data: {
         status: "APPROVED",
-        approvedById: session.user.id,
+        approvedById: user.id,
         approvedAt: new Date(),
         notes: notes
           ? `${po.status === "DRAFT" ? "" : "(Re-approved) "}${notes}`

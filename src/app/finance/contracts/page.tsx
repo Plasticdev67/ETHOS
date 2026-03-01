@@ -89,6 +89,7 @@ export default function ContractsPage() {
 
   useEffect(() => {
     fetchContracts()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, search])
 
   async function fetchContracts() {

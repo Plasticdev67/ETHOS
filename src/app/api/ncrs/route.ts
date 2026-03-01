@@ -1,6 +1,9 @@
 import { prisma } from "@/lib/db"
 import { NextRequest, NextResponse } from "next/server"
 import { revalidatePath } from "next/cache"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
+import { toDecimal } from "@/lib/api-utils"
+import { getNextSequenceNumber } from "@/lib/finance/sequences"
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
@@ -21,85 +24,93 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const body = await request.json()
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
+  const denied = await requirePermission("ncrs:create")
+  if (denied) return denied
 
-  // Auto-generate NCR number
-  const lastNcr = await prisma.nonConformanceReport.findFirst({
-    orderBy: { ncrNumber: "desc" },
-  })
-  const lastNum = lastNcr ? parseInt(lastNcr.ncrNumber.replace("NCR-", "")) : 0
-  const ncrNumber = `NCR-${String(lastNum + 1).padStart(4, "0")}`
+  try {
+    const body = await request.json()
 
-  const ncr = await prisma.nonConformanceReport.create({
-    data: {
-      ncrNumber,
-      projectId: body.projectId,
-      productId: body.productId || null,
-      title: body.title,
-      description: body.description || null,
-      severity: body.severity || "MINOR",
-      costImpact: body.costImpact ? parseFloat(body.costImpact) : null,
-      rootCause: body.rootCause || null,
-      originStage: body.originStage || null,
-      returnToStage: body.returnToStage || null,
-    },
-  })
+    const ncrNumber = await getNextSequenceNumber("ncr")
 
-  // Trigger design rework if requested
-  if (body.requireDesignRework && body.productId) {
-    const designCard = await prisma.productDesignCard.findUnique({
-      where: { productId: body.productId },
-      include: { jobCards: { select: { id: true, jobType: true, status: true } } },
+    const ncr = await prisma.nonConformanceReport.create({
+      data: {
+        ncrNumber,
+        projectId: body.projectId,
+        productId: body.productId || null,
+        title: body.title,
+        description: body.description || null,
+        severity: body.severity || "MINOR",
+        costImpact: toDecimal(body.costImpact),
+        rootCause: body.rootCause || null,
+        originStage: body.originStage || null,
+        returnToStage: body.returnToStage || null,
+      },
     })
 
-    if (designCard) {
-      // Reset all non-BLOCKED job cards to require rework
-      const jobTypes = designCard.jobCards
-        .filter((j) => j.status !== "BLOCKED")
-        .map((j) => j.jobType)
+    // Trigger design rework if requested
+    if (body.requireDesignRework && body.productId) {
+      const designCard = await prisma.productDesignCard.findUnique({
+        where: { productId: body.productId },
+        include: { jobCards: { select: { id: true, jobType: true, status: true } } },
+      })
 
-      if (jobTypes.length > 0) {
-        // Call the NCR rework endpoint logic inline
-        for (let i = 0; i < designCard.jobCards.length; i++) {
-          const jc = designCard.jobCards[i]
-          if (jc.status === "BLOCKED") continue
-          await prisma.designJobCard.update({
-            where: { id: jc.id },
-            data: {
-              status: i === 0 ? "IN_PROGRESS" : "READY",
-              approvedAt: null,
-              signedOffAt: null,
-              submittedAt: null,
-              rejectedAt: null,
-              notes: `Rework required: NCR ${ncrNumber} — ${body.title}`,
-            },
+      if (designCard) {
+        // Reset all non-BLOCKED job cards to require rework
+        const jobTypes = designCard.jobCards
+          .filter((j) => j.status !== "BLOCKED")
+          .map((j) => j.jobType)
+
+        if (jobTypes.length > 0) {
+          // Call the NCR rework endpoint logic inline
+          for (let i = 0; i < designCard.jobCards.length; i++) {
+            const jc = designCard.jobCards[i]
+            if (jc.status === "BLOCKED") continue
+            await prisma.designJobCard.update({
+              where: { id: jc.id },
+              data: {
+                status: i === 0 ? "IN_PROGRESS" : "READY",
+                approvedAt: null,
+                signedOffAt: null,
+                submittedAt: null,
+                rejectedAt: null,
+                notes: `Rework required: NCR ${ncrNumber} — ${body.title}`,
+              },
+            })
+          }
+          await prisma.productDesignCard.update({
+            where: { id: designCard.id },
+            data: { status: "IN_PROGRESS" },
           })
         }
-        await prisma.productDesignCard.update({
-          where: { id: designCard.id },
-          data: { status: "IN_PROGRESS" },
-        })
       }
     }
-  }
 
-  // Update project NCR cost total
-  if (body.costImpact) {
-    const ncrs = await prisma.nonConformanceReport.findMany({
-      where: { projectId: body.projectId },
-    })
-    const totalNcrCost = ncrs.reduce(
-      (sum, n) => sum + Number(n.costImpact || 0),
-      0
+    // Update project NCR cost total
+    if (body.costImpact) {
+      const ncrs = await prisma.nonConformanceReport.findMany({
+        where: { projectId: body.projectId },
+      })
+      const totalNcrCost = ncrs.reduce(
+        (sum, n) => sum + Number(n.costImpact || 0),
+        0
+      )
+      await prisma.project.update({
+        where: { id: body.projectId },
+        data: { ncrCost: totalNcrCost },
+      })
+    }
+
+    revalidatePath("/ncrs")
+    revalidatePath("/projects")
+
+    return NextResponse.json(ncr, { status: 201 })
+  } catch (error) {
+    console.error("Failed to create NCR:", error)
+    return NextResponse.json(
+      { error: "Failed to create NCR" },
+      { status: 500 }
     )
-    await prisma.project.update({
-      where: { id: body.projectId },
-      data: { ncrCost: totalNcrCost },
-    })
   }
-
-  revalidatePath("/ncrs")
-  revalidatePath("/projects")
-
-  return NextResponse.json(ncr, { status: 201 })
 }

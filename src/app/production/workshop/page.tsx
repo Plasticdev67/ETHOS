@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db"
+import { ProductionStage } from "@/generated/prisma/client"
 import { WorkshopView, type WorkshopData, type WorkshopWorker, type AllocatedProduct } from "@/components/production/workshop-view"
 import { ALL_PRODUCTION_STAGES } from "@/lib/production-utils"
 
@@ -7,7 +8,7 @@ export const revalidate = 30
 
 async function getWorkshopData(stage: string) {
   const tasks = await prisma.productionTask.findMany({
-    where: { stage: stage as any },
+    where: { stage: stage as ProductionStage },
     include: {
       product: {
         select: {
@@ -40,7 +41,7 @@ async function getWorkshopData(stage: string) {
   })
 
   // Build project tracker data
-  const projectMap = new Map<string, any>()
+  const projectMap = new Map<string, (typeof tasks)[0]["project"] & { productCount: number; tasks: typeof tasks }>()
   for (const task of tasks) {
     if (!projectMap.has(task.projectId)) {
       projectMap.set(task.projectId, {
@@ -112,7 +113,7 @@ async function getAllocatedProducts(stage: string) {
 
   return prisma.product.findMany({
     where: {
-      productionStatus: { in: previousStages as string[] },
+      productionStatus: { in: previousStages as ProductionStage[] },
     },
     select: {
       id: true,

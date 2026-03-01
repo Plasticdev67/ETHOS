@@ -2,9 +2,8 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { formatCurrency, prettifyEnum, cn } from "@/lib/utils"
+import { prettifyEnum, cn } from "@/lib/utils"
 import { PenTool, Clock, AlertTriangle, Users, Layers } from "lucide-react"
-import Link from "next/link"
 
 type DesignTabData = {
   activeCards: number

@@ -9,7 +9,6 @@ import {
   Loader2,
   X,
   CheckCircle2,
-  Building2,
   AlertCircle,
   Check,
 } from 'lucide-react'

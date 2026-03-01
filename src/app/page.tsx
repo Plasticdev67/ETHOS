@@ -712,7 +712,7 @@ export default async function DashboardPage({
   const tab = params.tab || "overview"
 
   const session = await auth()
-  const userRole = (session?.user as any)?.role || "STAFF"
+  const userRole = (session?.user as { role?: string } | undefined)?.role || "STAFF"
   const showManagement = isManagerOrDirector(userRole)
 
   // Only fetch data for the active tab

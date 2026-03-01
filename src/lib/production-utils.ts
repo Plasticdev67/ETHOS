@@ -153,6 +153,21 @@ export const WORK_STREAM_COLORS: Record<string, { badge: string; bg: string; bor
   REFURBISHMENT: { badge: "bg-teal-100 text-teal-700",    bg: "bg-teal-50/50",    border: "border-teal-200" },
 }
 
+// Swim lane grouping for production board columns (ICU elevated at top)
+export const SWIM_LANE_ORDER = ["ICU", ...WORK_STREAMS] as const
+export const SWIM_LANE_LABELS: Record<string, string> = {
+  ICU: "ICU",
+  ...WORK_STREAM_LABELS,
+}
+export const SWIM_LANE_COLORS: Record<string, string> = {
+  ICU: "bg-red-50/60",
+  UTILITIES: WORK_STREAM_COLORS.UTILITIES.bg,
+  BESPOKE: WORK_STREAM_COLORS.BESPOKE.bg,
+  COMMUNITY: WORK_STREAM_COLORS.COMMUNITY.bg,
+  BLAST: WORK_STREAM_COLORS.BLAST.bg,
+  REFURBISHMENT: WORK_STREAM_COLORS.REFURBISHMENT.bg,
+}
+
 // Product-level lane — single lane for all production (ICU elevated separately)
 export const PRODUCT_LANES = ["STANDARD"] as const
 export type ProductLane = (typeof PRODUCT_LANES)[number]

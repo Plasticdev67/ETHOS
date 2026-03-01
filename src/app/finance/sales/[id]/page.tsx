@@ -12,8 +12,6 @@ import {
   Edit3,
   CreditCard,
   Receipt,
-  BookOpen,
-  AlertTriangle,
   X,
   Check,
   Minus,

@@ -4,11 +4,10 @@ import { NextRequest, NextResponse } from "next/server"
 // PATCH: Update a product's schedule position (from drag-and-drop)
 export async function PATCH(request: NextRequest) {
   const body = await request.json()
-  const { productId, stage, newStartDate, newStationIdx, designerId } = body as {
+  const { productId, stage, newStartDate, designerId } = body as {
     productId: string
     stage: string
     newStartDate: string
-    newStationIdx?: number
     designerId?: string
   }
 

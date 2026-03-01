@@ -82,6 +82,10 @@ export async function POST(request: NextRequest) {
           select: { id: true },
         })
 
+        if (!period) {
+          throw new Error("No open accounting period found for the process date")
+        }
+
         const amount = totalReleasedThisPrepayment.toFixed(2)
 
         // Create journal entry: DR target account, CR source account
@@ -97,7 +101,8 @@ export async function POST(request: NextRequest) {
             reference: prepayment.id,
             source: "SYSTEM",
             status: "POSTED",
-            periodId: period?.id ?? null,
+            createdBy: "SYSTEM",
+            period: { connect: { id: period.id } },
             totalDebit: amount,
             totalCredit: amount,
             lines: {

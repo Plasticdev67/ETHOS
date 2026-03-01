@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { cn, formatCurrency, formatDateISO } from '@/lib/utils'
+import { formatCurrency, formatDateISO } from '@/lib/utils'
 import {
   ArrowLeftRight,
   ArrowRight,

@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db"
 import { NextRequest, NextResponse } from "next/server"
-import { addDays, addMinutes, format, startOfDay } from "date-fns"
+import { addDays, addMinutes, format } from "date-fns"
 
 const WORKSHOP_STAGES = [
   "CUTTING",
@@ -20,14 +20,9 @@ const STAGE_LABELS: Record<string, string> = {
   PACKING: "Packing",
 }
 
-// Working hours per day (8am-4pm)
-const WORK_HOURS_PER_DAY = 8
-const WORK_START_HOUR = 8
-
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const horizonWeeks = parseInt(searchParams.get("weeks") || "2")
-  const view = searchParams.get("view") || "product"
   const projectFilter = searchParams.get("projectId") || undefined
 
   const horizonEnd = addDays(new Date(), horizonWeeks * 7)
@@ -92,13 +87,6 @@ export async function GET(request: NextRequest) {
     take: 50,
   })
 
-  // Fetch department capacity for production
-  const prodCapacity = await prisma.departmentCapacity.findFirst({
-    where: { department: "PRODUCTION" },
-  })
-  const totalProdHoursPerWeek = Number(prodCapacity?.hoursPerWeek || 200)
-  const hoursPerStagePerDay = (totalProdHoursPerWeek / WORKSHOP_STAGES.length) / 5 // 5 working days
-
   // ── Forward Scheduling Algorithm ──
   // Sort tasks by priority: ICU first, then by project deadline (earliest first), then queue position
   const sortedTasks = [...tasks].sort((a, b) => {
@@ -129,9 +117,6 @@ export async function GET(request: NextRequest) {
       stageAvailability[task.stage] = Math.max(stageAvailability[task.stage] || 0, remaining)
     }
   }
-
-  const now = startOfDay(new Date())
-  const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes()
 
   type ScheduledTask = {
     taskId: string

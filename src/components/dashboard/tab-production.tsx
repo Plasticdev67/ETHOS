@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { formatCurrency, prettifyEnum, cn } from "@/lib/utils"
-import { Factory, AlertTriangle, Clock, PoundSterling, Layers, BarChart3 } from "lucide-react"
+import { Factory, AlertTriangle, PoundSterling, Layers, BarChart3 } from "lucide-react"
 import Link from "next/link"
 
 type ProductionTabData = {

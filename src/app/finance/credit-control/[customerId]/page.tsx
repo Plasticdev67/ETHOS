@@ -5,13 +5,10 @@ import Link from 'next/link'
 import { cn, formatCurrency, formatDate } from '@/lib/utils'
 import {
   ArrowLeft,
-  ShieldAlert,
-  FileText,
   Phone,
   Mail,
   MapPin,
   Clock,
-  AlertTriangle,
   CheckCircle,
   Plus,
   Send,
@@ -93,17 +90,6 @@ const ACTION_COLOURS: Record<string, string> = {
   WRITE_OFF: 'badge-gray',
 }
 
-const ACTION_ICONS: Record<string, React.ReactNode> = {
-  REMINDER_1: <Mail size={14} />,
-  REMINDER_2: <Mail size={14} />,
-  REMINDER_3: <Mail size={14} />,
-  FINAL_DEMAND: <AlertTriangle size={14} />,
-  PHONE_CALL: <Phone size={14} />,
-  ACCOUNT_ON_HOLD: <ShieldAlert size={14} />,
-  LEGAL_ACTION: <ShieldAlert size={14} />,
-  WRITE_OFF: <FileText size={14} />,
-}
-
 function getDaysOverdueBadge(days: number): string {
   if (days >= 90) return 'badge-danger'
   if (days >= 60) return 'text-xs font-medium px-2 py-0.5 rounded-full bg-orange-100 text-orange-700'
@@ -144,6 +130,7 @@ export default function CustomerCreditDetailPage({ params }: PageProps) {
 
   useEffect(() => {
     fetchData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customerId])
 
   async function fetchData() {

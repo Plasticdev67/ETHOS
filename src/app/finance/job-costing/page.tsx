@@ -1,6 +1,5 @@
 import { prisma } from "@/lib/db"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
 import { formatCurrency } from "@/lib/utils"
 import { ArrowLeft } from "lucide-react"

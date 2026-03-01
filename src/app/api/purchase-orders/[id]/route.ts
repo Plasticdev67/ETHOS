@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/db"
 import { NextRequest, NextResponse } from "next/server"
 import { revalidatePath } from "next/cache"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
+import { toDecimal } from "@/lib/api-utils"
 
 export async function GET(
   _request: NextRequest,
@@ -26,20 +28,33 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params
-  const body = await request.json()
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
+  const denied = await requirePermission("purchasing:edit")
+  if (denied) return denied
 
-  const data: Record<string, unknown> = {}
-  if (body.status !== undefined) data.status = body.status
-  if (body.supplierId !== undefined) data.supplierId = body.supplierId || null
-  if (body.notes !== undefined) data.notes = body.notes
-  if (body.totalValue !== undefined) data.totalValue = body.totalValue ? parseFloat(body.totalValue) : null
-  if (body.dateSent !== undefined) data.dateSent = body.dateSent ? new Date(body.dateSent) : null
-  if (body.expectedDelivery !== undefined) data.expectedDelivery = body.expectedDelivery ? new Date(body.expectedDelivery) : null
+  try {
+    const { id } = await params
+    const body = await request.json()
 
-  const po = await prisma.purchaseOrder.update({ where: { id }, data })
-  revalidatePath("/finance")
-  return NextResponse.json(po)
+    const data: Record<string, unknown> = {}
+    if (body.status !== undefined) data.status = body.status
+    if (body.supplierId !== undefined) data.supplierId = body.supplierId || null
+    if (body.notes !== undefined) data.notes = body.notes
+    if (body.totalValue !== undefined) data.totalValue = toDecimal(body.totalValue)
+    if (body.dateSent !== undefined) data.dateSent = body.dateSent ? new Date(body.dateSent) : null
+    if (body.expectedDelivery !== undefined) data.expectedDelivery = body.expectedDelivery ? new Date(body.expectedDelivery) : null
+
+    const po = await prisma.purchaseOrder.update({ where: { id }, data })
+    revalidatePath("/finance")
+    return NextResponse.json(po)
+  } catch (error) {
+    console.error("PATCH /api/purchase-orders/[id] error:", error)
+    return NextResponse.json(
+      { error: "Failed to update purchase order" },
+      { status: 500 }
+    )
+  }
 }
 
 // Add a line to this PO
@@ -47,47 +62,73 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params
-  const body = await request.json()
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
+  const denied = await requirePermission("purchasing:edit")
+  if (denied) return denied
 
-  if (!body.description) {
-    return NextResponse.json({ error: "description required" }, { status: 400 })
+  try {
+    const { id } = await params
+    const body = await request.json()
+
+    if (!body.description) {
+      return NextResponse.json({ error: "description required" }, { status: 400 })
+    }
+
+    const qty = parseInt(body.quantity, 10) || 1
+    const unitCost = toDecimal(body.unitCost)
+    const totalCost = unitCost ? Number(unitCost) * qty : null
+
+    const line = await prisma.purchaseOrderLine.create({
+      data: {
+        poId: id,
+        description: body.description,
+        quantity: qty,
+        unitCost,
+        totalCost,
+      },
+    })
+
+    // Recalculate PO total from all lines
+    const allLines = await prisma.purchaseOrderLine.findMany({
+      where: { poId: id },
+      select: { totalCost: true },
+    })
+    const newTotal = allLines.reduce((sum, l) => sum + (Number(l.totalCost) || 0), 0)
+    if (newTotal > 0) {
+      await prisma.purchaseOrder.update({ where: { id }, data: { totalValue: newTotal } })
+    }
+
+    revalidatePath("/finance")
+    return NextResponse.json(line, { status: 201 })
+  } catch (error) {
+    console.error("POST /api/purchase-orders/[id] error:", error)
+    return NextResponse.json(
+      { error: "Failed to add purchase order line" },
+      { status: 500 }
+    )
   }
-
-  const qty = parseInt(body.quantity, 10) || 1
-  const unitCost = body.unitCost ? parseFloat(body.unitCost) : null
-  const totalCost = unitCost ? unitCost * qty : null
-
-  const line = await prisma.purchaseOrderLine.create({
-    data: {
-      poId: id,
-      description: body.description,
-      quantity: qty,
-      unitCost,
-      totalCost,
-    },
-  })
-
-  // Recalculate PO total from all lines
-  const allLines = await prisma.purchaseOrderLine.findMany({
-    where: { poId: id },
-    select: { totalCost: true },
-  })
-  const newTotal = allLines.reduce((sum, l) => sum + (Number(l.totalCost) || 0), 0)
-  if (newTotal > 0) {
-    await prisma.purchaseOrder.update({ where: { id }, data: { totalValue: newTotal } })
-  }
-
-  revalidatePath("/finance")
-  return NextResponse.json(line, { status: 201 })
 }
 
 export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params
-  await prisma.purchaseOrder.delete({ where: { id } })
-  revalidatePath("/finance")
-  return NextResponse.json({ success: true })
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
+  const denied = await requirePermission("purchasing:edit")
+  if (denied) return denied
+
+  try {
+    const { id } = await params
+    await prisma.purchaseOrder.delete({ where: { id } })
+    revalidatePath("/finance")
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error("DELETE /api/purchase-orders/[id] error:", error)
+    return NextResponse.json(
+      { error: "Failed to delete purchase order" },
+      { status: 500 }
+    )
+  }
 }

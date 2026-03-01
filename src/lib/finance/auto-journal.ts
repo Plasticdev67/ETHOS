@@ -35,7 +35,7 @@ async function getNextJournalNumber(): Promise<string> {
   return `JNL-${String(lastNum + 1).padStart(6, '0')}`
 }
 
-async function findCurrentPeriod(): Promise<string | null> {
+async function findCurrentPeriod(): Promise<string> {
   const now = new Date()
   const period = await prisma.accountingPeriod.findFirst({
     where: {
@@ -45,7 +45,8 @@ async function findCurrentPeriod(): Promise<string | null> {
     },
     select: { id: true },
   })
-  return period?.id ?? null
+  if (!period) throw new Error('No open accounting period found for the current date')
+  return period.id
 }
 
 /**
@@ -78,7 +79,8 @@ export async function journalOnSalesInvoicePost(params: {
       reference: invoiceId,
       source: 'SALES_INVOICE',
       status: 'POSTED',
-      periodId,
+      createdBy: 'SYSTEM',
+      period: { connect: { id: periodId } },
       totalDebit: grossAmount,
       totalCredit: grossAmount,
       lines: {
@@ -126,7 +128,8 @@ export async function journalOnPurchaseInvoicePost(params: {
       reference: invoiceId,
       source: 'PURCHASE_INVOICE',
       status: 'POSTED',
-      periodId,
+      createdBy: 'SYSTEM',
+      period: { connect: { id: periodId } },
       totalDebit: grossAmount,
       totalCredit: grossAmount,
       lines: {
@@ -161,7 +164,7 @@ export async function journalOnCustomerPayment(params: {
   const debtorsId = await getAccountId(SYSTEM_ACCOUNTS.TRADE_DEBTORS)
 
   // Look up the GL account linked to this bank account
-  const bankAcc = await prisma.bankAccount.findUnique({
+  const bankAcc: { accountId: string | null } | null = await prisma.bankAccount.findUnique({
     where: { id: bankAccountId },
     select: { accountId: true },
   })
@@ -179,7 +182,8 @@ export async function journalOnCustomerPayment(params: {
       reference: reference || '',
       source: 'BANK_RECEIPT',
       status: 'POSTED',
-      periodId,
+      createdBy: 'SYSTEM',
+      period: { connect: { id: periodId } },
       totalDebit: amount,
       totalCredit: amount,
       lines: {
@@ -228,7 +232,8 @@ export async function journalOnSupplierPayment(params: {
       reference: reference || '',
       source: 'BANK_PAYMENT',
       status: 'POSTED',
-      periodId,
+      createdBy: 'SYSTEM',
+      period: { connect: { id: periodId } },
       totalDebit: amount,
       totalCredit: amount,
       lines: {
@@ -276,7 +281,8 @@ export async function journalOnBankTransfer(params: {
       reference: reference || '',
       source: 'BANK_TRANSFER',
       status: 'POSTED',
-      periodId,
+      createdBy: 'SYSTEM',
+      period: { connect: { id: periodId } },
       totalDebit: amount,
       totalCredit: amount,
       lines: {
@@ -337,7 +343,8 @@ export async function journalOnApplicationCertified(params: {
       reference: applicationId,
       source: 'CONSTRUCTION_APPLICATION',
       status: 'POSTED',
-      periodId,
+      createdBy: 'SYSTEM',
+      period: { connect: { id: periodId } },
       totalDebit: grossValuation,
       totalCredit: grossValuation,
       lines: { create: lines },
@@ -375,7 +382,8 @@ export async function journalOnCreditNote(params: {
       reference: creditNoteId,
       source: 'CREDIT_NOTE',
       status: 'POSTED',
-      periodId,
+      createdBy: 'SYSTEM',
+      period: { connect: { id: periodId } },
       totalDebit: grossAmount,
       totalCredit: grossAmount,
       lines: {
@@ -419,7 +427,8 @@ export async function journalOnYearEnd(params: {
       reference: 'YEAR-END',
       source: 'YEAR_END',
       status: 'POSTED',
-      periodId,
+      createdBy: 'SYSTEM',
+      period: { connect: { id: periodId } },
       totalDebit: amount,
       totalCredit: amount,
       lines: {

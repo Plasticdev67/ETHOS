@@ -1,8 +1,8 @@
 import { prisma } from "@/lib/db"
-import { NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server"
 
 // GET /api/design/overdue — Cards past targetEndDate that are not COMPLETE
-export async function GET(_request: NextRequest) {
+export async function GET() {
   try {
     const now = new Date()
 

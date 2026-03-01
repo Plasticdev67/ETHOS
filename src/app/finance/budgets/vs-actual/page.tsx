@@ -491,6 +491,7 @@ function AccountRowWithMonthly({
   idx,
   isExpanded,
   onToggle,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   months,
   accountType,
 }: {

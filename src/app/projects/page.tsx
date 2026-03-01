@@ -48,7 +48,6 @@ export default async function ProjectsPage({
         {view === "board" && <BoardView />}
         {view === "table" && <TableView searchParams={params} />}
         {view === "tracker" && <TrackerView searchParams={params} />}
-        {view === "by-customer" && <ByCustomerView />}
         {view === "timeline" && <TimelineView />}
       </Suspense>
     </div>

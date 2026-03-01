@@ -20,7 +20,6 @@ export function ProductQueueRail({
   inspectedTasks,
   projectIds,
   workers,
-  stage,
   onAction,
 }: {
   activeTasks: WorkshopTask[]

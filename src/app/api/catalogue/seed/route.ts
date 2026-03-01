@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment, @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/ban-ts-comment */
 // @ts-nocheck — Prisma type depth issue with deep catalogue relations
 import { prisma } from "@/lib/db"
 import { NextResponse } from "next/server"

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db"
 import { NextRequest, NextResponse } from "next/server"
 import { WORKSHOP_STAGES, ALL_PRODUCTION_STAGES } from "@/lib/production-utils"
+import type { ProductionStage } from "@/generated/prisma/client"
 
 export async function GET(
   _request: NextRequest,
@@ -8,7 +9,7 @@ export async function GET(
 ) {
   const { stage } = await params
 
-  if (!WORKSHOP_STAGES.includes(stage as any)) {
+  if (!(WORKSHOP_STAGES as readonly string[]).includes(stage)) {
     return NextResponse.json(
       { error: `Invalid stage: ${stage}` },
       { status: 400 }
@@ -17,7 +18,7 @@ export async function GET(
 
   // Get all tasks at this stage
   const tasks = await prisma.productionTask.findMany({
-    where: { stage: stage as any },
+    where: { stage: stage as ProductionStage },
     include: {
       product: {
         select: {
@@ -49,10 +50,7 @@ export async function GET(
     orderBy: { queuePosition: "asc" },
   })
 
-  // Split into queue (active work) and completed (awaiting handover)
-  const queue = tasks.filter(
-    (t) => t.status !== "COMPLETED" || t.inspectionStatus === "PENDING"
-  )
+  // Split into completed (awaiting handover) and active/pending
   const completed = tasks.filter(
     (t) => t.status === "COMPLETED" && t.inspectionStatus === "PENDING"
   )
@@ -62,7 +60,7 @@ export async function GET(
   )
 
   // Get unique projects at this stage
-  const projectMap = new Map<string, any>()
+  const projectMap = new Map<string, (typeof tasks)[number]["project"] & { productCount: number; taskStatuses: string[] }>()
   for (const task of tasks) {
     if (!projectMap.has(task.projectId)) {
       projectMap.set(task.projectId, {
@@ -116,7 +114,7 @@ export async function GET(
   const allocatedProducts = previousStages.length > 0
     ? await prisma.product.findMany({
         where: {
-          productionStatus: { in: previousStages as string[] },
+          productionStatus: { in: previousStages as ProductionStage[] },
         },
         select: {
           id: true,

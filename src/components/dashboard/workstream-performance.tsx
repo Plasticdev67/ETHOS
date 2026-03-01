@@ -2,7 +2,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
 import { ArrowRight, BarChart3 } from "lucide-react"
-import { formatCurrency } from "@/lib/utils"
 
 type WorkstreamRow = {
   workStream: string

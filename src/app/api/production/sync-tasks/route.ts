@@ -1,8 +1,9 @@
 import { prisma } from "@/lib/db"
 import { NextResponse } from "next/server"
 import { revalidatePath } from "next/cache"
+import type { ProductionStage } from "@/generated/prisma/client"
 
-const WORKSHOP_STAGES = ["CUTTING", "FABRICATION", "FITTING", "SHOTBLASTING", "PAINTING", "PACKING"]
+const WORKSHOP_STAGES: ProductionStage[] = ["CUTTING", "FABRICATION", "FITTING", "SHOTBLASTING", "PAINTING", "PACKING"]
 
 // POST /api/production/sync-tasks — Create missing production tasks for products at workshop stages
 export async function POST() {
@@ -23,7 +24,7 @@ export async function POST() {
       const existingTask = await prisma.productionTask.findFirst({
         where: {
           productId: product.id,
-          stage: product.productionStatus as any,
+          stage: product.productionStatus as ProductionStage,
           status: { in: ["PENDING", "IN_PROGRESS", "REWORK"] },
         },
       })
@@ -31,7 +32,7 @@ export async function POST() {
       if (!existingTask) {
         // Get max queue position
         const maxPos = await prisma.productionTask.findFirst({
-          where: { stage: product.productionStatus as any },
+          where: { stage: product.productionStatus as ProductionStage },
           orderBy: { queuePosition: "desc" },
           select: { queuePosition: true },
         })
@@ -41,7 +42,7 @@ export async function POST() {
           data: {
             productId: product.id,
             projectId: product.projectId,
-            stage: product.productionStatus as any,
+            stage: product.productionStatus as ProductionStage,
             status: "PENDING",
             queuePosition,
           },

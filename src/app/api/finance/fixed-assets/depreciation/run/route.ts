@@ -235,7 +235,8 @@ export async function POST(request: NextRequest) {
           reference: "DEPRECIATION",
           source: "SYSTEM",
           status: "POSTED",
-          periodId,
+          period: { connect: { id: periodId } },
+          createdBy: "SYSTEM",
           totalDebit: totalDepreciation.toFixed(2),
           totalCredit: totalDepreciation.toFixed(2),
           lines: {

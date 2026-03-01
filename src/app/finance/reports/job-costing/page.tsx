@@ -11,7 +11,6 @@ import {
   TrendingUp,
   PoundSterling,
   Percent,
-  BarChart3,
   Clock,
 } from 'lucide-react'
 

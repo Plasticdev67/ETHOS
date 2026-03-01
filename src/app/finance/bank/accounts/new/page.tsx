@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { cn, formatCurrency } from '@/lib/utils'
 import {
   Building2,
   Save,
@@ -31,7 +30,7 @@ export default function NewBankAccountPage() {
   const [accountNumber, setAccountNumber] = useState('')
   const [sortCode, setSortCode] = useState('')
   const [glAccountId, setGlAccountId] = useState('')
-  const [currency, setCurrency] = useState('GBP')
+  const currency = 'GBP'
   const [openingBalance, setOpeningBalance] = useState<number>(0)
 
   // Fetch GL accounts (ASSET type for bank accounts)

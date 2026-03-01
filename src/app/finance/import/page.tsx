@@ -15,7 +15,6 @@ import {
   Play,
   Database,
   Clock,
-  Download,
   Users,
   Building2,
   BookOpen,

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
-import { cn, formatDate } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 import { Plus, Search, ChevronRight, ChevronDown, ToggleLeft, ToggleRight } from 'lucide-react'
 
 interface Account {

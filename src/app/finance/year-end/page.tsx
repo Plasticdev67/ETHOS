@@ -14,7 +14,6 @@ import {
   TrendingUp,
   TrendingDown,
   Loader2,
-  PoundSterling,
   Info,
 } from 'lucide-react'
 

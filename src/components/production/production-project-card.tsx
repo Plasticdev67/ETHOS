@@ -18,7 +18,6 @@ export function ProductionProjectCard({
   const ncrCount = project._count?.ncrs || 0
 
   // Calculate stage progress
-  const productStages = project.products.map((p) => p.productionStatus).filter(Boolean)
   const completedProducts = project.products.filter(
     (p) => p.productionStatus === "COMPLETED" || p.productionCompletionDate
   ).length

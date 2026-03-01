@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, memo, useCallback } from "react"
+import { useState, useEffect, memo } from "react"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
@@ -140,7 +140,7 @@ const STAGE_COLORS: Record<string, string> = {
 
 // Single shared timer — avoids N intervals for N cards
 let sharedNow = Date.now()
-let sharedListeners: Set<() => void> = new Set()
+const sharedListeners: Set<() => void> = new Set()
 let sharedInterval: ReturnType<typeof setInterval> | null = null
 
 function startSharedTimer() {
@@ -280,7 +280,7 @@ export function DesignBoard({ projects, designers }: { projects: ProjectGroup[];
   )
 }
 
-const ProjectDesignCard = memo(function ProjectDesignCard({ project, designers, columnId }: { project: ProjectGroup; designers: Designer[]; columnId: string }) {
+const ProjectDesignCard = memo(function ProjectDesignCard({ project, designers }: { project: ProjectGroup; designers: Designer[]; columnId: string }) {
   const [assignOpen, setAssignOpen] = useState(false)
   const [handoverOpen, setHandoverOpen] = useState(false)
   const [activating, setActivating] = useState(false)

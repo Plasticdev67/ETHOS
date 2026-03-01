@@ -45,7 +45,7 @@ export default function NewPrepaymentPage() {
         if (!res.ok) throw new Error('Failed to load accounts')
         const data = await res.json()
         setAccounts(Array.isArray(data) ? data : data.data || [])
-      } catch (err) {
+      } catch {
         setError('Failed to load chart of accounts')
       } finally {
         setLoading(false)
@@ -119,7 +119,7 @@ export default function NewPrepaymentPage() {
       }
 
       router.push(`/finance/prepayments/${data.id}`)
-    } catch (err) {
+    } catch {
       setError('Failed to create prepayment')
     } finally {
       setSaving(false)

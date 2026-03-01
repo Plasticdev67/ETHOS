@@ -7,7 +7,6 @@ import { WorkstreamPerformance } from "@/components/reports/workstream-performan
 import { PeoplePerformance } from "@/components/reports/people-performance"
 import { TimingDelivery } from "@/components/reports/timing-delivery"
 import { PipelineFinancials } from "@/components/reports/pipeline-financials"
-import { formatCurrency, prettifyEnum } from "@/lib/utils"
 import { ShieldAlert } from "lucide-react"
 
 export const dynamic = "force-dynamic"
@@ -327,9 +326,6 @@ async function getTimingData() {
       ? designWithHours.reduce((sum, c) => sum + Number(c.actualHours) / Number(c.estimatedHours), 0) / designWithHours.length
       : null
 
-  const prodWithHours = products.filter(
-    (p) => Number(p.productionEstimatedHours) > 0 && p.productionCompletionDate
-  )
   const productionHoursAccuracy = null // No actual production hours tracked at product level yet
 
   // On-time

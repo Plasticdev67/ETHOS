@@ -10,7 +10,6 @@ import { OverdueAlerts } from "./overdue-alerts"
 import {
   getDesignCardStatusColor,
   getDesignCardStatusLabel,
-  JOB_TYPE_LABELS,
 } from "@/lib/design-utils"
 
 type DesignCard = {

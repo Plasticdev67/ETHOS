@@ -243,7 +243,7 @@ export async function POST(request: NextRequest) {
         importedRows: successCount,
         errorRows: errorCount,
         status: errorCount === 0 ? "IMPORT_COMPLETED" : "IMPORT_COMPLETED",
-        errors: errors.length > 0 ? errors : undefined,
+        errors: errors.length > 0 ? JSON.parse(JSON.stringify(errors)) : undefined,
         completedAt: new Date(),
       },
     })

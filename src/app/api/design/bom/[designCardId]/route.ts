@@ -1,9 +1,10 @@
 import { prisma } from "@/lib/db"
 import { NextRequest, NextResponse } from "next/server"
 import { revalidatePath } from "next/cache"
+import type { BomCategory } from "@/generated/prisma/client"
 
 // ═══════════════════ Product-Type-Specific BOM Templates ═══════════════════
-type BomTemplate = Array<{ description: string; category: string; unitCost: number; sortOrder: number }>
+type BomTemplate = Array<{ description: string; category: BomCategory; unitCost: number; sortOrder: number }>
 
 const FLOOD_DOOR_BOM: BomTemplate = [
   { description: "Steel Door Frame", category: "MATERIALS", unitCost: 380, sortOrder: 1 },
@@ -239,7 +240,7 @@ async function autoPopulateBom(designCardId: string, productId: string): Promise
     ? baseBomItems.map((item, i) => ({
         designCardId,
         description: item.description,
-        category: item.category,
+        category: item.category as BomCategory,
         partNumber: item.stockCode || null,
         quantity: Number(item.quantity) || 1,
         unitCost: Number(item.unitCost) || 0,

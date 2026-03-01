@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { cn, formatCurrency, formatDate } from '@/lib/utils'
 import {
@@ -12,7 +11,6 @@ import {
   TrendingUp,
   CheckCircle,
   Clock,
-  AlertTriangle,
 } from 'lucide-react'
 
 interface PrepaymentRelease {
@@ -68,7 +66,6 @@ interface PageProps {
 }
 
 export default function PrepaymentDetailPage({ params }: PageProps) {
-  const router = useRouter()
   const [prepayment, setPrepayment] = useState<PrepaymentDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -94,6 +91,7 @@ export default function PrepaymentDetailPage({ params }: PageProps) {
 
   useEffect(() => {
     fetchData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   async function handleRelease() {
@@ -110,7 +108,7 @@ export default function PrepaymentDetailPage({ params }: PageProps) {
       }
       setActionMessage(`Released ${formatCurrency(data.release.amount)}. Journal: ${data.journal?.entryNumber || 'N/A'}`)
       fetchData()
-    } catch (err) {
+    } catch {
       setActionMessage('Failed to release')
     } finally {
       setReleasing(false)
@@ -136,7 +134,7 @@ export default function PrepaymentDetailPage({ params }: PageProps) {
       }
       setActionMessage('Prepayment cancelled successfully')
       fetchData()
-    } catch (err) {
+    } catch {
       setActionMessage('Failed to cancel')
     } finally {
       setCancelling(false)

@@ -57,13 +57,6 @@ const ACTION_LABELS: Record<string, string> = {
   WRITE_OFF: 'Write Off',
 }
 
-function getDaysOverdueColour(days: number): string {
-  if (days >= 90) return 'text-red-700 bg-red-50 border-red-200'
-  if (days >= 60) return 'text-orange-700 bg-orange-50 border-orange-200'
-  if (days >= 30) return 'text-amber-700 bg-amber-50 border-amber-200'
-  return 'text-yellow-700 bg-yellow-50 border-yellow-200'
-}
-
 function getDaysOverdueBadge(days: number): string {
   if (days >= 90) return 'badge-danger'
   if (days >= 60) return 'text-xs font-medium px-2 py-0.5 rounded-full bg-orange-100 text-orange-700'
@@ -83,6 +76,7 @@ export default function CreditControlPage() {
 
   useEffect(() => {
     fetchData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [daysFilter, sortBy])
 
   async function fetchData() {

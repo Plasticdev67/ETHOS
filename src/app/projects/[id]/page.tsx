@@ -626,7 +626,6 @@ export default async function ProjectDetailPage({
                     {stages.map((stage, idx) => {
                       const isComplete = idx < currentIdx
                       const isCurrent = idx === currentIdx
-                      const isFuture = idx > currentIdx
                       return (
                         <div key={stage.key} className="flex items-center flex-1">
                           <div className="flex flex-col items-center flex-1">

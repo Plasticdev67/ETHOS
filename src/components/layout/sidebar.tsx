@@ -94,6 +94,12 @@ export function Sidebar() {
     }
   }, [onionMode])
 
+  // Lock body scroll when mobile sidebar is open
+  useEffect(() => {
+    document.body.style.overflow = mobileOpen ? "hidden" : ""
+    return () => { document.body.style.overflow = "" }
+  }, [mobileOpen])
+
   useEffect(() => {
     let mounted = true
     const fetchBadges = async () => {
@@ -259,9 +265,10 @@ export function Sidebar() {
       {/* Mobile sidebar (slide-out) */}
       <aside
         className={cn(
-          "fixed left-0 top-0 z-50 h-screen border-r border-border bg-white transition-transform duration-200 md:hidden w-64",
+          "fixed left-0 top-0 z-50 h-screen border-r border-border bg-white transition-transform duration-200 md:hidden w-64 flex flex-col",
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
+        style={{ overscrollBehavior: "contain" }}
       >
         {navContent}
       </aside>

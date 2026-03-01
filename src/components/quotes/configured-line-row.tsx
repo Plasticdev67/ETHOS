@@ -27,7 +27,7 @@ type QuoteLineSpec = {
   }
 }
 
-export function ConfiguredLineBadge({ spec: _spec }: { spec: QuoteLineSpec }) {
+export function ConfiguredLineBadge() {
   return (
     <span className="ml-1.5 inline-flex items-center gap-1 rounded bg-indigo-50 px-1.5 py-0.5 text-[10px] font-medium text-indigo-700 border border-indigo-200">
       <Wrench className="h-2.5 w-2.5" />

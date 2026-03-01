@@ -25,7 +25,6 @@ import type {
   CatalogueType,
   CatalogueSpecField,
   ComputedBomLine,
-  SpecSelections,
 } from "@/lib/catalogue-types"
 import {
   defaultSimpleConfig,
@@ -42,7 +41,6 @@ import {
   Loader2,
   AlertTriangle,
   Lightbulb,
-  Plus,
   FileText,
   ChevronDown,
   ChevronUp,
@@ -309,7 +307,7 @@ export function CrmProductBuilder({
         .then((r) => r.json())
         .then(setFamilies)
     }
-  }, [open])
+  }, [open, families.length])
 
   // Load type detail when type is selected
   useEffect(() => {

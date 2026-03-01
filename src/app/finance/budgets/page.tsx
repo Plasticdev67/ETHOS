@@ -92,7 +92,6 @@ function getMonthsForYear(year: string): MonthDef[] {
 export default function BudgetsPage() {
   const [selectedYear, setSelectedYear] = useState(getCurrentFinancialYear())
   const [accounts, setAccounts] = useState<Account[]>([])
-  const [budgetLines, setBudgetLines] = useState<BudgetLine[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -132,7 +131,6 @@ export default function BudgetsPage() {
 
       if (budgetRes.ok) {
         const lines: BudgetLine[] = await budgetRes.json()
-        setBudgetLines(lines)
 
         // Build grid data from budget lines
         const grid: Record<string, Record<string, string>> = {}

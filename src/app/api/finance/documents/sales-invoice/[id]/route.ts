@@ -21,7 +21,7 @@ export async function GET(
       include: {
         customer: true,
         project: {
-          select: { id: true, name: true, reference: true },
+          select: { id: true, name: true, projectNumber: true },
         },
         lines: {
           orderBy: { createdAt: "asc" },
@@ -170,7 +170,7 @@ export async function GET(
     if (invoice.project) {
       detailLabel(
         "Project:",
-        invoice.project.reference || invoice.project.name,
+        invoice.project.projectNumber || invoice.project.name,
         dy
       )
       dy += 15
@@ -387,7 +387,7 @@ export async function GET(
 
     const pdfBuffer = await pdfReady
 
-    return new NextResponse(pdfBuffer, {
+    return new NextResponse(new Uint8Array(pdfBuffer), {
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `attachment; filename="Invoice-${invoice.invoiceNumber}.pdf"`,

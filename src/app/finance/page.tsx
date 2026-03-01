@@ -57,7 +57,6 @@ export default async function FinanceDashboard() {
   // Calculate company-wide KPIs
   let totalContractValue = 0
   let totalCostCommitted = 0
-  let totalCostActual = 0
   let totalInvoiced = 0
   let totalPaid = 0
   let totalRetentionHeld = 0
@@ -85,7 +84,6 @@ export default async function FinanceDashboard() {
 
     totalContractValue += contractVal
     totalCostCommitted += totalCommitted
-    totalCostActual += totalActual
     totalInvoiced += invoiced
     totalPaid += paid
     totalRetentionHeld += retention
@@ -279,7 +277,7 @@ export default async function FinanceDashboard() {
                         {inv.status}
                       </Badge>
                     </div>
-                    <div className="text-xs text-gray-500">{inv.project.projectNumber} — {inv.project.customer?.name}</div>
+                    <div className="text-xs text-gray-500">{inv.project?.projectNumber || "—"} — {inv.project?.customer?.name || "—"}</div>
                     <div className="flex items-center justify-between mt-1">
                       <span className="text-xs text-gray-500">
                         {inv.dateSubmitted ? formatDate(inv.dateSubmitted) : "Not submitted"}

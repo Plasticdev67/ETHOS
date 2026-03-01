@@ -1,8 +1,6 @@
 import { prisma } from "@/lib/db"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Plus } from "lucide-react"
 import Link from "next/link"
 import { prettifyEnum } from "@/lib/utils"
 import { NewCustomerDialog } from "@/components/customers/new-customer-dialog"

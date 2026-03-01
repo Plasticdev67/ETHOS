@@ -1,8 +1,8 @@
 import { prisma } from "@/lib/db"
-import { NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server"
 
 // GET /api/design/live — Projects with IN_PROGRESS or REVIEW design cards + per-project progress
-export async function GET(_request: NextRequest) {
+export async function GET() {
   try {
     const cards = await prisma.productDesignCard.findMany({
       where: {

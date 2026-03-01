@@ -89,7 +89,7 @@ export async function PATCH(
   }
 
   // Update the response
-  const updated = await prisma.enquiryResponse.update({
+  await prisma.enquiryResponse.update({
     where: { id: responseId },
     data: updateData,
   })

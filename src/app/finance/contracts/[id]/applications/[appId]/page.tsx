@@ -110,6 +110,7 @@ export default function ApplicationDetailPage() {
 
   useEffect(() => {
     fetchApplication()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contractId, appId])
 
   async function fetchApplication() {

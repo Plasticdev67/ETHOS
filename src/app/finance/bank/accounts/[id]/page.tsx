@@ -2,13 +2,12 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { useParams, useRouter } from 'next/navigation'
-import { cn, formatCurrency, formatDate, formatDateISO } from '@/lib/utils'
+import { useParams } from 'next/navigation'
+import { cn, formatCurrency, formatDate } from '@/lib/utils'
 import {
   Building2,
   ArrowDownLeft,
   ArrowUpRight,
-  ArrowLeftRight,
   Search,
   CheckCircle2,
   XCircle,
@@ -18,7 +17,6 @@ import {
   ChevronRight,
   ArrowDown,
   ArrowUp,
-  Filter,
 } from 'lucide-react'
 
 interface BankAccount {
@@ -68,7 +66,6 @@ const SOURCE_BADGES: Record<string, string> = {
 
 export default function BankAccountDetailPage() {
   const params = useParams()
-  const router = useRouter()
   const accountId = params.id as string
 
   const [account, setAccount] = useState<BankAccount | null>(null)

@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { formatCurrency, formatDate, prettifyEnum, cn } from "@/lib/utils"
+import { formatCurrency, formatDate, cn } from "@/lib/utils"
 import { HardHat, AlertTriangle, Clock, PoundSterling, Calendar, Layers } from "lucide-react"
 import Link from "next/link"
 

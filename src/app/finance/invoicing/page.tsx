@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
 import { formatCurrency, formatDate } from "@/lib/utils"
@@ -109,12 +109,16 @@ export default async function InvoicingPage() {
                   <tr key={inv.id} className={`hover:bg-gray-50 ${inv.status === "OVERDUE" ? "bg-red-50/30" : ""}`}>
                     <td className="px-4 py-2.5 font-mono text-xs font-semibold text-blue-600">{inv.invoiceNumber}</td>
                     <td className="px-4 py-2.5">
-                      <Link href={`/projects/${inv.project.id}`} className="text-blue-600 hover:text-blue-700 font-mono text-xs">
-                        {inv.project.projectNumber}
-                      </Link>
-                      <div className="text-xs text-gray-500 truncate max-w-[120px]">{inv.project.name}</div>
+                      {inv.project ? (
+                        <>
+                          <Link href={`/projects/${inv.project.id}`} className="text-blue-600 hover:text-blue-700 font-mono text-xs">
+                            {inv.project.projectNumber}
+                          </Link>
+                          <div className="text-xs text-gray-500 truncate max-w-[120px]">{inv.project.name}</div>
+                        </>
+                      ) : <span className="text-xs text-gray-400">—</span>}
                     </td>
-                    <td className="px-4 py-2.5 text-xs text-gray-500">{inv.project.customer?.name || "—"}</td>
+                    <td className="px-4 py-2.5 text-xs text-gray-500">{inv.project?.customer?.name || "—"}</td>
                     <td className="px-4 py-2.5 text-xs text-gray-600">{getInvoiceTypeLabel(inv.type)}</td>
                     <td className="px-4 py-2.5">
                       <Badge variant="secondary" className={getInvoiceStatusColor(inv.status)}>{inv.status}</Badge>

@@ -34,7 +34,6 @@ export function StatusTimeline({ currentStatus }: { currentStatus: string }) {
       {STEP_ORDER.map((step, index) => {
         const isCurrentStep = index === currentIndex
         const isPast = index < currentIndex
-        const isFuture = index > currentIndex
         const isRejectedStep = isRejected && step === "SUBMITTED"
         const isLast = index === STEP_ORDER.length - 1
 

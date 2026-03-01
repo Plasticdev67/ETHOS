@@ -18,7 +18,6 @@ import {
   FileText,
   Clock,
   Repeat,
-  CalendarCheck,
 } from 'lucide-react'
 
 interface AccountInfo {

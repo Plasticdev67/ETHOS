@@ -767,9 +767,6 @@ export function PipelineBoard({ initialOpportunities }: { initialOpportunities: 
 
   const grouped = groupByStatus(opportunities)
 
-  // Auto-expand dead lead column if there are dead leads
-  const deadCount = grouped["DEAD_LEAD"]?.length || 0
-
   async function handleProbabilityChange(oppId: string, value: number) {
     setOpportunities((prev) =>
       prev.map((o) => (o.id === oppId ? { ...o, winProbability: value } : o))

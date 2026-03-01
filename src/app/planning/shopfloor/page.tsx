@@ -10,14 +10,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { cn, formatDate } from "@/lib/utils"
+import { cn } from "@/lib/utils"
 import { generateDayColumns } from "@/lib/planning-utils"
-import { STAGE_DISPLAY_NAMES } from "@/lib/production-utils"
 import {
   Factory,
   Loader2,
-  AlertTriangle,
-  User,
 } from "lucide-react"
 
 type ScheduledTask = {
@@ -54,18 +51,12 @@ const STAGE_COLORS: Record<string, string> = {
   PACKING: "bg-cyan-400",
 }
 
-const STATUS_BADGE: Record<string, string> = {
-  IN_PROGRESS: "bg-blue-100 text-blue-700",
-  PENDING: "bg-gray-100 text-gray-600",
-  BLOCKED: "bg-red-100 text-red-700",
-}
-
 export default function ShopFloorPage() {
   const [horizonWeeks, setHorizonWeeks] = useState("2")
   const [viewMode, setViewMode] = useState<"product" | "stage">("product")
   const [tasks, setTasks] = useState<ScheduledTask[]>([])
   const [stages, setStages] = useState<StageInfo[]>([])
-  const [workers, setWorkers] = useState<WorkerInfo[]>([])
+  const [, setWorkers] = useState<WorkerInfo[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {

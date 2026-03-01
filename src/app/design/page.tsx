@@ -141,16 +141,19 @@ export default async function DesignPage() {
   const { projects, allCards, timelineCards, designers, handovers } = await getDesignDashboardData()
 
   // Map handover data onto projects for DesignBoard
-  const projectsWithHandovers = projects.map((p) => ({
-    ...p,
-    handover: (p as any).designHandover
-      ? {
-          id: (p as any).designHandover.id,
-          status: (p as any).designHandover.status,
-          includedProductIds: ((p as any).designHandover.includedProductIds || []) as string[],
-        }
-      : null,
-  }))
+  const projectsWithHandovers = projects.map((p) => {
+    const handoverData = p.designHandover as { id: string; status: string; includedProductIds: string[] | null } | null
+    return {
+      ...p,
+      handover: handoverData
+        ? {
+            id: handoverData.id,
+            status: handoverData.status,
+            includedProductIds: (handoverData.includedProductIds || []) as string[],
+          }
+        : null,
+    }
+  })
 
   const serializedProjects = JSON.parse(JSON.stringify(projectsWithHandovers))
   const serializedCards = JSON.parse(JSON.stringify(allCards))

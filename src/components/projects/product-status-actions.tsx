@@ -10,7 +10,6 @@ const departments = ["PLANNING", "DESIGN", "PRODUCTION", "INSTALLATION", "REVIEW
 export function ProductStatusActions({
   productId,
   currentDepartment,
-  currentProductionStage,
 }: {
   productId: string
   currentDepartment: string

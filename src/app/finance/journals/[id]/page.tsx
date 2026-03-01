@@ -9,7 +9,6 @@ import {
   CheckCircle,
   Undo2,
   Trash2,
-  FileText,
   Clock,
   AlertTriangle,
   X,
@@ -77,6 +76,7 @@ export default function JournalDetailPage() {
 
   useEffect(() => {
     fetchJournal()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
   async function fetchJournal() {

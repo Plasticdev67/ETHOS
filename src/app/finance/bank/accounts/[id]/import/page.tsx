@@ -2,18 +2,16 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { useParams, useRouter } from 'next/navigation'
-import { cn, formatCurrency, formatDate } from '@/lib/utils'
+import { useParams } from 'next/navigation'
+import { cn, formatCurrency } from '@/lib/utils'
 import {
   FileUp,
   Upload,
   X,
   Loader2,
   CheckCircle2,
-  AlertTriangle,
   FileText,
   Trash2,
-  Building2,
 } from 'lucide-react'
 
 interface BankAccount {
@@ -54,7 +52,6 @@ const COLUMN_OPTIONS = [
 
 export default function ImportStatementPage() {
   const params = useParams()
-  const router = useRouter()
   const accountId = params.id as string
   const fileInputRef = useRef<HTMLInputElement>(null)
 

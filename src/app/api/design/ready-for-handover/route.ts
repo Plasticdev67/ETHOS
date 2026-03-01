@@ -1,8 +1,8 @@
 import { prisma } from "@/lib/db"
-import { NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server"
 
 // GET /api/design/ready-for-handover — Projects where ALL design cards are COMPLETE
-export async function GET(_request: NextRequest) {
+export async function GET() {
   try {
     // Find all projects that have at least one design card
     const projectsWithDesignCards = await prisma.project.findMany({

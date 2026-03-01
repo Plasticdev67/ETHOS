@@ -2,6 +2,8 @@ import { prisma } from "@/lib/db"
 import { NextRequest, NextResponse } from "next/server"
 import { logAudit } from "@/lib/audit"
 import { revalidatePath } from "next/cache"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
+import { toDecimal } from "@/lib/api-utils"
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
@@ -25,38 +27,51 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const body = await request.json()
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
+  const denied = await requirePermission("crm:create")
+  if (denied) return denied
 
-  // Get max sortOrder for this prospect to append at end
-  const maxOrder = await prisma.opportunity.findFirst({
-    where: { prospectId: body.prospectId },
-    orderBy: { sortOrder: "desc" },
-    select: { sortOrder: true },
-  })
+  try {
+    const body = await request.json()
 
-  const opportunity = await prisma.opportunity.create({
-    data: {
-      prospectId: body.prospectId,
-      name: body.name,
-      description: body.description || null,
-      estimatedValue: body.estimatedValue ? parseFloat(body.estimatedValue) : null,
-      contactPerson: body.contactPerson || null,
-      leadSource: body.leadSource || "OTHER",
-      status: body.status || "ACTIVE_LEAD",
-      expectedCloseDate: body.expectedCloseDate ? new Date(body.expectedCloseDate) : null,
-      notes: body.notes || null,
-      sortOrder: (maxOrder?.sortOrder || 0) + 1,
-    },
-  })
+    // Get max sortOrder for this prospect to append at end
+    const maxOrder = await prisma.opportunity.findFirst({
+      where: { prospectId: body.prospectId },
+      orderBy: { sortOrder: "desc" },
+      select: { sortOrder: true },
+    })
 
-  await logAudit({
-    action: "CREATE",
-    entity: "Opportunity",
-    entityId: opportunity.id,
-    metadata: opportunity.name,
-  })
+    const opportunity = await prisma.opportunity.create({
+      data: {
+        prospectId: body.prospectId,
+        name: body.name,
+        description: body.description || null,
+        estimatedValue: toDecimal(body.estimatedValue),
+        contactPerson: body.contactPerson || null,
+        leadSource: body.leadSource || "OTHER",
+        status: body.status || "ACTIVE_LEAD",
+        expectedCloseDate: body.expectedCloseDate ? new Date(body.expectedCloseDate) : null,
+        notes: body.notes || null,
+        sortOrder: (maxOrder?.sortOrder || 0) + 1,
+      },
+    })
 
-  revalidatePath("/crm")
+    await logAudit({
+      action: "CREATE",
+      entity: "Opportunity",
+      entityId: opportunity.id,
+      metadata: opportunity.name,
+    })
 
-  return NextResponse.json(opportunity, { status: 201 })
+    revalidatePath("/crm")
+
+    return NextResponse.json(opportunity, { status: 201 })
+  } catch (error) {
+    console.error("Failed to create opportunity:", error)
+    return NextResponse.json(
+      { error: "Failed to create opportunity" },
+      { status: 500 }
+    )
+  }
 }

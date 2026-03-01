@@ -6,7 +6,6 @@ import type { WorkshopProject } from "./workshop-view"
 
 export function ProjectTrackerRail({
   projects,
-  activeStage,
 }: {
   projects: WorkshopProject[]
   activeStage: string

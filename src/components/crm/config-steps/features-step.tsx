@@ -3,9 +3,8 @@
 import { useState, useEffect } from "react"
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
-import { GripVertical, X, Plus } from "lucide-react"
+import { GripVertical, X } from "lucide-react"
 import type { SelectedFeatureTag, FeatureTagData } from "@/lib/product-config-types"
 import { calcPerimeter } from "@/lib/product-config-types"
 

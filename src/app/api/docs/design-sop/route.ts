@@ -486,7 +486,7 @@ export async function GET() {
 
   const pdfBuffer = await pdfReady
 
-  return new NextResponse(pdfBuffer, {
+  return new NextResponse(new Uint8Array(pdfBuffer), {
     headers: {
       "Content-Type": "application/pdf",
       "Content-Disposition": 'attachment; filename="ETHOS-Design-Process-SOP-v1.0.pdf"',

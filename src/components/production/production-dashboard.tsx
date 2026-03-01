@@ -9,12 +9,10 @@ import {
   getProductLane,
   calculateDashboardStats,
   STAGE_DISPLAY_NAMES,
-  WORK_STREAMS,
 } from "@/lib/production-utils"
 import { ProductionToolbar } from "./production-toolbar"
 import { ProductionStatsBar } from "./production-stats-bar"
 import { ProjectDetailPanel } from "./project-detail-panel"
-import { SubContractSection } from "./sub-contract-section"
 import { ProductLaneRow } from "./product-lane"
 import type { FlatProduct } from "./production-product-card"
 import { Badge } from "@/components/ui/badge"
@@ -246,7 +244,7 @@ export function ProductionDashboard({
       }
     }
     for (const product of flatProducts) {
-      const lane = getProductLane(product.project)
+      const lane = getProductLane()
       const stage = product.productionStatus
       if (stage && map[lane]?.[stage]) {
         map[lane][stage].push(product)

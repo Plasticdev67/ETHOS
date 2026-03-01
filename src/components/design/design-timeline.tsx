@@ -431,7 +431,7 @@ export function DesignTimeline({ cards: serverCards }: { cards: TimelineCard[] }
                 if (visibleCards.length === 0) {
                   return <div className="text-[9px] text-gray-300 py-3 text-center relative z-10">No dates set</div>
                 }
-                return visibleCards.map((card, barIdx) => {
+                return visibleCards.map((card) => {
                   const barStyle = getBarStyle(card)!
                   const progress = getJobProgress(card.jobCards)
                   const isDragging = dragState?.cardId === card.id

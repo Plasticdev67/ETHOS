@@ -91,7 +91,7 @@ export default function CostCentresPage() {
       setNewManager('')
       setShowForm(false)
       fetchData()
-    } catch (err) {
+    } catch {
       setError('Failed to create cost centre')
     } finally {
       setSaving(false)
@@ -111,7 +111,7 @@ export default function CostCentresPage() {
       }
       setSuccessMessage(`Cost Centre "${costCentre.name}" deleted`)
       fetchData()
-    } catch (err) {
+    } catch {
       setError('Failed to delete cost centre')
     }
   }
@@ -130,7 +130,7 @@ export default function CostCentresPage() {
         return
       }
       fetchData()
-    } catch (err) {
+    } catch {
       setError('Failed to update cost centre')
     }
   }
@@ -163,7 +163,7 @@ export default function CostCentresPage() {
       setEditingId(null)
       setSuccessMessage('Cost Centre updated')
       fetchData()
-    } catch (err) {
+    } catch {
       setError('Failed to update cost centre')
     }
   }

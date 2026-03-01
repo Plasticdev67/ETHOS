@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { cn, formatCurrency, formatDate } from '@/lib/utils'
+import { cn, formatCurrency } from '@/lib/utils'
 import {
   ArrowLeft,
   Plus,
@@ -90,6 +90,7 @@ export default function NewApplicationPage() {
 
   useEffect(() => {
     loadData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contractId])
 
   async function loadData() {

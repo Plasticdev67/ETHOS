@@ -2,11 +2,10 @@
 
 import { Siren } from "lucide-react"
 import Link from "next/link"
-import { useEffect, useRef, useState } from "react"
 
 interface ICUProject {
   id: string
-  projectNumber: number
+  projectNumber: string
   name: string
   customer: { name: string } | null
 }

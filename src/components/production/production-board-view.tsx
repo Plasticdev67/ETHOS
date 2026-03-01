@@ -57,7 +57,7 @@ type ProducingProject = {
   departmentStatus: string
   priority: string
   isICUFlag: boolean
-  classification: string
+  workStream: string
   ragStatus: string | null
   targetCompletion: string | null
   customer: { id: string; name: string } | null

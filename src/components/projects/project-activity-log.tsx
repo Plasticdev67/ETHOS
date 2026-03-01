@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { useRouter } from "next/navigation"
 
 type ProjectNote = {
   id: string
@@ -136,7 +135,6 @@ export function ProjectActivityLog({
   initialNotes: ProjectNote[]
   auditEntries: AuditEntry[]
 }) {
-  const router = useRouter()
   const [notes, setNotes] = useState<ProjectNote[]>(initialNotes)
   const [message, setMessage] = useState("")
   const [category, setCategory] = useState("NOTE")
