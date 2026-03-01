@@ -529,7 +529,8 @@ async function main() {
   b("Middleware enforces authentication on every page and API route")
   b("Role-based permissions are checked server-side for all write operations")
   b("An audit trail records every create, update, and delete action with user, timestamp, and field-level diff")
-  callout("ETHOS is cloud-hosted. There is no on-premise server to maintain. The database is backed up automatically by Supabase.")
+  b("The database is backed up daily by Supabase with point-in-time recovery — backups are retained automatically and can be restored via the Supabase dashboard")
+  callout("ETHOS is cloud-hosted. There is no on-premise server to maintain. All data is backed up daily on Supabase with no manual intervention required.")
 
   // ════════════════════════════════════════════════════════════════
   //  HEADERS + FOOTERS (painted last via bufferPages)
