@@ -1,11 +1,15 @@
 import { prisma } from "@/lib/db"
 import { NextRequest, NextResponse } from "next/server"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await requireAuth()
+    if (user instanceof NextResponse) return user
+
     const { id } = await params
 
     const template = await prisma.recurringTemplate.findUnique({
@@ -34,6 +38,11 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await requireAuth()
+    if (user instanceof NextResponse) return user
+    const denied = await requirePermission("finance:edit")
+    if (denied) return denied
+
     const { id } = await params
     const body = await request.json()
 
@@ -80,6 +89,11 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await requireAuth()
+    if (user instanceof NextResponse) return user
+    const denied = await requirePermission("finance:edit")
+    if (denied) return denied
+
     const { id } = await params
     const body = await request.json()
 

@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db"
 import { notFound } from "next/navigation"
 import { HandoverForm } from "@/components/design/handover-form"
 
-export const dynamic = "force-dynamic"
+export const revalidate = 60
 
 export default async function HandoverPage({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params

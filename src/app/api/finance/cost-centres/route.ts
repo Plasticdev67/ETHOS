@@ -1,9 +1,13 @@
 import { prisma } from "@/lib/db"
 import { NextRequest, NextResponse } from "next/server"
 import { revalidatePath } from "next/cache"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
 
 export async function GET() {
   try {
+    const user = await requireAuth()
+    if (user instanceof NextResponse) return user
+
     const costCentres = await prisma.costCentre.findMany({
       orderBy: { code: "asc" },
     })
@@ -20,6 +24,11 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await requireAuth()
+    if (user instanceof NextResponse) return user
+    const denied = await requirePermission("finance:edit")
+    if (denied) return denied
+
     const body = await request.json()
 
     const { code, name, managerId } = body
@@ -61,6 +70,11 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
+    const user = await requireAuth()
+    if (user instanceof NextResponse) return user
+    const denied = await requirePermission("finance:edit")
+    if (denied) return denied
+
     const body = await request.json()
 
     const { id } = body

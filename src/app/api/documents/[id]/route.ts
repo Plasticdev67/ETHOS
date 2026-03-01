@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db"
 import { NextRequest, NextResponse } from "next/server"
 import { unlink } from "fs/promises"
 import path from "path"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
 
 export async function GET(
   _request: NextRequest,
@@ -23,6 +24,11 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
+  const denied = await requirePermission("projects:edit")
+  if (denied) return denied
+
   const { id } = await params
 
   const doc = await prisma.document.findUnique({ where: { id } })

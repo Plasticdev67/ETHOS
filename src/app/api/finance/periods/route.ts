@@ -1,9 +1,13 @@
 import { prisma } from "@/lib/db"
 import { NextRequest, NextResponse } from "next/server"
 import { revalidatePath } from "next/cache"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
 
 export async function GET() {
   try {
+    const user = await requireAuth()
+    if (user instanceof NextResponse) return user
+
     const periods = await prisma.accountingPeriod.findMany({
       orderBy: { startDate: "asc" },
       include: {
@@ -25,6 +29,11 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await requireAuth()
+    if (user instanceof NextResponse) return user
+    const denied = await requirePermission("finance:edit")
+    if (denied) return denied
+
     const body = await request.json()
 
     const { name, startDate, endDate, yearEnd } = body

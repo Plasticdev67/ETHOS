@@ -3,9 +3,13 @@ import { NextRequest, NextResponse } from "next/server"
 import { revalidatePath } from "next/cache"
 import { getNextSequenceNumber } from "@/lib/finance/sequences"
 import { validateJournalLines } from "@/lib/finance/validation"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
 
 export async function GET(request: NextRequest) {
   try {
+    const user = await requireAuth()
+    if (user instanceof NextResponse) return user
+
     const { searchParams } = new URL(request.url)
     const status = searchParams.get("status")
     const source = searchParams.get("source")
@@ -66,6 +70,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await requireAuth()
+    if (user instanceof NextResponse) return user
+    const denied = await requirePermission("finance:edit")
+    if (denied) return denied
+
     const body = await request.json()
 
     const { date, description, reference, periodId, source, lines } = body

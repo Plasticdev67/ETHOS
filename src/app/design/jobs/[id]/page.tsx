@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db"
 import { notFound } from "next/navigation"
 import { JobCardDetail } from "@/components/design/job-card-detail"
 
-export const dynamic = "force-dynamic"
+export const revalidate = 60
 
 export default async function JobCardPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params

@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db"
 import { NextRequest, NextResponse } from "next/server"
 import { revalidatePath } from "next/cache"
 import { requireAuth, requirePermission } from "@/lib/api-auth"
+import { validateStatusTransition, checkImmutability } from "@/lib/status-guards"
 
 export async function GET(
   _request: NextRequest,
@@ -53,6 +54,21 @@ export async function PATCH(
     const { id } = await params
     const body = await request.json()
 
+    const existing = await prisma.quote.findUnique({ where: { id } })
+    if (!existing) return NextResponse.json({ error: "Quote not found" }, { status: 404 })
+
+    // Validate status transition if changing status
+    if (body.status !== undefined && body.status !== existing.status) {
+      const invalid = validateStatusTransition("quote", existing.status, body.status)
+      if (invalid) return invalid
+    }
+
+    // Block edits on locked quotes (only status transitions allowed)
+    if (!body.status || body.status === existing.status) {
+      const locked = checkImmutability("quote", existing.status)
+      if (locked) return locked
+    }
+
     const data: Record<string, unknown> = {}
     if (body.status !== undefined) data.status = body.status
     if (body.notes !== undefined) data.notes = body.notes
@@ -99,6 +115,12 @@ export async function DELETE(
 
   try {
     const { id } = await params
+    const existing = await prisma.quote.findUnique({ where: { id } })
+    if (!existing) return NextResponse.json({ error: "Quote not found" }, { status: 404 })
+
+    const locked = checkImmutability("quote", existing.status)
+    if (locked) return locked
+
     await prisma.quote.delete({ where: { id } })
 
     revalidatePath("/quotes")

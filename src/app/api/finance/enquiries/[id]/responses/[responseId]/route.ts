@@ -1,11 +1,15 @@
 import { prisma } from "@/lib/db"
 import { NextRequest, NextResponse } from "next/server"
 import { revalidatePath } from "next/cache"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; responseId: string }> }
 ) {
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
+
   const { id, responseId } = await params
 
   const response = await prisma.enquiryResponse.findFirst({
@@ -47,6 +51,11 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; responseId: string }> }
 ) {
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
+  const denied = await requirePermission("finance:edit")
+  if (denied) return denied
+
   const { id, responseId } = await params
   const body = await request.json()
 

@@ -1,8 +1,13 @@
 import { prisma } from "@/lib/db"
+import { toDecimalOrDefault } from "@/lib/api-utils"
 import { NextRequest, NextResponse } from "next/server"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
 
 export async function GET(request: NextRequest) {
   try {
+    const user = await requireAuth()
+    if (user instanceof NextResponse) return user
+
     const { searchParams } = new URL(request.url)
     const status = searchParams.get("status")
 
@@ -32,6 +37,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await requireAuth()
+    if (user instanceof NextResponse) return user
+    const denied = await requirePermission("finance:edit")
+    if (denied) return denied
+
     const body = await request.json()
 
     const {
@@ -86,8 +96,8 @@ export async function POST(request: NextRequest) {
           }) => ({
             accountId: line.accountId,
             description: line.description || null,
-            debit: parseFloat(String(line.debit)) || 0,
-            credit: parseFloat(String(line.credit)) || 0,
+            debit: toDecimalOrDefault(line.debit, 0),
+            credit: toDecimalOrDefault(line.credit, 0),
             vatCodeId: line.vatCodeId || null,
             costCentreId: line.costCentreId || null,
             projectId: line.projectId || null,

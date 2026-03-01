@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/db"
+import { toDecimal } from "@/lib/api-utils"
 import { NextRequest, NextResponse } from "next/server"
 import { revalidatePath } from "next/cache"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
@@ -18,13 +20,18 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
+  const denied = await requirePermission("projects:edit")
+  if (denied) return denied
+
   const body = await request.json()
 
   const retention = await prisma.retentionHoldback.create({
     data: {
       projectId: body.projectId,
-      retentionPercent: body.retentionPercent ? parseFloat(body.retentionPercent) : null,
-      retentionAmount: body.retentionAmount ? parseFloat(body.retentionAmount) : null,
+      retentionPercent: toDecimal(body.retentionPercent),
+      retentionAmount: toDecimal(body.retentionAmount),
       releaseDate: body.releaseDate ? new Date(body.releaseDate) : null,
       status: body.status || "HELD",
       notes: body.notes || null,

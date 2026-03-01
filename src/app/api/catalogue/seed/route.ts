@@ -2,8 +2,15 @@
 // @ts-nocheck — Prisma type depth issue with deep catalogue relations
 import { prisma } from "@/lib/db"
 import { NextResponse } from "next/server"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
 
 export async function POST() {
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
+  const denied = await requirePermission("catalogue:edit")
+  if (denied) return denied
+
+  try {
   // Clear existing hierarchy data
   await prisma.specBomModifier.deleteMany()
   await prisma.specDependency.deleteMany()
@@ -395,4 +402,8 @@ export async function POST() {
     variants: 14,
     message: "Catalogue seeded with Flood Doors and Flood Gates",
   })
+  } catch (error) {
+    console.error("POST /api/catalogue/seed error:", error)
+    return NextResponse.json({ error: "Failed to seed catalogue" }, { status: 500 })
+  }
 }

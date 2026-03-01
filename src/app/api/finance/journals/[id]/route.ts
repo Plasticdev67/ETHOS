@@ -1,11 +1,15 @@
 import { prisma } from "@/lib/db"
 import { NextRequest, NextResponse } from "next/server"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
 
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await requireAuth()
+    if (user instanceof NextResponse) return user
+
     const { id } = await params
 
     const entry = await prisma.journalEntry.findUnique({

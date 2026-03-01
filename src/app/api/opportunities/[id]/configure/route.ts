@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db"
 import { NextRequest, NextResponse } from "next/server"
 import { computeBomCost } from "@/lib/bom-calculator"
 import type { BomItem, BomModifier, CatalogueSpecChoice } from "@/lib/catalogue-types"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
 
 /**
  * POST /api/opportunities/[id]/configure
@@ -14,6 +15,11 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
+  const denied = await requirePermission("crm:edit")
+  if (denied) return denied
+
   const { id } = await params
   const body = await request.json()
 
@@ -29,6 +35,7 @@ export async function POST(
     return NextResponse.json({ error: "variantId required" }, { status: 400 })
   }
 
+  try {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const variant = await (prisma.productVariant as any).findUnique({
     where: { id: variantId },
@@ -203,4 +210,8 @@ export async function POST(
     realComponents,
     realOperations,
   })
+  } catch (error) {
+    console.error("POST /api/opportunities/[id]/configure error:", error)
+    return NextResponse.json({ error: "Failed to compute BOM configuration" }, { status: 500 })
+  }
 }

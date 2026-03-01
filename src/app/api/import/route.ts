@@ -1,7 +1,14 @@
 import { prisma } from "@/lib/db"
+import { toDecimal } from "@/lib/api-utils"
 import { NextRequest, NextResponse } from "next/server"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
 
 export async function POST(request: NextRequest) {
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
+  const denied = await requirePermission("import:use")
+  if (denied) return denied
+
   const body = await request.json()
   const { type, rows } = body as { type: string; rows: Record<string, string>[] }
 
@@ -134,8 +141,8 @@ export async function POST(request: NextRequest) {
             workStream: mapWorkStream(r.workStream),
             salesStage: mapSalesStage(r.salesStage),
             projectStatus: mapProjectStatus(r.projectStatus),
-            estimatedValue: r.estimatedValue ? parseFloat(r.estimatedValue.replace(/[£,]/g, "")) || null : null,
-            contractValue: r.contractValue ? parseFloat(r.contractValue.replace(/[£,]/g, "")) || null : null,
+            estimatedValue: toDecimal(r.estimatedValue?.replace(/[£,]/g, "")),
+            contractValue: toDecimal(r.contractValue?.replace(/[£,]/g, "")),
             siteLocation: r.siteLocation || null,
             notes: r.notes || null,
             enquiryReceived: r.enquiryReceived ? new Date(r.enquiryReceived) : null,
@@ -206,7 +213,7 @@ export async function POST(request: NextRequest) {
 
       try {
         const rawPrice = r.averageBuyingPrice || r["Average Buying Price"] || ""
-        const price = rawPrice ? parseFloat(rawPrice.replace(/[£,\s]/g, "")) : null
+        const price = toDecimal(rawPrice ? rawPrice.replace(/[£,\s]/g, "") : null)
         const leadTime = r.leadTime || r["Lead Time"] || ""
         const parsedLeadTime = leadTime ? parseInt(leadTime, 10) : null
         const name = r.name || r["Stock item name"] || stockCode
@@ -221,7 +228,7 @@ export async function POST(request: NextRequest) {
             name,
             ...(productGroup && { productGroup }),
             ...(uom && { unitOfMeasure: uom }),
-            ...(price !== null && !isNaN(price) && { averageBuyingPrice: price }),
+            ...(price !== null && { averageBuyingPrice: price }),
             ...(supplier && { supplierRef: supplier }),
             ...(parsedLeadTime !== null && !isNaN(parsedLeadTime) && { supplierLeadTime: parsedLeadTime }),
             ...(notes && { memo: notes }),
@@ -231,7 +238,7 @@ export async function POST(request: NextRequest) {
             name,
             productGroup,
             unitOfMeasure: uom,
-            averageBuyingPrice: price !== null && !isNaN(price) ? price : null,
+            averageBuyingPrice: price,
             supplierRef: supplier,
             supplierLeadTime: parsedLeadTime !== null && !isNaN(parsedLeadTime) ? parsedLeadTime : null,
             memo: notes,
@@ -269,7 +276,7 @@ export async function POST(request: NextRequest) {
             supplierLeadTime: r.supplierLeadTime ? parseInt(r.supplierLeadTime, 10) || null : null,
             supplierLeadTimeUnit: r.supplierLeadTimeUnit || null,
             unitOfMeasure: r.unitOfMeasure || null,
-            averageBuyingPrice: r.averageBuyingPrice ? parseFloat(r.averageBuyingPrice.replace(/[£,\s]/g, "")) || null : null,
+            averageBuyingPrice: toDecimal(r.averageBuyingPrice?.replace(/[£,\s]/g, "")),
           },
           create: {
             stockCode,
@@ -286,7 +293,7 @@ export async function POST(request: NextRequest) {
             supplierLeadTime: r.supplierLeadTime ? parseInt(r.supplierLeadTime, 10) || null : null,
             supplierLeadTimeUnit: r.supplierLeadTimeUnit || null,
             unitOfMeasure: r.unitOfMeasure || null,
-            averageBuyingPrice: r.averageBuyingPrice ? parseFloat(r.averageBuyingPrice.replace(/[£,\s]/g, "")) || null : null,
+            averageBuyingPrice: toDecimal(r.averageBuyingPrice?.replace(/[£,\s]/g, "")),
           },
         })
         success++

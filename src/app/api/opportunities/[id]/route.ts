@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/db"
+import { toDecimal } from "@/lib/api-utils"
 import { NextRequest, NextResponse } from "next/server"
 import { revalidatePath } from "next/cache"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
 
 export async function GET(
   request: NextRequest,
@@ -27,6 +29,11 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
+  const denied = await requirePermission("crm:edit")
+  if (denied) return denied
+
   const { id } = await params
   const body = await request.json()
 
@@ -48,7 +55,7 @@ export async function PATCH(
   }
 
   if (body.estimatedValue !== undefined) {
-    data.estimatedValue = body.estimatedValue ? parseFloat(body.estimatedValue) : null
+    data.estimatedValue = toDecimal(body.estimatedValue)
   }
 
   if (body.expectedCloseDate !== undefined) {
@@ -68,13 +75,13 @@ export async function PATCH(
     data.liftingPlanRequired = !!body.liftingPlanRequired
   }
   if (body.estimatedWeight !== undefined) {
-    data.estimatedWeight = body.estimatedWeight ? parseFloat(body.estimatedWeight) : null
+    data.estimatedWeight = body.estimatedWeight ? Number(toDecimal(body.estimatedWeight) ?? 0) : null
   }
   if (body.maxLiftHeight !== undefined) {
-    data.maxLiftHeight = body.maxLiftHeight ? parseFloat(body.maxLiftHeight) : null
+    data.maxLiftHeight = body.maxLiftHeight ? Number(toDecimal(body.maxLiftHeight) ?? 0) : null
   }
   if (body.liftingPlanCost !== undefined) {
-    data.liftingPlanCost = body.liftingPlanCost ? parseFloat(body.liftingPlanCost) : null
+    data.liftingPlanCost = toDecimal(body.liftingPlanCost)
   }
 
   // Dead lead fields
@@ -159,6 +166,11 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
+  const denied = await requirePermission("crm:edit")
+  if (denied) return denied
+
   const { id } = await params
   await prisma.opportunity.delete({ where: { id } })
 

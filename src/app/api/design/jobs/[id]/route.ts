@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db"
 import { NextRequest, NextResponse } from "next/server"
 import { logAudit } from "@/lib/audit"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
 
 export async function GET(
   _request: NextRequest,
@@ -45,6 +46,11 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
+  const denied = await requirePermission("design:manage")
+  if (denied) return denied
+
   const { id } = await params
   const body = await request.json()
 
@@ -69,17 +75,22 @@ export async function PATCH(
     return NextResponse.json({ error: "No valid fields to update" }, { status: 400 })
   }
 
-  const updated = await prisma.designJobCard.update({
-    where: { id },
-    data,
-  })
+  try {
+    const updated = await prisma.designJobCard.update({
+      where: { id },
+      data,
+    })
 
-  await logAudit({
-    action: "UPDATE",
-    entity: "DesignJobCard",
-    entityId: id,
-    metadata: JSON.stringify(data),
-  })
+    await logAudit({
+      action: "UPDATE",
+      entity: "DesignJobCard",
+      entityId: id,
+      metadata: JSON.stringify(data),
+    })
 
-  return NextResponse.json(updated)
+    return NextResponse.json(updated)
+  } catch (error) {
+    console.error("PATCH /api/design/jobs/[id] error:", error)
+    return NextResponse.json({ error: "Failed to update job card" }, { status: 500 })
+  }
 }

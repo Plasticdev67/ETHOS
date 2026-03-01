@@ -1,12 +1,17 @@
 import { prisma } from "@/lib/db"
+import { toDecimal, toDecimalOrDefault } from "@/lib/api-utils"
 import { NextRequest, NextResponse } from "next/server"
 import { revalidatePath } from "next/cache"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await requireAuth()
+    if (user instanceof NextResponse) return user
+
     const { id } = await params
 
     const contract = await prisma.constructionContract.findUnique({
@@ -83,6 +88,11 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await requireAuth()
+    if (user instanceof NextResponse) return user
+    const denied = await requirePermission("finance:edit")
+    if (denied) return denied
+
     const { id } = await params
     const body = await request.json()
 
@@ -102,13 +112,13 @@ export async function PUT(
 
     if (body.status) updateData.status = body.status
     if (body.contractType) updateData.contractType = body.contractType
-    if (body.originalValue !== undefined) updateData.originalValue = parseFloat(body.originalValue)
-    if (body.currentValue !== undefined) updateData.currentValue = parseFloat(body.currentValue)
-    if (body.retentionPercent !== undefined) updateData.retentionPercent = parseFloat(body.retentionPercent)
-    if (body.retentionLimit !== undefined) updateData.retentionLimit = body.retentionLimit ? parseFloat(body.retentionLimit) : null
+    if (body.originalValue !== undefined) updateData.originalValue = toDecimalOrDefault(body.originalValue, 0)
+    if (body.currentValue !== undefined) updateData.currentValue = toDecimalOrDefault(body.currentValue, 0)
+    if (body.retentionPercent !== undefined) updateData.retentionPercent = toDecimalOrDefault(body.retentionPercent, 0)
+    if (body.retentionLimit !== undefined) updateData.retentionLimit = toDecimal(body.retentionLimit)
     if (body.defectsLiabilityMonths !== undefined) updateData.defectsLiabilityMonths = body.defectsLiabilityMonths
     if (body.cisApplicable !== undefined) updateData.cisApplicable = body.cisApplicable
-    if (body.cisRate !== undefined) updateData.cisRate = body.cisRate ? parseFloat(body.cisRate) : null
+    if (body.cisRate !== undefined) updateData.cisRate = toDecimal(body.cisRate)
     if (body.description !== undefined) updateData.description = body.description
     if (body.practicalCompletionDate) updateData.practicalCompletionDate = new Date(body.practicalCompletionDate)
     if (body.finalAccountAgreed !== undefined) updateData.finalAccountAgreed = body.finalAccountAgreed

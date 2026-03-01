@@ -4,7 +4,6 @@ import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 import { NominalCodeManager } from "@/components/finance/nominal-code-manager"
 
-export const dynamic = 'force-dynamic'
 export const revalidate = 60
 
 async function getNominalCodes() {

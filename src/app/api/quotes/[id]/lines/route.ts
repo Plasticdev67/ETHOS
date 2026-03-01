@@ -6,11 +6,17 @@ import {
   calculateSellPrice,
   MINIMUM_MARGIN_FLOOR,
 } from "@/lib/quote-calculations"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
+  const denied = await requirePermission("quotes:edit")
+  if (denied) return denied
+
   const { id: quoteId } = await params
   const body = await request.json()
 

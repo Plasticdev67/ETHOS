@@ -1,12 +1,17 @@
 import { prisma } from "@/lib/db"
+import { toDecimalOrDefault } from "@/lib/api-utils"
 import { NextRequest, NextResponse } from "next/server"
 import { revalidatePath } from "next/cache"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await requireAuth()
+    if (user instanceof NextResponse) return user
+
     const { id } = await params
 
     const account = await prisma.bankAccount.findUnique({
@@ -65,6 +70,11 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await requireAuth()
+    if (user instanceof NextResponse) return user
+    const denied = await requirePermission("finance:edit")
+    if (denied) return denied
+
     const { id } = await params
     const body = await request.json()
 
@@ -87,7 +97,7 @@ export async function PUT(
     if (body.currency !== undefined) updateData.currency = body.currency
     if (body.accountId !== undefined) updateData.accountId = body.accountId
     if (body.isActive !== undefined) updateData.isActive = body.isActive
-    if (body.currentBalance !== undefined) updateData.currentBalance = parseFloat(body.currentBalance)
+    if (body.currentBalance !== undefined) updateData.currentBalance = toDecimalOrDefault(body.currentBalance, 0)
 
     const account = await prisma.bankAccount.update({
       where: { id },

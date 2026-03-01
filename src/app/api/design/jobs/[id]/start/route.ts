@@ -3,11 +3,17 @@ import { NextRequest, NextResponse } from "next/server"
 import { logAudit } from "@/lib/audit"
 import { canStartJob } from "@/lib/design-utils"
 import { revalidatePath } from "next/cache"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
 
 export async function POST(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
+  const denied = await requirePermission("design:manage")
+  if (denied) return denied
+
   const { id } = await params
 
   // Fetch job card with sibling job cards via the parent design card
@@ -50,6 +56,7 @@ export async function POST(
   const previousStatus = jobCard.status
   const now = new Date()
 
+  try {
   // Update job card status to IN_PROGRESS (clear rejection data on re-work)
   const updateData: Record<string, unknown> = {
     status: "IN_PROGRESS",
@@ -88,4 +95,8 @@ export async function POST(
 
   revalidatePath("/design")
   return NextResponse.json(updated)
+  } catch (error) {
+    console.error("POST /api/design/jobs/[id]/start error:", error)
+    return NextResponse.json({ error: "Failed to start job card" }, { status: 500 })
+  }
 }

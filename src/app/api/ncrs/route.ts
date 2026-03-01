@@ -4,12 +4,17 @@ import { revalidatePath } from "next/cache"
 import { requireAuth, requirePermission } from "@/lib/api-auth"
 import { toDecimal } from "@/lib/api-utils"
 import { getNextSequenceNumber } from "@/lib/finance/sequences"
+import { recalcProjectNcrCost } from "@/lib/ncr-utils"
 
 export async function GET(request: NextRequest) {
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
+
   const { searchParams } = new URL(request.url)
   const projectId = searchParams.get("projectId")
 
-  const where = projectId ? { projectId } : {}
+  const where: Record<string, unknown> = { isArchived: false }
+  if (projectId) where.projectId = projectId
 
   const ncrs = await prisma.nonConformanceReport.findMany({
     where,
@@ -87,19 +92,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Update project NCR cost total
+    // Recalculate project NCR cost total
     if (body.costImpact) {
-      const ncrs = await prisma.nonConformanceReport.findMany({
-        where: { projectId: body.projectId },
-      })
-      const totalNcrCost = ncrs.reduce(
-        (sum, n) => sum + Number(n.costImpact || 0),
-        0
-      )
-      await prisma.project.update({
-        where: { id: body.projectId },
-        data: { ncrCost: totalNcrCost },
-      })
+      await recalcProjectNcrCost(body.projectId)
     }
 
     revalidatePath("/ncrs")

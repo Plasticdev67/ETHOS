@@ -1,8 +1,12 @@
 import { prisma } from "@/lib/db"
 import { NextRequest, NextResponse } from "next/server"
 import { revalidatePath } from "next/cache"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
 
 export async function GET(request: NextRequest) {
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
+
   const { searchParams } = new URL(request.url)
   const projectId = searchParams.get("projectId")
   const status = searchParams.get("status")
@@ -39,6 +43,11 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
+  const denied = await requirePermission("finance:edit")
+  if (denied) return denied
+
   const body = await request.json()
   const { projectId, subject, notes, bomLineIds, supplierIds } = body as {
     projectId: string

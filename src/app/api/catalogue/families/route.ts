@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db"
 import { NextRequest, NextResponse } from "next/server"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
 
 export async function GET() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -20,17 +21,27 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
+  const denied = await requirePermission("catalogue:edit")
+  if (denied) return denied
+
   const body = await request.json()
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const family = await (prisma.productFamily as any).create({
-    data: {
-      name: body.name,
-      code: body.code,
-      sortOrder: body.sortOrder ?? 0,
-      active: body.active ?? true,
-    },
-  })
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const family = await (prisma.productFamily as any).create({
+      data: {
+        name: body.name,
+        code: body.code,
+        sortOrder: body.sortOrder ?? 0,
+        active: body.active ?? true,
+      },
+    })
 
-  return NextResponse.json(family, { status: 201 })
+    return NextResponse.json(family, { status: 201 })
+  } catch (error) {
+    console.error("POST /api/catalogue/families error:", error)
+    return NextResponse.json({ error: "Failed to create product family" }, { status: 500 })
+  }
 }

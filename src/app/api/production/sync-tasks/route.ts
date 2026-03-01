@@ -2,11 +2,17 @@ import { prisma } from "@/lib/db"
 import { NextResponse } from "next/server"
 import { revalidatePath } from "next/cache"
 import type { ProductionStage } from "@/generated/prisma/client"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
 
 const WORKSHOP_STAGES: ProductionStage[] = ["CUTTING", "FABRICATION", "FITTING", "SHOTBLASTING", "PAINTING", "PACKING"]
 
 // POST /api/production/sync-tasks — Create missing production tasks for products at workshop stages
 export async function POST() {
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
+  const denied = await requirePermission("production:manage")
+  if (denied) return denied
+
   try {
     // Find all products at a workshop stage
     const products = await prisma.product.findMany({

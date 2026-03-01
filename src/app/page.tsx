@@ -27,7 +27,6 @@ import { auth } from "@/lib/auth"
 import { isManagerOrDirector } from "@/lib/permissions"
 
 export const dynamic = 'force-dynamic'
-export const revalidate = 60
 
 // ─── Workstream label helper ─────────────────────────────────────────────────
 const WS_LABELS: Record<string, string> = {
@@ -81,7 +80,7 @@ async function getOverviewData() {
       where: { isICUFlag: true, projectStatus: { not: "COMPLETE" } },
       select: { id: true, projectNumber: true, name: true, customer: { select: { name: true } } },
     }),
-    prisma.nonConformanceReport.count({ where: { status: { in: ["OPEN", "INVESTIGATING"] } } }),
+    prisma.nonConformanceReport.count({ where: { status: { in: ["OPEN", "INVESTIGATING"] }, isArchived: false } }),
     prisma.opportunity.groupBy({
       by: ["status"], where: { status: { notIn: ["DEAD_LEAD"] } },
       _sum: { estimatedValue: true }, _count: { id: true },
@@ -482,7 +481,7 @@ async function getProductionTabData() {
       select: { stage: true, startedAt: true, completedAt: true },
     }),
     prisma.nonConformanceReport.findMany({
-      where: { status: { in: ["OPEN", "INVESTIGATING"] }, parentProject: { projectStatus: "MANUFACTURE" } },
+      where: { status: { in: ["OPEN", "INVESTIGATING"] }, isArchived: false, parentProject: { projectStatus: "MANUFACTURE" } },
       select: { severity: true, parentProject: { select: { projectNumber: true } } },
     }),
   ])

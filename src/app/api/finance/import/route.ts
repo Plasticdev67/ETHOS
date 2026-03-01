@@ -1,8 +1,15 @@
 import { prisma } from "@/lib/db"
+import { toDecimalOrDefault } from "@/lib/api-utils"
 import { NextRequest, NextResponse } from "next/server"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await requireAuth()
+    if (user instanceof NextResponse) return user
+    const denied = await requirePermission("finance:edit")
+    if (denied) return denied
+
     const body = await request.json()
     const { type, data, createdBy } = body
 
@@ -116,9 +123,9 @@ export async function POST(request: NextRequest) {
               projectId: row.projectId || null,
               invoiceDate: new Date(row.invoiceDate),
               dueDate: row.dueDate ? new Date(row.dueDate) : new Date(row.invoiceDate),
-              subtotal: parseFloat(row.subtotal || "0"),
-              vatAmount: parseFloat(row.vatAmount || "0"),
-              total: parseFloat(row.total || "0"),
+              subtotal: toDecimalOrDefault(row.subtotal, 0),
+              vatAmount: toDecimalOrDefault(row.vatAmount, 0),
+              total: toDecimalOrDefault(row.total, 0),
               status: row.status || "ACC_DRAFT",
               notes: row.notes || null,
               createdBy: createdBy || "system",
@@ -214,8 +221,8 @@ export async function POST(request: NextRequest) {
                   }) => ({
                     accountId: line.accountId,
                     description: line.description || null,
-                    debit: parseFloat(String(line.debit)) || 0,
-                    credit: parseFloat(String(line.credit)) || 0,
+                    debit: toDecimalOrDefault(line.debit, 0),
+                    credit: toDecimalOrDefault(line.credit, 0),
                     vatCodeId: line.vatCodeId || null,
                     projectId: line.projectId || null,
                   })

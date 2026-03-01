@@ -4,7 +4,6 @@ import { formatCurrency } from "@/lib/utils"
 import { CreatePoDialog } from "@/components/purchasing/create-po-dialog"
 import { PoTableRow } from "@/components/purchasing/po-row-expand"
 
-export const dynamic = 'force-dynamic'
 export const revalidate = 60
 
 async function getPurchaseOrders() {

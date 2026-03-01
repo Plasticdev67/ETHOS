@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db"
 import { NextRequest, NextResponse } from "next/server"
 import { computeBomCost } from "@/lib/bom-calculator"
 import type { BomItem, BomModifier, CatalogueSpecChoice } from "@/lib/catalogue-types"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
 
 /**
  * POST /api/quotes/[id]/lines/configure
@@ -13,6 +14,11 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
+  const denied = await requirePermission("quotes:edit")
+  if (denied) return denied
+
   await params // validate quote context exists
   const body = await request.json()
 

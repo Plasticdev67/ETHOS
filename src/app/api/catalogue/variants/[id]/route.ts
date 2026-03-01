@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db"
 import { NextRequest, NextResponse } from "next/server"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
 
 export async function GET(
   _request: NextRequest,
@@ -45,31 +46,52 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
+  const denied = await requirePermission("catalogue:edit")
+  if (denied) return denied
+
   const { id } = await params
   const body = await request.json()
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const variant = await (prisma.productVariant as any).update({
-    where: { id },
-    data: {
-      ...(body.name !== undefined && { name: body.name }),
-      ...(body.code !== undefined && { code: body.code }),
-      ...(body.defaultWidth !== undefined && { defaultWidth: body.defaultWidth }),
-      ...(body.defaultHeight !== undefined && { defaultHeight: body.defaultHeight }),
-      ...(body.sortOrder !== undefined && { sortOrder: body.sortOrder }),
-      ...(body.active !== undefined && { active: body.active }),
-    },
-  })
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const variant = await (prisma.productVariant as any).update({
+      where: { id },
+      data: {
+        ...(body.name !== undefined && { name: body.name }),
+        ...(body.code !== undefined && { code: body.code }),
+        ...(body.defaultWidth !== undefined && { defaultWidth: body.defaultWidth }),
+        ...(body.defaultHeight !== undefined && { defaultHeight: body.defaultHeight }),
+        ...(body.sortOrder !== undefined && { sortOrder: body.sortOrder }),
+        ...(body.active !== undefined && { active: body.active }),
+      },
+    })
 
-  return NextResponse.json(variant)
+    return NextResponse.json(variant)
+  } catch (error) {
+    console.error("PATCH /api/catalogue/variants/[id] error:", error)
+    return NextResponse.json({ error: "Failed to update product variant" }, { status: 500 })
+  }
 }
 
 export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
+  const denied = await requirePermission("catalogue:edit")
+  if (denied) return denied
+
   const { id } = await params
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (prisma.productVariant as any).delete({ where: { id } })
-  return NextResponse.json({ success: true })
+
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (prisma.productVariant as any).delete({ where: { id } })
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error("DELETE /api/catalogue/variants/[id] error:", error)
+    return NextResponse.json({ error: "Failed to delete product variant" }, { status: 500 })
+  }
 }

@@ -2,11 +2,17 @@ import { prisma } from "@/lib/db"
 import { NextRequest, NextResponse } from "next/server"
 import { logAudit } from "@/lib/audit"
 import { revalidatePath } from "next/cache"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
 
 export async function POST(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
+  const denied = await requirePermission("design:manage")
+  if (denied) return denied
+
   const { id } = await params
 
   const jobCard = await prisma.designJobCard.findUnique({
@@ -36,6 +42,7 @@ export async function POST(
 
   const now = new Date()
 
+  try {
   // Update job card status to SIGNED_OFF
   const updated = await prisma.designJobCard.update({
     where: { id },
@@ -115,4 +122,8 @@ export async function POST(
 
   revalidatePath("/design")
   return NextResponse.json(updated)
+  } catch (error) {
+    console.error("POST /api/design/jobs/[id]/sign-off error:", error)
+    return NextResponse.json({ error: "Failed to sign off job card" }, { status: 500 })
+  }
 }

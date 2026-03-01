@@ -6,7 +6,6 @@ import { ArrowLeft, Mail, Phone, Building, Truck } from "lucide-react"
 import Link from "next/link"
 import { formatCurrency, formatDate, prettifyEnum } from "@/lib/utils"
 
-export const dynamic = 'force-dynamic'
 export const revalidate = 60
 
 async function getSupplier(id: string) {

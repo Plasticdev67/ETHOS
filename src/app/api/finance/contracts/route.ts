@@ -1,9 +1,14 @@
 import { prisma } from "@/lib/db"
+import { toDecimal, toDecimalOrDefault } from "@/lib/api-utils"
 import { NextRequest, NextResponse } from "next/server"
 import { revalidatePath } from "next/cache"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
 
 export async function GET(request: NextRequest) {
   try {
+    const user = await requireAuth()
+    if (user instanceof NextResponse) return user
+
     const { searchParams } = new URL(request.url)
     const status = searchParams.get("status")
     const search = searchParams.get("search")
@@ -86,6 +91,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await requireAuth()
+    if (user instanceof NextResponse) return user
+    const denied = await requirePermission("finance:edit")
+    if (denied) return denied
+
     const body = await request.json()
     const {
       contractRef,
@@ -122,13 +132,13 @@ export async function POST(request: NextRequest) {
         clientId: customerId,
         clientName: customer?.name || null,
         contractType,
-        originalValue: parseFloat(originalValue),
-        currentValue: parseFloat(originalValue),
-        retentionPercent: parseFloat(retentionPercent || "0"),
-        retentionLimit: retentionLimit ? parseFloat(retentionLimit) : null,
+        originalValue: toDecimalOrDefault(originalValue, 0),
+        currentValue: toDecimalOrDefault(originalValue, 0),
+        retentionPercent: toDecimalOrDefault(retentionPercent, 0),
+        retentionLimit: toDecimal(retentionLimit),
         defectsLiabilityMonths: defectsLiabilityMonths || 12,
         cisApplicable: cisApplicable || false,
-        cisRate: cisRate ? parseFloat(cisRate) : null,
+        cisRate: toDecimal(cisRate),
         status: "CONTRACT_DRAFT",
         description: description || null,
         createdBy: createdBy || "system",

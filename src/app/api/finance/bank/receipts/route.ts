@@ -1,10 +1,17 @@
 import { prisma } from "@/lib/db"
+import { toDecimalOrDefault } from "@/lib/api-utils"
 import { NextRequest, NextResponse } from "next/server"
 import { revalidatePath } from "next/cache"
 import { journalOnCustomerPayment } from "@/lib/finance/auto-journal"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await requireAuth()
+    if (user instanceof NextResponse) return user
+    const denied = await requirePermission("finance:edit")
+    if (denied) return denied
+
     const body = await request.json()
     const { bankAccountId, date, reference, description, totalAmount, allocations } = body
 
@@ -73,7 +80,7 @@ export async function POST(request: NextRequest) {
           ? {
               create: allocations.map((alloc: { salesInvoiceId: string; amount: number }) => ({
                 salesInvoiceId: alloc.salesInvoiceId,
-                amount: parseFloat(String(alloc.amount)),
+                amount: toDecimalOrDefault(alloc.amount, 0),
                 date: new Date(date),
               })),
             }

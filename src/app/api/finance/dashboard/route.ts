@@ -1,8 +1,12 @@
 import { prisma } from "@/lib/db"
 import { NextResponse } from "next/server"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
 
 export async function GET() {
   try {
+    const user = await requireAuth()
+    if (user instanceof NextResponse) return user
+
     // --- Bank Balances ---
     const bankAccounts = await prisma.bankAccount.findMany({
       where: { isActive: true },

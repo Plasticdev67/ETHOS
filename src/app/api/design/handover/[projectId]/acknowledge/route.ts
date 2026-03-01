@@ -2,12 +2,18 @@ import { prisma } from "@/lib/db"
 import { NextRequest, NextResponse } from "next/server"
 import { logAudit } from "@/lib/audit"
 import { revalidatePath } from "next/cache"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
 
 // POST /api/design/handover/[projectId]/acknowledge — Production Manager acknowledges handover
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ projectId: string }> }
 ) {
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
+  const denied = await requirePermission("design:manage")
+  if (denied) return denied
+
   const { projectId } = await params
 
   try {

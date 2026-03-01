@@ -2,11 +2,17 @@ import { prisma } from "@/lib/db"
 import { NextRequest, NextResponse } from "next/server"
 import { logAudit } from "@/lib/audit"
 import { revalidatePath } from "next/cache"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
+  const denied = await requirePermission("design:manage")
+  if (denied) return denied
+
   const { id } = await params
 
   const jobCard = await prisma.designJobCard.findUnique({

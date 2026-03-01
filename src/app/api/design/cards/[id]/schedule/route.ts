@@ -1,12 +1,18 @@
 import { prisma } from "@/lib/db"
 import { NextRequest, NextResponse } from "next/server"
 import { logAudit } from "@/lib/audit"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
 
 // PATCH /api/design/cards/:id/schedule — Update target dates for a design card
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
+  const denied = await requirePermission("design:manage")
+  if (denied) return denied
+
   const { id } = await params
 
   let targetStartDate: string

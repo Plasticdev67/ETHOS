@@ -4,7 +4,6 @@ import { WorkshopView, type WorkshopData, type WorkshopWorker, type AllocatedPro
 import { ALL_PRODUCTION_STAGES } from "@/lib/production-utils"
 
 export const dynamic = 'force-dynamic'
-export const revalidate = 30
 
 async function getWorkshopData(stage: string) {
   const tasks = await prisma.productionTask.findMany({

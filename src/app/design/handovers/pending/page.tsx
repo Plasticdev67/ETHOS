@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db"
 import { PendingHandovers } from "@/components/design/pending-handovers"
 
-export const dynamic = "force-dynamic"
+export const revalidate = 60
 
 export default async function PendingHandoversPage() {
   const handovers = await prisma.designHandover.findMany({

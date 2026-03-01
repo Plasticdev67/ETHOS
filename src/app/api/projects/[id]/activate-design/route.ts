@@ -3,11 +3,17 @@ import { logAudit } from "@/lib/audit"
 import { JOB_TYPE_ORDER, calculateDesignTargetDates } from "@/lib/design-utils"
 import { NextRequest, NextResponse } from "next/server"
 import { revalidatePath } from "next/cache"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
 
 export async function POST(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
+  const denied = await requirePermission("projects:edit")
+  if (denied) return denied
+
   const { id } = await params
 
   // Fetch project with products and any existing design cards

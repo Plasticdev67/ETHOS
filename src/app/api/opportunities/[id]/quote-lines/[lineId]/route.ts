@@ -1,11 +1,18 @@
 import { prisma } from "@/lib/db"
+import { toDecimal } from "@/lib/api-utils"
 import { NextRequest, NextResponse } from "next/server"
 import { revalidatePath } from "next/cache"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; lineId: string }> }
 ) {
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
+  const denied = await requirePermission("crm:edit")
+  if (denied) return denied
+
   const { id, lineId } = await params
   const body = await request.json()
 
@@ -16,7 +23,7 @@ export async function PATCH(
   if (body.description !== undefined) data.description = body.description
   if (body.type !== undefined) data.type = body.type
   if (body.quantity !== undefined) data.quantity = parseInt(body.quantity)
-  if (body.unitCost !== undefined) data.unitCost = parseFloat(body.unitCost)
+  if (body.unitCost !== undefined) data.unitCost = toDecimal(body.unitCost)
   if (body.sortOrder !== undefined) data.sortOrder = body.sortOrder
   if (body.classification !== undefined) data.classification = body.classification
 
@@ -30,14 +37,14 @@ export async function PATCH(
   if (body.clearOpening !== undefined) data.clearOpening = body.clearOpening || null
   if (body.structuralOpening !== undefined) data.structuralOpening = body.structuralOpening || null
   if (body.estimatedWeight !== undefined) {
-    data.estimatedWeight = body.estimatedWeight != null ? parseFloat(String(body.estimatedWeight)) : null
+    data.estimatedWeight = body.estimatedWeight != null ? Number(toDecimal(body.estimatedWeight) ?? 0) : null
   }
 
   // JSON configuration fields
   if (body.specSelections !== undefined) data.specSelections = body.specSelections || undefined
   if (body.computedBom !== undefined) data.computedBom = body.computedBom || undefined
   if (body.computedCost !== undefined) {
-    data.computedCost = body.computedCost != null ? parseFloat(String(body.computedCost)) : null
+    data.computedCost = toDecimal(body.computedCost)
   }
   if (body.transomeConfig !== undefined) data.transomeConfig = body.transomeConfig || undefined
   if (body.ventConfig !== undefined) data.ventConfig = body.ventConfig || undefined
@@ -52,18 +59,52 @@ export async function PATCH(
     })
     if (existing) {
       const qty = body.quantity !== undefined ? parseInt(body.quantity) : existing.quantity
-      const cost = body.unitCost !== undefined ? parseFloat(body.unitCost) : Number(existing.unitCost)
+      const cost = body.unitCost !== undefined ? Number(toDecimal(body.unitCost) ?? 0) : Number(existing.unitCost)
       data.totalCost = qty * cost
     }
   }
 
-  const line = await prisma.opportunityQuoteLine.update({
-    where: { id: lineId },
-    data,
-  })
+  try {
+    const line = await prisma.opportunityQuoteLine.update({
+      where: { id: lineId },
+      data,
+    })
 
-  // Recompute hasEtoLines if classification changed
-  if (body.classification !== undefined) {
+    // Recompute hasEtoLines if classification changed
+    if (body.classification !== undefined) {
+      const etoCount = await prisma.opportunityQuoteLine.count({
+        where: { opportunityId: id, classification: "ENGINEER_TO_ORDER" },
+      })
+      await prisma.opportunity.update({
+        where: { id },
+        data: { hasEtoLines: etoCount > 0 },
+      })
+    }
+
+    revalidatePath("/crm")
+
+    return NextResponse.json(JSON.parse(JSON.stringify(line)))
+  } catch (error) {
+    console.error("PATCH /api/opportunities/[id]/quote-lines/[lineId] error:", error)
+    return NextResponse.json({ error: "Failed to update quote line" }, { status: 500 })
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string; lineId: string }> }
+) {
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
+  const denied = await requirePermission("crm:edit")
+  if (denied) return denied
+
+  const { id, lineId } = await params
+
+  try {
+    await prisma.opportunityQuoteLine.delete({ where: { id: lineId } })
+
+    // Recompute hasEtoLines
     const etoCount = await prisma.opportunityQuoteLine.count({
       where: { opportunityId: id, classification: "ENGINEER_TO_ORDER" },
     })
@@ -71,30 +112,12 @@ export async function PATCH(
       where: { id },
       data: { hasEtoLines: etoCount > 0 },
     })
+
+    revalidatePath("/crm")
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error("DELETE /api/opportunities/[id]/quote-lines/[lineId] error:", error)
+    return NextResponse.json({ error: "Failed to delete quote line" }, { status: 500 })
   }
-
-  revalidatePath("/crm")
-
-  return NextResponse.json(JSON.parse(JSON.stringify(line)))
-}
-
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string; lineId: string }> }
-) {
-  const { id, lineId } = await params
-  await prisma.opportunityQuoteLine.delete({ where: { id: lineId } })
-
-  // Recompute hasEtoLines
-  const etoCount = await prisma.opportunityQuoteLine.count({
-    where: { opportunityId: id, classification: "ENGINEER_TO_ORDER" },
-  })
-  await prisma.opportunity.update({
-    where: { id },
-    data: { hasEtoLines: etoCount > 0 },
-  })
-
-  revalidatePath("/crm")
-
-  return NextResponse.json({ success: true })
 }

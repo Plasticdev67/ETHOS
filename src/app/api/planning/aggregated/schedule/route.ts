@@ -1,8 +1,14 @@
 import { prisma } from "@/lib/db"
 import { NextRequest, NextResponse } from "next/server"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
 
 // PATCH: Update a product's schedule position (from drag-and-drop)
 export async function PATCH(request: NextRequest) {
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
+  const denied = await requirePermission("production:manage")
+  if (denied) return denied
+
   const body = await request.json()
   const { productId, stage, newStartDate, designerId } = body as {
     productId: string

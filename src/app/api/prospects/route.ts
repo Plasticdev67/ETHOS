@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db"
 import { NextRequest, NextResponse } from "next/server"
 import { logAudit } from "@/lib/audit"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
@@ -22,6 +23,11 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
+  const denied = await requirePermission("crm:edit")
+  if (denied) return denied
+
   const body = await request.json()
 
   const prospect = await prisma.prospect.create({

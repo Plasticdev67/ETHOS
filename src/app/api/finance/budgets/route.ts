@@ -1,8 +1,13 @@
 import { prisma } from "@/lib/db"
+import { toDecimalOrDefault } from "@/lib/api-utils"
 import { NextRequest, NextResponse } from "next/server"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
 
 export async function GET(request: NextRequest) {
   try {
+    const user = await requireAuth()
+    if (user instanceof NextResponse) return user
+
     const { searchParams } = new URL(request.url)
     const year = searchParams.get("year")
     const periodId = searchParams.get("periodId")
@@ -80,6 +85,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await requireAuth()
+    if (user instanceof NextResponse) return user
+    const denied = await requirePermission("finance:edit")
+    if (denied) return denied
+
     const body = await request.json()
 
     const { accountId, periodId, amount, notes } = body
@@ -119,7 +129,7 @@ export async function POST(request: NextRequest) {
       budgetLine = await prisma.budgetLine.update({
         where: { id: existing.id },
         data: {
-          amount: parseFloat(String(amount)),
+          amount: toDecimalOrDefault(amount, 0),
           notes: notes || existing.notes,
         },
         include: {
@@ -140,7 +150,7 @@ export async function POST(request: NextRequest) {
           accountId,
           periodStart: period.startDate,
           periodEnd: period.endDate,
-          amount: parseFloat(String(amount)),
+          amount: toDecimalOrDefault(amount, 0),
           notes: notes || null,
         },
         include: {

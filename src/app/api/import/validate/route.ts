@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db"
 import { NextRequest, NextResponse } from "next/server"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
 
 // Valid import types
 const VALID_IMPORT_TYPES = [
@@ -27,6 +28,11 @@ interface RowValidation {
 }
 
 export async function POST(request: NextRequest) {
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
+  const denied = await requirePermission("import:use")
+  if (denied) return denied
+
   try {
     const body = await request.json()
     const { importType, fieldMapping, data } = body as {

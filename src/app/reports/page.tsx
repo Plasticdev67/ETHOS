@@ -9,8 +9,7 @@ import { TimingDelivery } from "@/components/reports/timing-delivery"
 import { PipelineFinancials } from "@/components/reports/pipeline-financials"
 import { ShieldAlert } from "lucide-react"
 
-export const dynamic = "force-dynamic"
-export const revalidate = 120
+export const revalidate = 60
 
 // ── Helper: days between two dates ──
 function daysBetween(a: Date | null, b: Date | null): number | null {
@@ -60,6 +59,7 @@ async function getWorkstreamData() {
       },
     }),
     prisma.nonConformanceReport.findMany({
+      where: { isArchived: false },
       select: {
         costImpact: true,
         parentProject: { select: { workStream: true } },
@@ -403,6 +403,7 @@ async function getPipelineData() {
       select: { status: true, totalCost: true, totalSell: true, overallMargin: true },
     }),
     prisma.nonConformanceReport.findMany({
+      where: { isArchived: false },
       select: { severity: true, status: true, costImpact: true },
     }),
     prisma.quote.findMany({

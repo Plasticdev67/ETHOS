@@ -1,17 +1,16 @@
 import { prisma } from "@/lib/db"
 import { auth } from "@/lib/auth"
 import { NextRequest, NextResponse } from "next/server"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
 
 export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth()
-  const role = (session?.user as { role?: string })?.role
-
-  if (role !== "ADMIN") {
-    return NextResponse.json({ error: "Only admins can delete suggestions" }, { status: 403 })
-  }
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
+  const denied = await requirePermission("settings:admin")
+  if (denied) return denied
 
   const { id } = await params
 

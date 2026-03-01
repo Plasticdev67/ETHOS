@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db"
 import { NextRequest, NextResponse } from "next/server"
 import PDFDocument from "pdfkit"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
 
 // MME brand colours
 const NAVY = "#23293a"
@@ -14,6 +15,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await requireAuth()
+    if (user instanceof NextResponse) return user
+
     const { id } = await params
 
     const invoice = await prisma.salesInvoice.findUnique({

@@ -3,11 +3,15 @@ import { NextRequest, NextResponse } from "next/server"
 import { revalidatePath } from "next/cache"
 import { requireAuth, requirePermission } from "@/lib/api-auth"
 import { toDecimal } from "@/lib/api-utils"
+import { validateStatusTransition, checkImmutability } from "@/lib/status-guards"
 
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
+
   const { id } = await params
   const po = await prisma.purchaseOrder.findUnique({
     where: { id },
@@ -36,6 +40,21 @@ export async function PATCH(
   try {
     const { id } = await params
     const body = await request.json()
+
+    const existing = await prisma.purchaseOrder.findUnique({ where: { id } })
+    if (!existing) return NextResponse.json({ error: "PO not found" }, { status: 404 })
+
+    // Validate status transition
+    if (body.status !== undefined && body.status !== existing.status) {
+      const invalid = validateStatusTransition("purchaseOrder", existing.status, body.status)
+      if (invalid) return invalid
+    }
+
+    // Block edits on locked POs (only status transitions allowed)
+    if (!body.status || body.status === existing.status) {
+      const locked = checkImmutability("purchaseOrder", existing.status)
+      if (locked) return locked
+    }
 
     const data: Record<string, unknown> = {}
     if (body.status !== undefined) data.status = body.status
@@ -69,6 +88,13 @@ export async function POST(
 
   try {
     const { id } = await params
+
+    // Block adding lines to locked POs
+    const existing = await prisma.purchaseOrder.findUnique({ where: { id } })
+    if (!existing) return NextResponse.json({ error: "PO not found" }, { status: 404 })
+    const locked = checkImmutability("purchaseOrder", existing.status)
+    if (locked) return locked
+
     const body = await request.json()
 
     if (!body.description) {
@@ -121,6 +147,12 @@ export async function DELETE(
 
   try {
     const { id } = await params
+    const existing = await prisma.purchaseOrder.findUnique({ where: { id } })
+    if (!existing) return NextResponse.json({ error: "PO not found" }, { status: 404 })
+
+    const locked = checkImmutability("purchaseOrder", existing.status)
+    if (locked) return locked
+
     await prisma.purchaseOrder.delete({ where: { id } })
     revalidatePath("/finance")
     return NextResponse.json({ success: true })

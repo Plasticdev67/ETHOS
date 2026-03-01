@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/db"
 import { NextResponse } from "next/server"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
 
-export const dynamic = "force-dynamic"
+export const revalidate = 60
 
 /**
  * POST /api/catalogue/propagate-prices
@@ -10,6 +11,11 @@ export const dynamic = "force-dynamic"
  * This avoids needing a full catalogue re-sync just to push new prices into BOMs.
  */
 export async function POST() {
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
+  const denied = await requirePermission("catalogue:edit")
+  if (denied) return denied
+
   try {
     // Find all BaseBomItems that have a stockCode link
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

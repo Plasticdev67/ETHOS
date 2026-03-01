@@ -2,7 +2,6 @@ import { prisma } from "@/lib/db"
 import { ProductionBoardView } from "@/components/production/production-board-view"
 
 export const dynamic = 'force-dynamic'
-export const revalidate = 30
 
 async function getBoardData() {
   const [pendingHandovers, designFreezeProjects, producingProjects, completeProjects] = await Promise.all([

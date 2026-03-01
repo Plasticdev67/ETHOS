@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db"
 import { NextRequest, NextResponse } from "next/server"
 import { addWeeks, format } from "date-fns"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
 
 const WORKSHOP_STAGES = [
   "CUTTING",
@@ -27,6 +28,11 @@ type OrderLine = {
 }
 
 export async function POST(request: NextRequest) {
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
+  const denied = await requirePermission("production:manage")
+  if (denied) return denied
+
   const body = await request.json()
   const lines: OrderLine[] = body.lines || []
   const requestedDate = body.requestedDate ? new Date(body.requestedDate) : null

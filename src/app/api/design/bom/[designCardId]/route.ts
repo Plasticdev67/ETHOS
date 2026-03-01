@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { revalidatePath } from "next/cache"
 import type { BomCategory } from "@/generated/prisma/client"
 import { findVariantsWithBom, findFirstVariantWithBom } from "@/lib/repositories/product-variants"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
 
 // ═══════════════════ Product-Type-Specific BOM Templates ═══════════════════
 type BomTemplate = Array<{ description: string; category: BomCategory; unitCost: number; sortOrder: number }>
@@ -313,6 +314,11 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ designCardId: string }> }
 ) {
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
+  const denied = await requirePermission("design:manage")
+  if (denied) return denied
+
   const { designCardId } = await params
 
   const card = await prisma.productDesignCard.findUnique({ where: { id: designCardId } })
@@ -330,24 +336,29 @@ export async function POST(
   })
   const nextSort = (lastLine?.sortOrder ?? -1) + 1
 
-  const line = await prisma.designBomLine.create({
-    data: {
-      designCardId,
-      description: body.description || "New item",
-      category: body.category || "MATERIALS",
-      partNumber: body.partNumber || null,
-      supplier: body.supplier || null,
-      quantity: body.quantity ?? 1,
-      unit: body.unit || "each",
-      unitCost: body.unitCost ?? 0,
-      notes: body.notes || null,
-      sortOrder: nextSort,
-    },
-  })
+  try {
+    const line = await prisma.designBomLine.create({
+      data: {
+        designCardId,
+        description: body.description || "New item",
+        category: body.category || "MATERIALS",
+        partNumber: body.partNumber || null,
+        supplier: body.supplier || null,
+        quantity: body.quantity ?? 1,
+        unit: body.unit || "each",
+        unitCost: body.unitCost ?? 0,
+        notes: body.notes || null,
+        sortOrder: nextSort,
+      },
+    })
 
-  revalidatePath("/design")
+    revalidatePath("/design")
 
-  return NextResponse.json(JSON.parse(JSON.stringify(line)), { status: 201 })
+    return NextResponse.json(JSON.parse(JSON.stringify(line)), { status: 201 })
+  } catch (error) {
+    console.error("POST /api/design/bom/[designCardId] error:", error)
+    return NextResponse.json({ error: "Failed to create BOM line" }, { status: 500 })
+  }
 }
 
 // PATCH /api/design/bom/:designCardId — Update a BOM line (pass line id in body)
@@ -355,6 +366,11 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ designCardId: string }> }
 ) {
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
+  const denied = await requirePermission("design:manage")
+  if (denied) return denied
+
   const { designCardId } = await params
   const body = await request.json()
 
@@ -381,14 +397,19 @@ export async function PATCH(
   if (body.notes !== undefined) data.notes = body.notes || null
   if (body.sortOrder !== undefined) data.sortOrder = body.sortOrder
 
-  const updated = await prisma.designBomLine.update({
-    where: { id: body.id },
-    data,
-  })
+  try {
+    const updated = await prisma.designBomLine.update({
+      where: { id: body.id },
+      data,
+    })
 
-  revalidatePath("/design")
+    revalidatePath("/design")
 
-  return NextResponse.json(JSON.parse(JSON.stringify(updated)))
+    return NextResponse.json(JSON.parse(JSON.stringify(updated)))
+  } catch (error) {
+    console.error("PATCH /api/design/bom/[designCardId] error:", error)
+    return NextResponse.json({ error: "Failed to update BOM line" }, { status: 500 })
+  }
 }
 
 // DELETE /api/design/bom/:designCardId — Delete a BOM line (pass line id in query)
@@ -396,6 +417,11 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ designCardId: string }> }
 ) {
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
+  const denied = await requirePermission("design:manage")
+  if (denied) return denied
+
   const { designCardId } = await params
   const { searchParams } = new URL(request.url)
   const lineId = searchParams.get("lineId")
@@ -411,9 +437,14 @@ export async function DELETE(
     return NextResponse.json({ error: "BOM line not found" }, { status: 404 })
   }
 
-  await prisma.designBomLine.delete({ where: { id: lineId } })
+  try {
+    await prisma.designBomLine.delete({ where: { id: lineId } })
 
-  revalidatePath("/design")
+    revalidatePath("/design")
 
-  return NextResponse.json({ success: true })
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error("DELETE /api/design/bom/[designCardId] error:", error)
+    return NextResponse.json({ error: "Failed to delete BOM line" }, { status: 500 })
+  }
 }

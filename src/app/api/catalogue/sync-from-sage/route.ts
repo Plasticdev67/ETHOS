@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db"
 import { NextResponse } from "next/server"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
 import {
   extractTypePrefix,
   parseDimensions,
@@ -16,6 +17,11 @@ import {
  * catalogue hierarchy so the CRM Configure Product wizard can use real BOM data.
  */
 export async function POST() {
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
+  const denied = await requirePermission("catalogue:edit")
+  if (denied) return denied
+
   try {
     // 1. Fetch all finished goods from Sage that have BOM headers
     const finishedGoods = await prisma.sageStockItem.findMany({

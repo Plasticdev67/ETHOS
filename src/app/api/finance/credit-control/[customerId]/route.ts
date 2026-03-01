@@ -1,12 +1,16 @@
 import { prisma } from "@/lib/db"
 import { NextRequest, NextResponse } from "next/server"
 import { revalidatePath } from "next/cache"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ customerId: string }> }
 ) {
   try {
+    const user = await requireAuth()
+    if (user instanceof NextResponse) return user
+
     const { customerId } = await params
 
     const customer = await prisma.customer.findUnique({
@@ -160,6 +164,11 @@ export async function POST(
   { params }: { params: Promise<{ customerId: string }> }
 ) {
   try {
+    const user = await requireAuth()
+    if (user instanceof NextResponse) return user
+    const denied = await requirePermission("finance:edit")
+    if (denied) return denied
+
     const { customerId } = await params
     const body = await request.json()
     const { action, notes, nextActionDate, salesInvoiceId, contactedName, promisedDate, promisedAmount, createdBy } = body

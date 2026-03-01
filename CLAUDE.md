@@ -179,6 +179,47 @@ Located at: `C:\Users\JamesMorton\.claude\projects\c--Users-JamesMorton-OneDrive
 - Prisma for all database operations (import from `@/lib/db`)
 - Auth via `getServerSession` from NextAuth
 
+### Prisma Architecture Rules (MANDATORY)
+The Prisma schema has circular bidirectional relations that cause TypeScript "excessive stack depth" errors during clean builds. These rules prevent the problem from getting worse as new features are added.
+
+**1. Repository pattern for deep relation chains**
+- API route files must NOT import `prisma` directly if the query touches models in a circular chain
+- Use `src/lib/repositories/` with narrow delegate interfaces instead
+- Existing repositories: `bom-items.ts`, `spec-fields.ts`, `product-variants.ts`, `quote-lines.ts`
+- When creating a new repository, follow the delegate pattern:
+  ```typescript
+  interface XxxDelegate {
+    create(args: { where?: ...; data: Record<string, unknown> }): Promise<unknown>
+  }
+  const xxx: XxxDelegate = prisma.xxx as unknown as XxxDelegate
+  ```
+
+**2. New Prisma models — minimise reverse relations on hub models**
+- `Project`, `Customer`, `User` are hub models with 15+ relations each
+- When adding a new model (e.g. PassportEntry, ChangeOrder), ask: "Do I need `project.passportEntries[]` or just `passportEntry.projectId`?"
+- If you only query from the child side, OMIT the reverse array from the parent model
+- This keeps the type graph shallow and prevents new circular chains
+
+**3. Prefer `select` over `include`**
+- `select` limits type resolution to only the fields you need
+- `include` forces TypeScript to resolve all nested relation types
+- Use `include` only when you genuinely need the nested data
+
+**4. Every mutative API route must have**
+- `requireAuth()` — returns 401 if not logged in
+- `requirePermission('resource:action')` — returns 403 if role lacks permission
+- `validateBody(request, zodSchema)` — returns 400 with field errors if invalid
+- `toDecimal()` for any money/decimal field — never `parseFloat()`
+
+**5. No `as any`, no `@ts-ignore`, no `@ts-nocheck`**
+- Use narrow delegate interfaces (rule 1) instead of type escape hatches
+- If TypeScript can't resolve a type, the solution is a typed repository, not a cast
+
+**6. `ignoreBuildErrors: true` is intentional**
+- `next.config.ts` has `typescript.ignoreBuildErrors: true` — this is the standard Prisma recommendation for large schemas (prisma/prisma#14832)
+- Real type checking happens via `npm run typecheck` (`tsc --noEmit`) and in the IDE
+- Do NOT remove this setting
+
 ---
 
 ## What's Built vs What's Planned

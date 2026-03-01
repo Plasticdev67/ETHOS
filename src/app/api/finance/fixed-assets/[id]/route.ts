@@ -1,11 +1,16 @@
 import { prisma } from "@/lib/db"
+import { toDecimal, toDecimalOrDefault } from "@/lib/api-utils"
 import { NextRequest, NextResponse } from "next/server"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await requireAuth()
+    if (user instanceof NextResponse) return user
+
     const { id } = await params
 
     const asset = await prisma.fixedAsset.findUnique({
@@ -37,6 +42,11 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await requireAuth()
+    if (user instanceof NextResponse) return user
+    const denied = await requirePermission("finance:edit")
+    if (denied) return denied
+
     const { id } = await params
     const body = await request.json()
 
@@ -51,7 +61,7 @@ export async function PUT(
     if (body.categoryId !== undefined) updateData.categoryId = body.categoryId
     if (body.serialNumber !== undefined) updateData.serialNumber = body.serialNumber
     if (body.location !== undefined) updateData.location = body.location
-    if (body.residualValue !== undefined) updateData.residualValue = parseFloat(body.residualValue)
+    if (body.residualValue !== undefined) updateData.residualValue = toDecimalOrDefault(body.residualValue, 0)
     if (body.supplierId !== undefined) updateData.supplierId = body.supplierId
 
     const asset = await prisma.fixedAsset.update({
@@ -77,6 +87,11 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await requireAuth()
+    if (user instanceof NextResponse) return user
+    const denied = await requirePermission("finance:edit")
+    if (denied) return denied
+
     const { id } = await params
     const body = await request.json()
 

@@ -1,9 +1,16 @@
 import { prisma } from "@/lib/db"
+import { toDecimal, toDecimalOrDefault } from "@/lib/api-utils"
 import { NextRequest, NextResponse } from "next/server"
 import { revalidatePath } from "next/cache"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await requireAuth()
+    if (user instanceof NextResponse) return user
+    const denied = await requirePermission("finance:edit")
+    if (denied) return denied
+
     const body = await request.json()
     const { bankAccountId, supplierId, amount, date, reference, allocations } = body
 
@@ -14,7 +21,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const paymentAmount = parseFloat(amount)
+    const paymentAmount = Number(toDecimal(amount) ?? 0)
 
     // Verify bank account exists
     const bankAccount = await prisma.bankAccount.findUnique({
@@ -45,7 +52,7 @@ export async function POST(request: NextRequest) {
     // Validate allocations total
     if (allocations?.length) {
       const allocTotal = allocations.reduce(
-        (sum: number, a: { amount: number }) => sum + parseFloat(String(a.amount)),
+        (sum: number, a: { amount: number }) => sum + Number(toDecimal(a.amount) ?? 0),
         0
       )
       if (Math.abs(allocTotal - paymentAmount) > 0.01) {
@@ -69,7 +76,7 @@ export async function POST(request: NextRequest) {
           ? {
               create: allocations.map((alloc: { invoiceId: string; amount: number }) => ({
                 purchaseInvoiceId: alloc.invoiceId,
-                amount: parseFloat(String(alloc.amount)),
+                amount: toDecimalOrDefault(alloc.amount, 0),
                 date: new Date(date),
               })),
             }
@@ -93,7 +100,7 @@ export async function POST(request: NextRequest) {
     // Update purchase invoice paid amounts
     if (allocations?.length) {
       for (const alloc of allocations) {
-        const allocAmount = parseFloat(String(alloc.amount))
+        const allocAmount = Number(toDecimal(alloc.amount) ?? 0)
 
         await prisma.purchaseInvoice.update({
           where: { id: alloc.invoiceId },

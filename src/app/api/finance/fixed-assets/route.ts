@@ -1,8 +1,13 @@
 import { prisma } from "@/lib/db"
+import { toDecimal, toDecimalOrDefault } from "@/lib/api-utils"
 import { NextRequest, NextResponse } from "next/server"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
 
 export async function GET(request: NextRequest) {
   try {
+    const user = await requireAuth()
+    if (user instanceof NextResponse) return user
+
     const { searchParams } = new URL(request.url)
     const status = searchParams.get("status")
     const categoryId = searchParams.get("categoryId")
@@ -53,6 +58,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await requireAuth()
+    if (user instanceof NextResponse) return user
+    const denied = await requirePermission("finance:edit")
+    if (denied) return denied
+
     const body = await request.json()
 
     const {
@@ -83,9 +93,9 @@ export async function POST(request: NextRequest) {
         description: description || null,
         categoryId,
         purchaseDate: new Date(purchaseDate),
-        purchaseCost: parseFloat(purchaseCost),
-        residualValue: residualValue ? parseFloat(residualValue) : 0,
-        netBookValue: parseFloat(purchaseCost),
+        purchaseCost: toDecimalOrDefault(purchaseCost, 0),
+        residualValue: toDecimalOrDefault(residualValue, 0),
+        netBookValue: toDecimalOrDefault(purchaseCost, 0),
         serialNumber: serialNumber || null,
         location: location || null,
         supplierId: supplierId || null,

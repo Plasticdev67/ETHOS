@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server"
 import { parseCSV } from "@/lib/csv-parser"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
 
 export async function POST(request: NextRequest) {
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
+  const denied = await requirePermission("import:use")
+  if (denied) return denied
+
   try {
     const contentType = request.headers.get("content-type") || ""
 

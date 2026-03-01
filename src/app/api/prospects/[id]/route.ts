@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db"
 import { NextRequest, NextResponse } from "next/server"
+import { requireAuth, requirePermission } from "@/lib/api-auth"
 
 export async function GET(
   request: NextRequest,
@@ -29,6 +30,11 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
+  const denied = await requirePermission("crm:edit")
+  if (denied) return denied
+
   const { id } = await params
   const body = await request.json()
 
@@ -56,6 +62,11 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const user = await requireAuth()
+  if (user instanceof NextResponse) return user
+  const denied = await requirePermission("crm:edit")
+  if (denied) return denied
+
   const { id } = await params
   await prisma.prospect.delete({ where: { id } })
   return NextResponse.json({ success: true })

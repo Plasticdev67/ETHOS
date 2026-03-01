@@ -29,6 +29,7 @@ export async function PATCH(
     data.marginPercent = toDecimal(body.marginPercent)
   }
 
+  try {
   // Recalculate quotedPrice: (lineItemsTotal + rdCost + riskCost) * (1 + margin/100)
   const lines = await prisma.opportunityQuoteLine.findMany({
     where: { opportunityId: id },
@@ -56,6 +57,10 @@ export async function PATCH(
   })
 
   return NextResponse.json(updated)
+  } catch (error) {
+    console.error("PATCH /api/opportunities/[id]/quote error:", error)
+    return NextResponse.json({ error: "Failed to update quote pricing" }, { status: 500 })
+  }
 }
 
 // POST: Submit for approval or approve/reject
@@ -73,6 +78,7 @@ export async function POST(
   const body = await request.json()
   const action = body.action // "submit" | "approve" | "reject"
 
+  try {
   const opp = await prisma.opportunity.findUnique({
     where: { id },
     include: { quoteLines: true },
@@ -164,4 +170,8 @@ export async function POST(
   }
 
   return NextResponse.json({ error: "Invalid action" }, { status: 400 })
+  } catch (error) {
+    console.error("POST /api/opportunities/[id]/quote error:", error)
+    return NextResponse.json({ error: "Failed to process quote action" }, { status: 500 })
+  }
 }
