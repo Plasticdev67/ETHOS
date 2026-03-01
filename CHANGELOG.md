@@ -1,5 +1,20 @@
 # ETHOS ERP — Changelog
 
+## 2026-03-01 — Remove Cyberpunk & Sage Themes
+
+### Theme Removal
+- Removed Cyberpunk and Sage themes from entire codebase — app is now light-theme only
+- Deleted ~630 lines of theme CSS from `globals.css` (Cyberpunk variables, animations, scanlines, graffiti BG; Sage variables, watermark BG)
+- Removed Orbitron font (only used by Cyberpunk)
+- Simplified `layout-context.tsx` — removed ThemeMode type, theme state, toggleTheme, localStorage theme persistence
+- Simplified `header.tsx`, `sidebar.tsx`, `layout-shell.tsx` — removed all isCyber/isSage conditionals, hardcoded light styles
+- Simplified `workshop-view.tsx` — removed AppTheme type and appTheme prop threading through 4 sub-components
+- Updated System Overview SOP section 6 from "Themes" to "Branding & Visual Design"
+
+### Other
+- Rewrote `migrate-smart-po.ts` to use pg.Client directly (same pattern as migrate-enquiries.ts)
+- Added ISO 9001 Document Control System to TODO backlog
+
 ## 2026-03-01 — SOP Documentation & Docs Page
 
 ### SOP PDFs (7 documents)
