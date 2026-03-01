@@ -1,5 +1,26 @@
 # ETHOS ERP — Changelog
 
+## 2026-03-01 — SOP Documentation & Docs Page
+
+### SOP PDFs (7 documents)
+- **System Overview** (10 pages) — dashboard, navigation, themes, user roles, login, architecture
+- **CRM & Quoting** (11 pages) — contacts, opportunities, pipeline, quote builder, approval, project conversion
+- **Design Module** (7 pages) — design board, job cards, checklists, GA/BOM workflow, review, handover
+- **Production & Workshop** (10 pages) — production board, stages, shopfloor view, dashboard, handover
+- **Purchasing** (10 pages) — suppliers, POs, smart PO from BOM, approval, cost variance, RFQ/enquiries
+- **Finance** (15 pages) — chart of accounts, journals, ledgers, banking, VAT, fixed assets, reports, year-end
+- **Project Management** (11 pages) — lifecycle, products, NCRs, variations, installation, completion, RAG
+
+### Docs Page
+- New `/docs` page with card grid layout, module icons, descriptions, and PDF download buttons
+- PDFs served as static files from `public/sops/`
+- "Docs" link added to sidebar navigation
+
+### Technical
+- All PDFs use PX Grotesk brand font, coral MME logo, navy headers/footers, board-quality formatting
+- PDFKit `bufferPages` pattern with `switchToPage()` for clean header/footer painting
+- 7 generator scripts in `scripts/generate-sop-*.ts` and `scripts/generate-design-sop.ts`
+
 ## 2026-02-28 — Finance Endpoints, Smart POs, RFQ System, Data Import
 
 ### Finance API Endpoints (14 new routes)

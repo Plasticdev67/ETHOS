@@ -28,6 +28,7 @@ import {
   Database,
   CalendarRange,
   UtensilsCrossed,
+  BookOpenCheck,
 } from "lucide-react"
 import { useLayout } from "./layout-context"
 import { useState, useEffect, useRef, useCallback } from "react"
@@ -50,6 +51,7 @@ const navigation = [
   { name: "Planning", href: "/planning", icon: CalendarRange },
   { name: "Reports", href: "/reports", icon: BarChart3 },
   { name: "Import", href: "/import", icon: Upload },
+  { name: "Docs", href: "/docs", icon: BookOpenCheck },
   { name: "Audit Trail", href: "/settings/audit", icon: History },
   { name: "Suggestions", href: "/suggestions", icon: MessageSquare },
   { name: "What to Eat", href: "/what-to-eat", icon: UtensilsCrossed },
