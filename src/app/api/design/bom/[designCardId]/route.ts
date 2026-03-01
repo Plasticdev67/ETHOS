@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db"
 import { NextRequest, NextResponse } from "next/server"
 import { revalidatePath } from "next/cache"
 import type { BomCategory } from "@/generated/prisma/client"
+import { findVariantsWithBom, findFirstVariantWithBom } from "@/lib/repositories/product-variants"
 
 // ═══════════════════ Product-Type-Specific BOM Templates ═══════════════════
 type BomTemplate = Array<{ description: string; category: BomCategory; unitCost: number; sortOrder: number }>
@@ -199,11 +200,7 @@ async function autoPopulateBom(designCardId: string, productId: string): Promise
 
   // 1. Try catalogue path: product → catalogueItem → variants → baseBomItems
   if (product.catalogueItemId) {
-    const variants = await prisma.productVariant.findMany({
-      where: { catalogueItemId: product.catalogueItemId },
-      include: { baseBomItems: { orderBy: { sortOrder: "asc" } } },
-      take: 1,
-    })
+    const variants = await findVariantsWithBom(product.catalogueItemId, 1)
     if (variants.length > 0 && variants[0].baseBomItems.length > 0) {
       baseBomItems = variants[0].baseBomItems
     }
@@ -225,10 +222,7 @@ async function autoPopulateBom(designCardId: string, productId: string): Promise
       }
     }
     if (bestMatch) {
-      const variant = await prisma.productVariant.findFirst({
-        where: { typeId: bestMatch.id },
-        include: { baseBomItems: { orderBy: { sortOrder: "asc" } } },
-      })
+      const variant = await findFirstVariantWithBom(bestMatch.id)
       if (variant && variant.baseBomItems.length > 0) {
         baseBomItems = variant.baseBomItems
       }

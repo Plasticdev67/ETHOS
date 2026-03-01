@@ -5,6 +5,7 @@ import { requireAuth, requirePermission } from "@/lib/api-auth"
 import { validateBody, isValidationError, projectCreateSchema } from "@/lib/api-validation"
 import { toDecimal } from "@/lib/api-utils"
 import { getNextSequenceNumber } from "@/lib/finance/sequences"
+import { linkQuoteLineToProduct } from "@/lib/repositories/quote-lines"
 
 export async function POST(request: NextRequest) {
   try {
@@ -79,10 +80,7 @@ export async function POST(request: NextRequest) {
         })
 
         for (let i = 0; i < quoteLines.length && i < createdProducts.length; i++) {
-          await prisma.quoteLine.update({
-            where: { id: quoteLines[i].id },
-            data: { productId: createdProducts[i].id },
-          })
+          await linkQuoteLineToProduct(quoteLines[i].id, createdProducts[i].id)
         }
       }
     }
