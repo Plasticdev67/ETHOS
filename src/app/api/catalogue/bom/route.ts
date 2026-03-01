@@ -1,24 +1,12 @@
-import { prisma } from "@/lib/db"
 import { NextRequest, NextResponse } from "next/server"
 import { requireAuth, requirePermission } from "@/lib/api-auth"
 import { toDecimalOrDefault } from "@/lib/api-utils"
-import type { Prisma } from "@/generated/prisma/client"
-
-// Fields to return — explicit select avoids Prisma's recursive type inference
-// on BaseBomItem (caused by self-referencing SpecBomModifier relation)
-const BOM_ITEM_SELECT = {
-  id: true,
-  variantId: true,
-  description: true,
-  category: true,
-  stockCode: true,
-  unitCost: true,
-  quantity: true,
-  scalesWithSize: true,
-  sortOrder: true,
-  createdAt: true,
-  updatedAt: true,
-} as const
+import {
+  createBomItem,
+  updateBomItem,
+  deleteBomItem,
+  type BomItemUpdateInput,
+} from "@/lib/repositories/bom-items"
 
 export async function POST(request: NextRequest) {
   const user = await requireAuth()
@@ -36,8 +24,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Pre-type the input to avoid Prisma's recursive type inference
-    const data: Prisma.BaseBomItemUncheckedCreateInput = {
+    const item = await createBomItem({
       variantId: body.variantId,
       description: body.description,
       category: body.category || "MATERIALS",
@@ -45,11 +32,6 @@ export async function POST(request: NextRequest) {
       quantity: toDecimalOrDefault(body.quantity, 1),
       scalesWithSize: body.scalesWithSize ?? false,
       sortOrder: body.sortOrder ?? 0,
-    }
-
-    const item = await prisma.baseBomItem.create({
-      data,
-      select: BOM_ITEM_SELECT,
     })
 
     return NextResponse.json(item, { status: 201 })
@@ -75,7 +57,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "id required" }, { status: 400 })
     }
 
-    const data: Prisma.BaseBomItemUncheckedUpdateInput = {}
+    const data: BomItemUpdateInput = {}
     if (body.description !== undefined) data.description = body.description
     if (body.category !== undefined) data.category = body.category
     if (body.unitCost !== undefined) data.unitCost = toDecimalOrDefault(body.unitCost, 0)
@@ -83,11 +65,7 @@ export async function PATCH(request: NextRequest) {
     if (body.scalesWithSize !== undefined) data.scalesWithSize = body.scalesWithSize
     if (body.sortOrder !== undefined) data.sortOrder = body.sortOrder
 
-    const item = await prisma.baseBomItem.update({
-      where: { id: body.id },
-      data,
-      select: BOM_ITEM_SELECT,
-    })
+    const item = await updateBomItem(body.id, data)
 
     return NextResponse.json(item)
   } catch (error) {
@@ -113,7 +91,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "id required" }, { status: 400 })
     }
 
-    await prisma.baseBomItem.delete({ where: { id } })
+    await deleteBomItem(id)
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error("Failed to delete BOM item:", error)
