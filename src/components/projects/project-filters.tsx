@@ -9,7 +9,6 @@ const statuses = ["ALL", "OPPORTUNITY", "QUOTATION", "DESIGN", "MANUFACTURE", "I
 const salesStages = ["ALL", "OPPORTUNITY", "QUOTED", "ORDER"]
 const workStreams = ["ALL", "COMMUNITY", "UTILITIES", "BESPOKE", "BLAST", "BUND_CONTAINMENT", "REFURBISHMENT"]
 const priorities = ["ALL", "NORMAL", "HIGH", "CRITICAL"]
-const classifications = ["ALL", "NORMAL", "MEGA", "SUB_CONTRACT"]
 
 function prettify(val: string) {
   if (val === "ALL") return "All"
@@ -92,16 +91,6 @@ export function ProjectFilters() {
         ))}
       </select>
 
-      <select
-        className={selectClass}
-        value={searchParams.get("classification") || "ALL"}
-        onChange={(e) => updateFilter("classification", e.target.value)}
-      >
-        <option value="ALL">All Types</option>
-        {classifications.filter(c => c !== "ALL").map((s) => (
-          <option key={s} value={s}>{prettify(s)}</option>
-        ))}
-      </select>
     </div>
   )
 }

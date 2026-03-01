@@ -1,9 +1,10 @@
 "use client"
 
 import { Search } from "lucide-react"
+import { WORK_STREAMS, WORK_STREAM_LABELS } from "@/lib/production-utils"
 
 type Filters = {
-  classification: string
+  workStream: string
   status: string
   pm: string
   client: string
@@ -46,16 +47,17 @@ export function ProductionToolbar({
         />
       </div>
 
-      {/* Classification */}
+      {/* Work Stream */}
       <select
-        value={filters.classification}
-        onChange={(e) => update("classification", e.target.value)}
+        value={filters.workStream}
+        onChange={(e) => update("workStream", e.target.value)}
         className="h-9 rounded-md border border-gray-200 bg-white px-2.5 text-sm focus:border-blue-500 focus:outline-none"
       >
-        <option value="ALL">All Categories</option>
-        <option value="NORMAL">Normal</option>
-        <option value="MEGA">Mega</option>
+        <option value="ALL">All Work Streams</option>
         <option value="ICU">ICU</option>
+        {WORK_STREAMS.map((ws) => (
+          <option key={ws} value={ws}>{WORK_STREAM_LABELS[ws]}</option>
+        ))}
       </select>
 
       {/* Status */}

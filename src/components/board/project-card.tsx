@@ -22,7 +22,7 @@ type BoardProject = {
   customer: { name: string } | null
   priority: string
   isICUFlag: boolean
-  classification: string
+  workStream: string
   ragStatus: string | null
   estimatedValue: string | number | null
   contractValue: string | number | null
@@ -73,16 +73,18 @@ function getPriorityIcon(priority: string, isICU: boolean) {
   return null
 }
 
-function getClassBadge(classification: string) {
-  if (classification === "MEGA") return <Badge variant="secondary" className="bg-purple-100 text-purple-700 text-[10px] px-1.5 py-0">Mega</Badge>
-  if (classification === "SUB_CONTRACT") return <Badge variant="secondary" className="bg-teal-100 text-teal-700 text-[10px] px-1.5 py-0">Sub</Badge>
-  return null
+function getWorkStreamBadge(workStream: string) {
+  const labels: Record<string, string> = { UTILITIES: "Utility", BESPOKE: "Bespoke", COMMUNITY: "Community", BLAST: "Blast", REFURBISHMENT: "Refurb" }
+  const colors: Record<string, string> = { UTILITIES: "bg-blue-100 text-blue-700", BESPOKE: "bg-purple-100 text-purple-700", COMMUNITY: "bg-green-100 text-green-700", BLAST: "bg-orange-100 text-orange-700", REFURBISHMENT: "bg-teal-100 text-teal-700" }
+  const label = labels[workStream]
+  if (!label) return null
+  return <Badge variant="secondary" className={`${colors[workStream] || ""} text-[10px] px-1.5 py-0`}>{label}</Badge>
 }
 
 export const ProjectCard = memo(function ProjectCard({ project }: { project: BoardProject }) {
   const value = project.contractValue || project.estimatedValue
   const priorityIcon = getPriorityIcon(project.priority, project.isICUFlag)
-  const classBadge = getClassBadge(project.classification)
+  const classBadge = getWorkStreamBadge(project.workStream)
   const stageColor = stageColors[project.projectStatus] || "bg-gray-100 text-gray-600"
   const stageLabel = stageLabels[project.projectStatus] || project.projectStatus
 

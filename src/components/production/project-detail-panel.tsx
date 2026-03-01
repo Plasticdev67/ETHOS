@@ -53,11 +53,13 @@ export function ProjectDetailPanel({
                 ICU
               </span>
             )}
-            {project.classification === "MEGA" && (
-              <span className="rounded bg-blue-100 px-2 py-1 text-xs font-medium text-blue-700">
-                MEGA
-              </span>
-            )}
+            {project.workStream && (() => {
+              const wsLabels: Record<string, string> = { UTILITIES: "Utility", BESPOKE: "Bespoke", COMMUNITY: "Community", BLAST: "Blast", REFURBISHMENT: "Refurb" }
+              const wsColors: Record<string, string> = { UTILITIES: "bg-blue-100 text-blue-700", BESPOKE: "bg-purple-100 text-purple-700", COMMUNITY: "bg-green-100 text-green-700", BLAST: "bg-orange-100 text-orange-700", REFURBISHMENT: "bg-teal-100 text-teal-700" }
+              const label = wsLabels[project.workStream]
+              if (!label) return null
+              return <span className={`rounded px-2 py-1 text-xs font-medium ${wsColors[project.workStream] || ""}`}>{label}</span>
+            })()}
             <span className="rounded bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700">
               {project.priority}
             </span>

@@ -51,7 +51,7 @@ export function ProductLaneRow({
         </div>
         <span
           className={`rounded-full px-2 py-0.5 text-xs font-semibold ${config.textColor} ${
-            lane === "MEGA" ? "bg-indigo-200" : "bg-gray-200"
+            "bg-gray-200"
           }`}
         >
           {totalCount}
@@ -73,17 +73,13 @@ export function ProductLaneRow({
                     {...provided.droppableProps}
                     className={`w-[280px] min-h-[100px] p-2 ${
                       snapshot.isDraggingOver
-                        ? lane === "MEGA"
-                          ? "bg-indigo-100/60 ring-2 ring-indigo-300 ring-inset"
-                          : "bg-blue-50/60 ring-2 ring-blue-300 ring-inset"
+                        ? "bg-blue-50/60 ring-2 ring-blue-300 ring-inset"
                         : ""
                     }`}
                   >
                     {/* Mini stage label */}
                     <div
-                      className={`text-[10px] font-medium uppercase tracking-wider mb-1.5 ${
-                        lane === "MEGA" ? "text-indigo-500" : "text-gray-400"
-                      }`}
+                      className="text-[10px] font-medium uppercase tracking-wider mb-1.5 text-gray-400"
                     >
                       {STAGE_DISPLAY_NAMES[stage]}
                       {stageProducts.length > 0 && (
@@ -135,9 +131,7 @@ export function ProductLaneRow({
               {idx < WORKSHOP_STAGES.length - 1 && (
                 <div className="flex items-center px-0.5 shrink-0">
                   <ChevronRight
-                    className={`h-4 w-4 ${
-                      lane === "MEGA" ? "text-indigo-300" : "text-gray-300"
-                    }`}
+                    className="h-4 w-4 text-gray-300"
                   />
                 </div>
               )}

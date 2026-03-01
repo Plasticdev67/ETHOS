@@ -90,7 +90,6 @@ export async function POST(
       contractType: "STANDARD",
       lifecycleStage: "P2",
       priority: "NORMAL",
-      classification: "NORMAL",
       estimatedValue: opportunity.estimatedValue,
       contractValue: opportunity.quotedPrice ?? opportunity.estimatedValue,
       enquiryReceived: new Date(),

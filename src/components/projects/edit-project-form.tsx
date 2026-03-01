@@ -51,11 +51,6 @@ const priorities = [
   { value: "CRITICAL", label: "Critical" },
 ]
 
-const classifications = [
-  { value: "NORMAL", label: "Normal" },
-  { value: "MEGA", label: "Mega Project" },
-  { value: "SUB_CONTRACT", label: "Sub-contract" },
-]
 
 const ragStatuses = [
   { value: "", label: "Not set" },
@@ -213,21 +208,13 @@ export function EditProjectForm({
             </div>
           </div>
 
-          {/* Priority, Classification, RAG */}
-          <div className="grid grid-cols-3 gap-4">
+          {/* Priority & RAG */}
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="priority">Priority</Label>
               <select id="priority" name="priority" className={selectClass} defaultValue={project.priority}>
                 {priorities.map((p) => (
                   <option key={p.value} value={p.value}>{p.label}</option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="classification">Classification</Label>
-              <select id="classification" name="classification" className={selectClass} defaultValue={project.classification}>
-                {classifications.map((c) => (
-                  <option key={c.value} value={c.value}>{c.label}</option>
                 ))}
               </select>
             </div>

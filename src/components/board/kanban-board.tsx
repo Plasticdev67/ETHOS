@@ -22,7 +22,7 @@ type BoardProject = {
   customer: { name: string } | null
   priority: string
   isICUFlag: boolean
-  classification: string
+  workStream: string
   ragStatus: string | null
   estimatedValue: string | number | null
   contractValue: string | number | null
@@ -109,7 +109,7 @@ const BLOCKED_MESSAGES: Record<string, string> = {
 export function KanbanBoard({ initialProjects }: { initialProjects: BoardProject[] }) {
   const router = useRouter()
   const [projects, setProjects] = useState(initialProjects)
-  const [filterClassification, setFilterClassification] = useState("ALL")
+  const [filterWorkStream, setFilterWorkStream] = useState("ALL")
   const [filterPriority, setFilterPriority] = useState("ALL")
   const [searchQuery, setSearchQuery] = useState("")
   const [toast, setToast] = useState<{
@@ -119,7 +119,7 @@ export function KanbanBoard({ initialProjects }: { initialProjects: BoardProject
   } | null>(null)
 
   const filteredProjects = projects.filter((p) => {
-    if (filterClassification !== "ALL" && p.classification !== filterClassification) return false
+    if (filterWorkStream !== "ALL" && p.workStream !== filterWorkStream) return false
     if (filterPriority !== "ALL" && p.priority !== filterPriority) return false
     if (searchQuery) {
       const q = searchQuery.toLowerCase()
@@ -264,11 +264,13 @@ export function KanbanBoard({ initialProjects }: { initialProjects: BoardProject
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
-        <select className={selectClass} value={filterClassification} onChange={(e) => setFilterClassification(e.target.value)}>
-          <option value="ALL">All Types</option>
-          <option value="NORMAL">Normal</option>
-          <option value="MEGA">Mega</option>
-          <option value="SUB_CONTRACT">Sub-contract</option>
+        <select className={selectClass} value={filterWorkStream} onChange={(e) => setFilterWorkStream(e.target.value)}>
+          <option value="ALL">All Work Streams</option>
+          <option value="UTILITIES">Utility</option>
+          <option value="BESPOKE">Bespoke</option>
+          <option value="COMMUNITY">Community</option>
+          <option value="BLAST">Blast</option>
+          <option value="REFURBISHMENT">Refurbishment</option>
         </select>
         <select className={selectClass} value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)}>
           <option value="ALL">All Priorities</option>

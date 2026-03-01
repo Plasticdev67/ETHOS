@@ -9,6 +9,7 @@ import {
   getProductLane,
   calculateDashboardStats,
   STAGE_DISPLAY_NAMES,
+  WORK_STREAMS,
 } from "@/lib/production-utils"
 import { ProductionToolbar } from "./production-toolbar"
 import { ProductionStatsBar } from "./production-stats-bar"
@@ -28,7 +29,7 @@ export type ProductionProject = {
   departmentStatus: string
   priority: string
   isICUFlag: boolean
-  classification: string
+  workStream: string
   ragStatus: string | null
   contractValue: string | number | null
   estimatedValue: string | number | null
@@ -104,7 +105,7 @@ export type PendingHandover = {
 }
 
 type Filters = {
-  classification: string
+  workStream: string
   status: string
   pm: string
   client: string
@@ -124,7 +125,7 @@ export function ProductionDashboard({
   const [projects, setProjects] = useState(initialProjects)
   const [localHandovers, setLocalHandovers] = useState(pendingHandovers)
   const [filters, setFilters] = useState<Filters>({
-    classification: "ALL",
+    workStream: "ALL",
     status: "ALL",
     pm: "ALL",
     client: "ALL",
@@ -151,8 +152,6 @@ export function ProductionDashboard({
   // Apply filters (project-level)
   const filteredProjects = useMemo(() => {
     return projects.filter((p) => {
-      if (p.classification === "SUB_CONTRACT") return false
-
       if (filters.search) {
         const q = filters.search.toLowerCase()
         const match =
@@ -167,10 +166,9 @@ export function ProductionDashboard({
         if (!match) return false
       }
 
-      if (filters.classification !== "ALL") {
-        if (filters.classification === "ICU" && !p.isICUFlag) return false
-        if (filters.classification === "MEGA" && p.classification !== "MEGA") return false
-        if (filters.classification === "NORMAL" && (p.classification !== "NORMAL" || p.isICUFlag)) return false
+      if (filters.workStream !== "ALL") {
+        if (filters.workStream === "ICU" && !p.isICUFlag) return false
+        if (filters.workStream !== "ICU" && p.workStream !== filters.workStream) return false
       }
 
       if (filters.status !== "ALL") {
@@ -201,12 +199,6 @@ export function ProductionDashboard({
     })
   }, [projects, filters])
 
-  // Sub-contract projects
-  const subContractProjects = useMemo(
-    () => projects.filter((p) => p.classification === "SUB_CONTRACT"),
-    [projects]
-  )
-
   // Stats
   const stats = useMemo(
     () => calculateDashboardStats(filteredProjects),
@@ -232,7 +224,7 @@ export function ProductionDashboard({
             name: project.name,
             priority: project.priority,
             isICUFlag: project.isICUFlag,
-            classification: project.classification,
+            workStream: project.workStream,
             customer: project.customer,
             projectManager: project.projectManager,
             targetCompletion: project.targetCompletion,
@@ -358,22 +350,12 @@ export function ProductionDashboard({
       <DragDropContext onDragEnd={handleDragEnd}>
         <div className="space-y-4">
           <ProductLaneRow
-            lane="NORMAL"
-            productsByStage={productsByLaneAndStage["NORMAL"]}
-            compact={viewMode === "compact"}
-          />
-
-          <ProductLaneRow
-            lane="MEGA"
-            productsByStage={productsByLaneAndStage["MEGA"]}
+            lane="STANDARD"
+            productsByStage={productsByLaneAndStage["STANDARD"]}
             compact={viewMode === "compact"}
           />
         </div>
       </DragDropContext>
-
-      {subContractProjects.length > 0 && (
-        <SubContractSection projects={subContractProjects} />
-      )}
 
       <ProjectDetailPanel
         project={selectedProject}

@@ -114,12 +114,14 @@ export function ProductionProjectCard({
         )}
       </div>
 
-      {/* Classification badge */}
-      {project.classification === "MEGA" && (
-        <span className="mt-1 inline-block rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium text-blue-700">
-          MEGA
-        </span>
-      )}
+      {/* Work stream badge */}
+      {project.workStream && (() => {
+        const wsLabels: Record<string, string> = { UTILITIES: "Utility", BESPOKE: "Bespoke", COMMUNITY: "Community", BLAST: "Blast", REFURBISHMENT: "Refurb" }
+        const wsColors: Record<string, string> = { UTILITIES: "bg-blue-100 text-blue-700", BESPOKE: "bg-purple-100 text-purple-700", COMMUNITY: "bg-green-100 text-green-700", BLAST: "bg-orange-100 text-orange-700", REFURBISHMENT: "bg-teal-100 text-teal-700" }
+        const label = wsLabels[project.workStream]
+        if (!label) return null
+        return <span className={`mt-1 inline-block rounded px-1.5 py-0.5 text-[10px] font-medium ${wsColors[project.workStream] || ""}`}>{label}</span>
+      })()}
     </button>
   )
 }

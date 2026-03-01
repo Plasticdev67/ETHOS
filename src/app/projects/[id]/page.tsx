@@ -246,12 +246,13 @@ export default async function ProjectDetailPage({
                 <AlertTriangle className="mr-1 h-3 w-3" /> High
               </Badge>
             )}
-            {project.classification === "MEGA" && (
-              <Badge variant="secondary" className="bg-purple-100 text-purple-700">Mega</Badge>
-            )}
-            {project.classification === "SUB_CONTRACT" && (
-              <Badge variant="secondary" className="bg-teal-100 text-teal-700">Sub-contract</Badge>
-            )}
+            {project.workStream && (() => {
+              const wsLabels: Record<string, string> = { UTILITIES: "Utility", BESPOKE: "Bespoke", COMMUNITY: "Community", BLAST: "Blast", REFURBISHMENT: "Refurb" }
+              const wsColors: Record<string, string> = { UTILITIES: "bg-blue-100 text-blue-700", BESPOKE: "bg-purple-100 text-purple-700", COMMUNITY: "bg-green-100 text-green-700", BLAST: "bg-orange-100 text-orange-700", REFURBISHMENT: "bg-teal-100 text-teal-700" }
+              const label = wsLabels[project.workStream]
+              if (!label) return null
+              return <Badge variant="secondary" className={wsColors[project.workStream] || ""}>{label}</Badge>
+            })()}
           </div>
           <div className="mt-1 flex items-center gap-4 text-sm text-gray-500">
             <span className="font-mono font-medium">{project.projectNumber}</span>
@@ -689,8 +690,8 @@ export default async function ProjectDetailPage({
                     <p className="text-sm">{prettifyEnum(project.workStream)}</p>
                   </div>
                   <div>
-                    <p className="text-xs font-medium text-gray-500">Classification</p>
-                    <p className="text-sm">{prettifyEnum(project.classification)}</p>
+                    <p className="text-xs font-medium text-gray-500">Work Stream</p>
+                    <p className="text-sm">{prettifyEnum(project.workStream)}</p>
                   </div>
                   <div>
                     <p className="text-xs font-medium text-gray-500">Priority</p>

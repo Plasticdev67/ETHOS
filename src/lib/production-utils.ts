@@ -126,17 +126,44 @@ export const TASK_STATUS_COLORS: Record<string, string> = {
   REWORK: "bg-purple-100 text-purple-700",
 }
 
-// Product-level lane classification
-export const PRODUCT_LANES = ["NORMAL", "MEGA"] as const
+// ═══════════════════ Work Streams ═══════════════════
+
+export const WORK_STREAMS = [
+  "UTILITIES",
+  "BESPOKE",
+  "COMMUNITY",
+  "BLAST",
+  "REFURBISHMENT",
+] as const
+export type WorkStreamValue = (typeof WORK_STREAMS)[number]
+
+export const WORK_STREAM_LABELS: Record<string, string> = {
+  UTILITIES: "Utility",
+  BESPOKE: "Bespoke",
+  COMMUNITY: "Community",
+  BLAST: "Blast",
+  REFURBISHMENT: "Refurbishment",
+}
+
+export const WORK_STREAM_COLORS: Record<string, { badge: string; bg: string; border: string }> = {
+  UTILITIES:     { badge: "bg-blue-100 text-blue-700",    bg: "bg-blue-50/50",    border: "border-blue-200" },
+  BESPOKE:       { badge: "bg-purple-100 text-purple-700", bg: "bg-purple-50/50", border: "border-purple-200" },
+  COMMUNITY:     { badge: "bg-green-100 text-green-700",  bg: "bg-green-50/50",   border: "border-green-200" },
+  BLAST:         { badge: "bg-orange-100 text-orange-700", bg: "bg-orange-50/50", border: "border-orange-200" },
+  REFURBISHMENT: { badge: "bg-teal-100 text-teal-700",    bg: "bg-teal-50/50",    border: "border-teal-200" },
+}
+
+// Product-level lane — single lane for all production (ICU elevated separately)
+export const PRODUCT_LANES = ["STANDARD"] as const
 export type ProductLane = (typeof PRODUCT_LANES)[number]
 
 export const PRODUCT_LANE_CONFIG: Record<
   ProductLane,
   { label: string; subtitle: string; borderColor: string; bgFrom: string; bgVia: string; bgTo: string; accentColor: string; textColor: string; dotColor: string; cellEmptyColor: string }
 > = {
-  NORMAL: {
-    label: "Configure to Order",
-    subtitle: "Standard production flow",
+  STANDARD: {
+    label: "Production",
+    subtitle: "All work streams",
     borderColor: "border-gray-300",
     bgFrom: "from-gray-50/80",
     bgVia: "via-white/40",
@@ -146,54 +173,11 @@ export const PRODUCT_LANE_CONFIG: Record<
     dotColor: "bg-gray-400",
     cellEmptyColor: "text-gray-300",
   },
-  MEGA: {
-    label: "Innovate to Order",
-    subtitle: "Mega Products",
-    borderColor: "border-indigo-200",
-    bgFrom: "from-indigo-50/80",
-    bgVia: "via-purple-50/40",
-    bgTo: "to-indigo-50/80",
-    accentColor: "bg-indigo-500",
-    textColor: "text-indigo-800",
-    dotColor: "bg-indigo-500",
-    cellEmptyColor: "text-indigo-300",
-  },
 }
 
-// Determine which lane a product belongs to based on its parent project
-export function getProductLane(project: {
-  classification: string
-}): ProductLane {
-  if (project.classification === "MEGA") return "MEGA"
-  return "NORMAL"
-}
-
-// Legacy swim lane support (used by production-column if still needed)
-export const SWIM_LANE_ORDER = ["ICU", "NORMAL"] as const
-export type SwimLane = (typeof SWIM_LANE_ORDER)[number]
-
-export const MEGA_LANE = "MEGA" as const
-
-export const SWIM_LANE_LABELS: Record<string, string> = {
-  ICU: "ICU / Urgent",
-  NORMAL: "Configure to Order",
-  MEGA: "Innovate to Order",
-}
-
-export const SWIM_LANE_COLORS: Record<string, string> = {
-  ICU: "bg-red-50/50 border-red-200",
-  NORMAL: "bg-white border-gray-200",
-  MEGA: "bg-blue-50/50 border-blue-200",
-}
-
-// Determine which swim lane a project belongs to
-export function getSwimLane(project: {
-  isICUFlag: boolean
-  classification: string
-}): SwimLane | typeof MEGA_LANE {
-  if (project.isICUFlag) return "ICU"
-  if (project.classification === "MEGA") return MEGA_LANE
-  return "NORMAL"
+// All products go into the single STANDARD lane
+export function getProductLane(): ProductLane {
+  return "STANDARD"
 }
 
 // Get primary production stage for a project (based on its products/tasks)

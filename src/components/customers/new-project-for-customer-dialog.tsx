@@ -29,12 +29,6 @@ const workStreams = [
   { value: "REFURBISHMENT", label: "Refurbishment" },
 ]
 
-const classifications = [
-  { value: "NORMAL", label: "Normal" },
-  { value: "MEGA", label: "Mega" },
-  { value: "SUB_CONTRACT", label: "Sub-contract" },
-]
-
 export function NewProjectForCustomerDialog({
   customerId,
   customerName,
@@ -56,7 +50,6 @@ export function NewProjectForCustomerDialog({
       customerId,
       projectType: formData.get("projectType") as string,
       workStream: formData.get("workStream") as string,
-      classification: formData.get("classification") as string,
       estimatedValue: (formData.get("estimatedValue") as string) || null,
       siteLocation: (formData.get("siteLocation") as string) || null,
       notes: (formData.get("notes") as string) || null,
@@ -104,7 +97,7 @@ export function NewProjectForCustomerDialog({
             />
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label htmlFor="np-type">Type</Label>
               <select id="np-type" name="projectType" className={selectClass}>
@@ -121,20 +114,6 @@ export function NewProjectForCustomerDialog({
                 {workStreams.map((w) => (
                   <option key={w.value} value={w.value}>
                     {w.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="np-class">Classification</Label>
-              <select
-                id="np-class"
-                name="classification"
-                className={selectClass}
-              >
-                {classifications.map((c) => (
-                  <option key={c.value} value={c.value}>
-                    {c.label}
                   </option>
                 ))}
               </select>
