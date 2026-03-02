@@ -3,6 +3,7 @@ import { toDecimal } from "@/lib/api-utils"
 import { NextRequest, NextResponse } from "next/server"
 import { revalidatePath } from "next/cache"
 import { requireAuth, requirePermission } from "@/lib/api-auth"
+import { validateBody, isValidationError, catalogueCreateSchema } from "@/lib/api-validation"
 
 export async function GET() {
   const items = await prisma.productCatalogue.findMany({
@@ -20,9 +21,10 @@ export async function POST(request: NextRequest) {
   const denied = await requirePermission("catalogue:edit")
   if (denied) return denied
 
-  const body = await request.json()
-
   try {
+    const body = await validateBody(request, catalogueCreateSchema)
+    if (isValidationError(body)) return body
+
     const item = await prisma.productCatalogue.create({
       data: {
         partCode: body.partCode,

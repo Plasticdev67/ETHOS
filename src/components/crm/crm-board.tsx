@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd"
 import { OpportunityCard } from "./opportunity-card"
@@ -99,6 +100,7 @@ function EditableColumnName({ prospect, onRename }: { prospect: Prospect; onRena
 }
 
 export function CrmBoard({ initialProspects, initialOpportunities }: Props) {
+  const router = useRouter()
   const [prospects, setProspects] = useState(initialProspects)
   const [opportunities, setOpportunities] = useState(initialOpportunities)
   const [statusFilter, setStatusFilter] = useState("ALL")
@@ -270,7 +272,7 @@ export function CrmBoard({ initialProspects, initialOpportunities }: Props) {
                               >
                                 <OpportunityCard
                                   opportunity={opp}
-                                  onClick={() => setSelectedOpp(opp)}
+                                  onClick={() => router.push(`/crm/opportunities/${opp.id}`)}
                                 />
                               </div>
                             )}

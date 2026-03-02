@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache"
 import { requireAuth, requirePermission } from "@/lib/api-auth"
 import { toDecimal } from "@/lib/api-utils"
 import { getNextSequenceNumber } from "@/lib/finance/sequences"
+import { validateBody, isValidationError, purchaseOrderCreateSchema } from "@/lib/api-validation"
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
@@ -32,7 +33,8 @@ export async function POST(request: NextRequest) {
   if (denied) return denied
 
   try {
-    const body = await request.json()
+    const body = await validateBody(request, purchaseOrderCreateSchema)
+    if (isValidationError(body)) return body
 
     // Auto-generate PO number (concurrency-safe)
     const poNumber = await getNextSequenceNumber("purchase_order")

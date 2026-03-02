@@ -381,7 +381,7 @@ const OpportunityCard = memo(function OpportunityCard({
       )}
     >
       <Link
-        href={`/crm/quote/${opp.id}`}
+        href={`/crm/opportunities/${opp.id}`}
         className="block cursor-pointer"
       >
         <div className="flex items-start justify-between gap-2 mb-1">

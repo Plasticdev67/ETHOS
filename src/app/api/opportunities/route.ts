@@ -4,6 +4,7 @@ import { logAudit } from "@/lib/audit"
 import { revalidatePath } from "next/cache"
 import { requireAuth, requirePermission } from "@/lib/api-auth"
 import { toDecimal } from "@/lib/api-utils"
+import { validateBody, isValidationError, opportunityCreateSchema } from "@/lib/api-validation"
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
@@ -33,7 +34,8 @@ export async function POST(request: NextRequest) {
   if (denied) return denied
 
   try {
-    const body = await request.json()
+    const body = await validateBody(request, opportunityCreateSchema)
+    if (isValidationError(body)) return body
 
     // Get max sortOrder for this prospect to append at end
     const maxOrder = await prisma.opportunity.findFirst({

@@ -5,6 +5,7 @@ import { requireAuth, requirePermission } from "@/lib/api-auth"
 import { toDecimal } from "@/lib/api-utils"
 import { getNextSequenceNumber } from "@/lib/finance/sequences"
 import { recalcProjectNcrCost } from "@/lib/ncr-utils"
+import { validateBody, isValidationError, ncrCreateSchema } from "@/lib/api-validation"
 
 export async function GET(request: NextRequest) {
   const user = await requireAuth()
@@ -35,7 +36,8 @@ export async function POST(request: NextRequest) {
   if (denied) return denied
 
   try {
-    const body = await request.json()
+    const body = await validateBody(request, ncrCreateSchema)
+    if (isValidationError(body)) return body
 
     const ncrNumber = await getNextSequenceNumber("ncr")
 

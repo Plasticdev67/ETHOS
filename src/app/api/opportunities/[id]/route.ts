@@ -3,6 +3,7 @@ import { toDecimal } from "@/lib/api-utils"
 import { NextRequest, NextResponse } from "next/server"
 import { revalidatePath } from "next/cache"
 import { requireAuth, requirePermission } from "@/lib/api-auth"
+import { prettifyEnum } from "@/lib/utils"
 
 export async function GET(
   request: NextRequest,
@@ -36,6 +37,16 @@ export async function PATCH(
 
   const { id } = await params
   const body = await request.json()
+
+  // Capture old status for auto-logging
+  let oldStatus: string | null = null
+  if (body.status) {
+    const existing = await prisma.opportunity.findUnique({
+      where: { id },
+      select: { status: true },
+    })
+    oldStatus = existing?.status ?? null
+  }
 
   const data: Record<string, unknown> = {}
   const fields = [
@@ -158,7 +169,22 @@ export async function PATCH(
       }
     }
 
+    // Auto-log status changes in activity timeline
+    if (body.status && oldStatus && body.status !== oldStatus) {
+      const sessionUser = user as { id: string; name?: string | null }
+      await prisma.opportunityActivity.create({
+        data: {
+          opportunityId: id,
+          userId: sessionUser.id,
+          userName: sessionUser.name || "System",
+          type: "STATUS_CHANGE",
+          message: `Status changed from ${prettifyEnum(oldStatus)} to ${prettifyEnum(body.status)}`,
+        },
+      })
+    }
+
     revalidatePath("/crm")
+    revalidatePath(`/crm/opportunities/${id}`)
 
     return NextResponse.json(opportunity)
   } catch (error) {

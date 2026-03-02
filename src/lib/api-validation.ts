@@ -65,6 +65,7 @@ export const projectCreateSchema = z.object({
 
 export const customerCreateSchema = z.object({
   name: z.string().min(1, "Customer name is required"),
+  customerType: z.string().optional(),
   email: z.string().email().optional().nullable().or(z.literal("")),
   phone: optionalString,
   address: optionalString,
@@ -81,6 +82,7 @@ export const supplierCreateSchema = z.object({
   phone: optionalString,
   address: optionalString,
   postcode: optionalString,
+  whatTheySupply: optionalString,
   notes: optionalString,
   category: optionalString,
   accountCode: optionalString,
@@ -97,15 +99,18 @@ export const quoteCreateSchema = z.object({
 })
 
 export const purchaseOrderCreateSchema = z.object({
-  supplierId: z.string().min(1, "Supplier is required"),
+  supplierId: optionalString,
   projectId: optionalString,
-  deliveryDate: optionalDate,
+  status: optionalString,
+  dateSent: optionalDate,
+  expectedDelivery: optionalDate,
   notes: optionalString,
   totalValue: decimal,
   lines: z.array(z.object({
     description: z.string().min(1),
-    quantity: z.number().int().positive(),
+    quantity: z.number().positive(),
     unitCost: decimal,
+    totalCost: decimal,
     bomLineId: optionalString,
   })).optional(),
 })
@@ -114,38 +119,43 @@ export const variationCreateSchema = z.object({
   projectId: z.string().min(1, "Project is required"),
   title: z.string().min(1, "Title is required"),
   description: optionalString,
+  type: optionalString,
   costImpact: decimal,
   valueImpact: decimal,
-  status: z.enum(["DRAFT", "SUBMITTED", "APPROVED", "REJECTED"]).optional(),
+  raisedBy: optionalString,
+  notes: optionalString,
 })
 
 export const ncrCreateSchema = z.object({
   projectId: z.string().min(1, "Project is required"),
   title: z.string().min(1, "Title is required"),
+  productId: optionalString,
   description: optionalString,
   severity: z.enum(["MINOR", "MAJOR", "CRITICAL"]).optional(),
   costImpact: decimal,
-  raisedById: optionalString,
+  rootCause: optionalString,
+  originStage: optionalString,
+  returnToStage: optionalString,
+  requireDesignRework: z.boolean().optional(),
 })
 
 export const opportunityCreateSchema = z.object({
-  title: z.string().min(1, "Title is required"),
-  customerId: optionalString,
-  contactName: optionalString,
-  contactEmail: z.string().email().optional().nullable().or(z.literal("")),
-  contactPhone: optionalString,
-  source: optionalString,
+  prospectId: z.string().min(1, "Prospect is required"),
+  name: z.string().min(1, "Name is required"),
+  description: optionalString,
   estimatedValue: decimal,
+  contactPerson: optionalString,
+  leadSource: optionalString,
+  status: optionalString,
   expectedCloseDate: optionalDate,
   notes: optionalString,
-  workStream: z.enum(["UTILITIES", "BESPOKE", "COMMUNITY", "BLAST", "BUND_CONTAINMENT", "REFURBISHMENT"]).optional(),
 })
 
 export const catalogueCreateSchema = z.object({
   partCode: z.string().min(1, "Part code is required"),
   description: z.string().min(1, "Description is required"),
-  category: optionalString,
-  unit: optionalString,
+  classId: optionalString,
+  defaultUnits: optionalString,
   guideUnitCost: decimal,
   guideMarginPercent: decimal,
 })

@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache"
 import { requireAuth, requirePermission } from "@/lib/api-auth"
 import { toDecimal } from "@/lib/api-utils"
 import { getNextSequenceNumber } from "@/lib/finance/sequences"
+import { validateBody, isValidationError, variationCreateSchema } from "@/lib/api-validation"
 
 export async function GET(request: NextRequest) {
   const projectId = request.nextUrl.searchParams.get("projectId")
@@ -26,7 +27,8 @@ export async function POST(request: NextRequest) {
   if (denied) return denied
 
   try {
-    const body = await request.json()
+    const body = await validateBody(request, variationCreateSchema)
+    if (isValidationError(body)) return body
 
     const variationNumber = await getNextSequenceNumber("variation")
 

@@ -230,6 +230,7 @@ model Opportunity {
   prospect         Prospect @relation(fields: [prospectId], references: [id], onDelete: Cascade)
   convertedProject Project? @relation("ConvertedOpportunity", fields: [convertedProjectId], references: [id])
   quoteLines       OpportunityQuoteLine[]
+  activities       OpportunityActivity[]
 
   @@index([prospectId])
   @@index([status])
@@ -281,6 +282,32 @@ model OpportunityQuoteLine {
 
   @@index([opportunityId])
   @@map("opportunity_quote_lines")
+}
+
+enum OpportunityActivityType {
+  NOTE
+  CALL
+  EMAIL
+  MEETING
+  STATUS_CHANGE
+  TASK
+}
+
+model OpportunityActivity {
+  id              String                  @id @default(cuid())
+  opportunityId   String
+  userId          String?
+  userName        String
+  type            OpportunityActivityType @default(NOTE)
+  subject         String?
+  message         String
+  pinned          Boolean                 @default(false)
+  createdAt       DateTime                @default(now())
+
+  opportunity Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+
+  @@index([opportunityId, createdAt])
+  @@map("opportunity_activities")
 }
 
 enum OpportunityLineType {

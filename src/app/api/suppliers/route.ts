@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db"
 import { NextRequest, NextResponse } from "next/server"
 import { revalidatePath } from "next/cache"
 import { requireAuth, requirePermission } from "@/lib/api-auth"
+import { validateBody, isValidationError, supplierCreateSchema } from "@/lib/api-validation"
 
 export async function POST(request: NextRequest) {
   const user = await requireAuth()
@@ -10,7 +11,8 @@ export async function POST(request: NextRequest) {
   if (denied) return denied
 
   try {
-    const body = await request.json()
+    const body = await validateBody(request, supplierCreateSchema)
+    if (isValidationError(body)) return body
 
     const supplier = await prisma.supplier.create({
       data: {
