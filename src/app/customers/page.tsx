@@ -5,7 +5,7 @@ import Link from "next/link"
 import { prettifyEnum } from "@/lib/utils"
 import { NewCustomerDialog } from "@/components/customers/new-customer-dialog"
 
-export const revalidate = 60
+export const dynamic = 'force-dynamic'
 
 async function getCustomers() {
   const customers = await prisma.customer.findMany({

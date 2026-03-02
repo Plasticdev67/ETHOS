@@ -4,7 +4,7 @@ import { EditProjectForm } from "@/components/projects/edit-project-form"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
 
-export const revalidate = 60
+export const dynamic = 'force-dynamic'
 
 export default async function EditProjectPage({
   params,

@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db"
 import { BomLibraryClient } from "@/components/bom/bom-library-client"
 
-export const revalidate = 60
+export const dynamic = 'force-dynamic'
 
 async function getData() {
   const [stockItems, bomHeaders, operationSummary, familyCounts] = await Promise.all([

@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db"
 import { NewProjectForm } from "@/components/projects/new-project-form"
 
-export const revalidate = 60
+export const dynamic = 'force-dynamic'
 
 async function getData() {
   const [customers, users] = await Promise.all([

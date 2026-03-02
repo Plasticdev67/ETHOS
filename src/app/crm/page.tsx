@@ -1,4 +1,4 @@
-export const revalidate = 60
+export const dynamic = 'force-dynamic'
 import { Suspense } from "react"
 import { NewProspectDialog } from "@/components/crm/new-prospect-dialog"
 import { NewLeadDialog } from "@/components/crm/new-lead-dialog"

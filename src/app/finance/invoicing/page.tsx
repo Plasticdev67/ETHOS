@@ -6,7 +6,7 @@ import { formatCurrency, formatDate } from "@/lib/utils"
 import { ArrowLeft, PoundSterling } from "lucide-react"
 import { CreateInvoiceDialog } from "@/components/finance/create-invoice-dialog"
 
-export const revalidate = 60
+export const dynamic = 'force-dynamic'
 
 function getInvoiceStatusColor(status: string) {
   const colors: Record<string, string> = {

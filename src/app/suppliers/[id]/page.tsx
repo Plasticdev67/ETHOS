@@ -6,7 +6,7 @@ import { ArrowLeft, Mail, Phone, Building, Truck } from "lucide-react"
 import Link from "next/link"
 import { formatCurrency, formatDate, prettifyEnum } from "@/lib/utils"
 
-export const revalidate = 60
+export const dynamic = 'force-dynamic'
 
 async function getSupplier(id: string) {
   return prisma.supplier.findUnique({

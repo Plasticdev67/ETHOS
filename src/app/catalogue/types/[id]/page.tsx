@@ -4,7 +4,7 @@ import { notFound } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 
-export const revalidate = 60
+export const dynamic = 'force-dynamic'
 
 async function getType(id: string) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

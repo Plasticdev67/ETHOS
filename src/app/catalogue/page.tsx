@@ -3,7 +3,7 @@ import Link from "next/link"
 import { Card, CardContent } from "@/components/ui/card"
 import { EditCatalogueRow } from "@/components/catalogue/edit-catalogue-row"
 
-export const revalidate = 60
+export const dynamic = 'force-dynamic'
 
 async function getCatalogue() {
   return prisma.productCatalogue.findMany({

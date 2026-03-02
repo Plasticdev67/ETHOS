@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db"
 import { NextResponse } from "next/server"
 import { requireAuth, requirePermission } from "@/lib/api-auth"
 
-export const revalidate = 60
+export const dynamic = 'force-dynamic'
 
 /**
  * POST /api/catalogue/propagate-prices

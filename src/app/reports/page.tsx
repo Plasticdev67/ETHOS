@@ -9,7 +9,7 @@ import { TimingDelivery } from "@/components/reports/timing-delivery"
 import { PipelineFinancials } from "@/components/reports/pipeline-financials"
 import { ShieldAlert } from "lucide-react"
 
-export const revalidate = 60
+export const dynamic = 'force-dynamic'
 
 // ── Helper: days between two dates ──
 function daysBetween(a: Date | null, b: Date | null): number | null {

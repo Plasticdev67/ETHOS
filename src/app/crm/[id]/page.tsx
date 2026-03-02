@@ -23,7 +23,7 @@ import {
   getProspectStatusColor,
 } from "@/lib/utils"
 
-export const revalidate = 60
+export const dynamic = 'force-dynamic'
 
 async function getProspect(id: string) {
   return prisma.prospect.findUnique({

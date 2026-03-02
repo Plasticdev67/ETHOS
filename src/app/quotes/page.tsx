@@ -5,7 +5,7 @@ import Link from "next/link"
 import { formatCurrency, formatDate, prettifyEnum } from "@/lib/utils"
 import { NewQuoteDialog } from "@/components/quotes/new-quote-dialog"
 
-export const revalidate = 60
+export const dynamic = 'force-dynamic'
 
 function getQuoteStatusColor(status: string) {
   const colors: Record<string, string> = {

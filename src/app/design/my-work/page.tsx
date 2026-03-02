@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db"
 import { MyWorkBoard } from "@/components/design/my-work-board"
 
-export const revalidate = 60
+export const dynamic = 'force-dynamic'
 
 export default async function MyWorkPage() {
   // Fetch all assigned cards (including QUEUED, IN_PROGRESS, REVIEW, COMPLETE)

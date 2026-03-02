@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db"
 import { toDecimalOrDefault } from "@/lib/api-utils"
 import { NextRequest, NextResponse } from "next/server"
-import { revalidatePath } from "next/cache"
+import { revalidatePath } from "next/cache"
 import { requireAuth, requirePermission } from "@/lib/api-auth"
 
 export async function GET(

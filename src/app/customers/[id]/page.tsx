@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db"
 import { notFound } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
-export const revalidate = 60
+export const dynamic = 'force-dynamic'
 import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, Building, Mail, Phone, PoundSterling } from "lucide-react"
 import Link from "next/link"

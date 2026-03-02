@@ -37,7 +37,7 @@ import { DocumentManager } from "@/components/projects/document-manager"
 import { ProjectActivityLog } from "@/components/projects/project-activity-log"
 import { ProductHandoverButton } from "@/components/projects/product-handover-button"
 
-export const revalidate = 60
+export const dynamic = 'force-dynamic'
 
 async function getProject(id: string) {
   const project = await prisma.project.findUnique({

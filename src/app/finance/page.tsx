@@ -5,7 +5,7 @@ import Link from "next/link"
 import { formatCurrency, formatDate } from "@/lib/utils"
 import { PoundSterling, TrendingUp, TrendingDown, AlertTriangle, Clock, FileText } from "lucide-react"
 
-export const revalidate = 60
+export const dynamic = 'force-dynamic'
 
 async function getFinanceData() {
   const [projects, invoices, nominalCodes] = await Promise.all([

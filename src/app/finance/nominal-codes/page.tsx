@@ -4,7 +4,7 @@ import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 import { NominalCodeManager } from "@/components/finance/nominal-code-manager"
 
-export const revalidate = 60
+export const dynamic = 'force-dynamic'
 
 async function getNominalCodes() {
   return prisma.nominalCode.findMany({

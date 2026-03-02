@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db"
 import { notFound } from "next/navigation"
 import { BomEditorPage } from "@/components/design/bom-editor-page"
 
-export const revalidate = 60
+export const dynamic = 'force-dynamic'
 
 export default async function BomPage({ params }: { params: Promise<{ designCardId: string }> }) {
   const { designCardId } = await params

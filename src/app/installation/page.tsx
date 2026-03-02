@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db"
 import { DepartmentBoard, type DeptProject } from "@/components/departments/department-board"
 
-export const revalidate = 60
+export const dynamic = 'force-dynamic'
 
 async function getInstallationProjects() {
   return prisma.project.findMany({
