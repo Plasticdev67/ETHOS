@@ -155,21 +155,27 @@ Ethos-MK.1-/
 ## Working Conventions
 
 ### Rules
-- **TODO.md** (memory file) — only update when explicitly instructed
-- **CHANGELOG.md** (memory file) — write an entry after every piece of executed work
+- **docs/CHANGELOG.md** — write an entry after every piece of executed work. Include date, what changed, files touched, and any breaking changes. This is the project's living history — every teammate (and every future Claude session) relies on it to understand what happened.
+- **docs/TODO.md** — capture ideas, discussions, and planned features here when the user discusses them. If the user raises an idea or pain point in conversation, log it in the appropriate section of TODO.md so it isn't lost between sessions.
+- **docs/PDF-REPORTS.md** — when asked to generate a report or PDF, follow this spec exactly. It defines the branded MME layout: PX Grotesk font, dark navy/coral theming, cover page design, header/footer structure, and the Puppeteer generation approach.
 - **Plans** — discuss in conversation first, only save to TODO when told
 - **Commits** — descriptive message, co-authored, don't push unless asked
 
-### Memory Files
-Located at: `C:\Users\JamesMorton\.claude\projects\c--Users-JamesMorton-OneDrive---MME--1--Desktop-ETHOS\memory\`
-
+### Reference Docs (in `docs/`)
 | File | Purpose |
 |------|---------|
-| `MEMORY.md` | Index file — loaded into every conversation |
-| `TODO.md` | Feature backlog and team discussion items |
-| `CHANGELOG.md` | Record of all executed changes |
-| `MME-OPERATIONS.md` | How MME operates — products, workflows, customers, terminology |
-| `MME-QUESTIONNAIRE.md` | Input form for gathering operational details |
+| `docs/TODO.md` | Feature backlog, ideas, and planned work |
+| `docs/CHANGELOG.md` | Detailed record of all executed changes |
+| `docs/MME-OPERATIONS.md` | Full company profile — products, workflows, departments, terminology |
+| `docs/PDF-REPORTS.md` | MME branded PDF generation spec, colors, fonts, layout approach |
+| `docs/CRM-Salesman-Handbook.md` | CRM usage guide for sales team |
+| `docs/Design-Process-SOP.md` | Design department standard operating procedures |
+
+### Code Quality — Non-Negotiable
+- **No `any` casts, `@ts-ignore`, or `@ts-nocheck`** — find the proper typed solution
+- **No quick fixes or shortcuts** — study the problem, understand root causes, implement correctly
+- **No over-engineering** — only build what's needed now, not hypothetical future requirements
+- **No unnecessary comments, docstrings, or type annotations** on code you didn't change
 
 ### Code Style
 - TypeScript strict mode
@@ -240,19 +246,22 @@ The Prisma schema has circular bidirectional relations that cause TypeScript "ex
 - Customer portal
 
 ### Recently Completed
-- ITO → ETO rename across entire codebase (2026-02-28)
-- Added CTO classification option (2026-02-28)
+- CRM opportunity detail page with Salesforce-style activity timeline (2026-03-02)
+- Code audit v2 — comprehensive hardening: auth, validation, toDecimal, error handling (2026-03-01)
+- Concurrency-safe project number generation via sequences (2026-03-01)
 - Database migrated from Neon to Supabase (2026-02-28)
+- ITO → ETO rename + CTO classification (2026-02-28)
 - ICU carousel on dashboard (2026-02-28)
 
 ### Planned (Not Yet Built)
-- **Project Passport** — living context record per project with stage gates (see TODO.md)
+- **Project Passport** — living context record per project with stage gates (see docs/TODO.md)
 - **Change Orders** — formal change management with cost tracking
 - **Multi-level ETO Approvals** — Engineering → Commercial → MD approval chain
 - **Unified Quote System** — merge CRM and standalone quote builders
 - **AI Document Extraction** — auto-read specs/contracts into passport
 - **Spec Compliance Checking** — cross-reference specs vs BOMs/drawings
 - **Quote enhancements** — payment terms, lead times, assumptions & exclusions, PDF improvements
+- **Sage data import** — stock items, BOMs, customers, suppliers from Sage exports
 
 ---
 
@@ -267,8 +276,19 @@ MME manufactures flood doors, flood gates, blast doors, flood cabinets, demounta
 
 Customers are primarily UK main contractors (Graham, Skanska, Knights Brown) and utility companies. Some international work (UAE, Saudi Arabia, Lithuania, Ireland).
 
-For full operational detail, see `memory/MME-OPERATIONS.md`.
+For full operational detail, see `docs/MME-OPERATIONS.md`.
 
 ---
 
-*Last updated: 2026-02-28*
+## Database Notes
+- Push schema changes: `npx prisma db push` (NOT `migrate dev` — production DB has drift from early `db push` usage)
+- Generate client after schema change: `npx prisma generate`
+- Client output: `src/generated/prisma`
+- Connection: Supabase Session Pooler (IPv4-compatible)
+
+## PDF Report Generation
+MME has a branded PDF report format using PX Grotesk font, dark navy/coral theming, and the MME logo. See `docs/PDF-REPORTS.md` for the full design spec and generation approach. Key: uses Puppeteer with manual headers/footers (NOT `displayHeaderFooter`), base64-embedded fonts, inline SVG logo.
+
+---
+
+*Last updated: 2026-03-02*
