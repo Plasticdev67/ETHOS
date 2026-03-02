@@ -144,13 +144,61 @@ The passport isn't just a handover document. It's the **living operational recor
 
 ---
 
+## BOM Access & Per-Line Ordering
+*Discussed 2026-03-02*
+
+### The Problem
+BOMs are currently only accessible from the Design Board (`/design/bom/[designCardId]`). Production staff can't see what materials are in a product's BOM. At handover, production acknowledges without reviewing the actual BOM. And the Quick PO function exists (`/api/purchase-orders/quick-po`) but is buried inside the Create PO dialog on the Purchasing page — plus it orders everything at once, which doesn't reflect reality (different lead times, staged ordering).
+
+### BOM Review at Production Handover
+- [ ] **Read-only BOM summary on handover acknowledgement screen** — production manager sees the full materials list before accepting the handover. Shows: part number, description, qty, supplier, lead time, make/buy flag.
+- [ ] **BOM link on production project cards** — tap to see the BOM for that product (read-only). Production needs this while building.
+
+### BOM Access from Project Detail Page
+- [ ] **BOM tab on project detail page** — aggregated view of all design card BOMs across all products in the project. Each product's BOM shown as a collapsible section.
+- [ ] **Link from each product row** to its BOM editor (for design team) or BOM viewer (for production/PM).
+
+### Per-Line Material Ordering (replaces bulk Quick PO)
+- [ ] **Rework Quick PO to accept specific BOM line IDs** — instead of "buy everything unpurchased", accept an array of line IDs. Still groups selected lines by supplier into one PO per supplier. Created POs start as DRAFT.
+- [ ] **Per-line "Order" action on BOM view** — each BOM line shows its PO status (Unpurchased / PO-0045 Draft / PO-0045 Approved). Checkbox to select lines, then "Create POs for Selected" button. Lines with no supplier assigned get flagged — can't order until supplier is set.
+- [ ] **"Order Materials" button on project detail page** — shortcut to the BOM view filtered to unpurchased buy items, with the selection/ordering interface.
+- [ ] **Prompt after handover acknowledgement** — "X buy items need purchasing — review and order?" Links to the BOM ordering view for that project.
+
+### Why Per-Line Not Bulk
+- Different materials have different lead times (steel ordered weeks before seals/fixings)
+- Some items may not be needed until later production stages
+- Long-lead items need ordering at design freeze, short-lead at handover
+- Purchasing team needs control over what gets ordered when, not a "buy all" button
+
+---
+
 ## Warehouse / Inventory
 *Identified 2026-03-01 — feedback from Geraint Morgan during team demo*
 
-### Goods Receipting (standalone view)
-- [ ] **Dedicated "Goods In" page** — warehouse-friendly screen to receipt deliveries. Search by PO number or supplier delivery note, see all outstanding lines, tick off received quantities.
-- [ ] Current goods receipting exists inside PO row expansion (Purchasing page) but is buried and not discoverable for warehouse users.
-- [ ] Consider barcode/QR scanning for PO lookup (future enhancement).
+### Goods Receipting — Bugs & Improvements
+*Reviewed 2026-03-02 — significant issues found in current receive flow*
+
+**Bug fix (P0):**
+- [ ] **receivedQty overwrites instead of accumulating** — If you receive 7 items today then 3 tomorrow, the DB shows `receivedQty=3` not `10`. The PO status still calculates correctly (checks final qty >= ordered) but the audit trail of partial receipts is lost. Fix: make receivedQty cumulative (`existing + new`) or introduce a `GoodsReceipt` line model to track each receipt event separately.
+
+**API hardening:**
+- [ ] **Validate receivedQty server-side** — UI enforces `max={line.quantity}` but the API accepts any value (negative, NaN, over-receipt). Add Zod validation: positive integer, <= remaining qty.
+- [ ] **Check PO status before allowing receipt** — No guard preventing receipt on a CANCELLED or DRAFT PO. Should only allow receipt when status is SENT or PARTIALLY_RECEIVED.
+
+**Standalone Goods In page:**
+- [ ] **Dedicated `/goods-in` page** — warehouse-friendly screen. Search by PO number or supplier delivery note. Show all outstanding lines across all POs with expected delivery dates. Tick off received quantities per line without needing to find and expand the right PO.
+- [ ] Current goods receipting is buried inside PO row expansion on the Purchasing page — not discoverable for warehouse staff.
+
+**Receipt audit trail:**
+- [ ] **GoodsReceipt model** — new model to track each individual receipt event: `{ poLineId, qtyReceived, receivedBy, receivedDate, notes, deliveryNoteRef }`. Multiple receipts per PO line. Replaces the single `receivedQty`/`receivedDate`/`receivedNotes` fields which overwrite on each receipt.
+- [ ] **GRN (Goods Receipt Note) number** — auto-generated reference per receipt event for traceability.
+
+**Discrepancy & quality:**
+- [ ] **Short/over delivery reporting** — flag when received qty doesn't match expected. "Expected 10, received 8 — 2 short" with reason capture.
+- [ ] **Quality hold step** (future) — received goods go to "Inspect" status before being accepted into stock. Not needed immediately but worth designing the model to support it later.
+
+**Barcode/scanning:**
+- [ ] Consider barcode/QR scanning for PO lookup on the Goods In page (future enhancement).
 
 ### Stock Levels & Locations
 - [ ] **Inventory module** — new models: `StockItem`, `StockLocation`, `StockMovement`. Track on-hand quantities by warehouse location.
