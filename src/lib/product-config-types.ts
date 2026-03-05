@@ -6,7 +6,7 @@ export interface DimensionsConfig {
   depth: number | null
   leafConfig: "SINGLE" | "DOUBLE" | "SLIDING" | "BI_FOLD"
   openingDirection: "INWARD" | "OUTWARD" | "LEFT" | "RIGHT" | ""
-  handing: "LH" | "RH" | "DOUBLE" | "" // Simplified handing field
+  handing: "LH" | "RH" | "" // Simplified handing field
   clearOpening: number | null  // auto-calculated
   structuralOpening: number | null
 }
@@ -111,7 +111,7 @@ export interface FeatureTagData {
 export interface SimpleProductConfig {
   width: number | null
   height: number | null
-  handing: "LH" | "RH" | "DOUBLE" | ""
+  handing: "LH" | "RH" | ""
   lock: string      // simple dropdown value
   colour: string    // RAL code or custom string
   paintFinish: string // simple dropdown value
@@ -151,7 +151,6 @@ export const defaultSimpleConfig: SimpleProductConfig = {
 export const HANDING_OPTIONS = [
   { value: "LH", label: "Left Hand (LH)" },
   { value: "RH", label: "Right Hand (RH)" },
-  { value: "DOUBLE", label: "Double Door" },
 ] as const
 
 export const SIMPLE_LOCK_OPTIONS = [

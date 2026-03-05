@@ -28,6 +28,7 @@ export async function POST(request: NextRequest) {
       variantId: body.variantId,
       description: body.description,
       category: body.category || "MATERIALS",
+      stockCode: body.stockCode || null,
       unitCost: toDecimalOrDefault(body.unitCost, 0),
       quantity: toDecimalOrDefault(body.quantity, 1),
       scalesWithSize: body.scalesWithSize ?? false,
@@ -64,6 +65,7 @@ export async function PATCH(request: NextRequest) {
     if (body.quantity !== undefined) data.quantity = toDecimalOrDefault(body.quantity, 1)
     if (body.scalesWithSize !== undefined) data.scalesWithSize = body.scalesWithSize
     if (body.sortOrder !== undefined) data.sortOrder = body.sortOrder
+    if (body.stockCode !== undefined) data.stockCode = body.stockCode || null
 
     const item = await updateBomItem(body.id, data)
 

@@ -26,6 +26,8 @@ model User {
   coordinatedProjects  Project[]  @relation("ProjectCoordinator")
   managedProjects      Project[]  @relation("ProjectManager")
   installManagedProjects Project[] @relation("InstallManager")
+  salesLeadProjects    Project[]  @relation("SalesLead")
+  designLeadProjects   Project[]  @relation("DesignLead")
   coordinatedProducts  Product[]  @relation("ProductCoordinator")
   designedProducts     Product[]  @relation("ProductDesigner")
   createdQuotes        Quote[]    @relation("QuoteCreator")
@@ -420,6 +422,8 @@ model Project {
   coordinatorId   String?
   projectManagerId  String?
   installManagerId  String?
+  salesLeadId       String?
+  designLeadId      String?
 
   projectType     ProjectType     @default(STANDARD)
   workStream      WorkStream      @default(BESPOKE)
@@ -473,6 +477,8 @@ model Project {
   coordinator     User?           @relation("ProjectCoordinator", fields: [coordinatorId], references: [id])
   projectManager  User?           @relation("ProjectManager", fields: [projectManagerId], references: [id])
   installManager  User?           @relation("InstallManager", fields: [installManagerId], references: [id])
+  salesLead       User?           @relation("SalesLead", fields: [salesLeadId], references: [id])
+  designLead      User?           @relation("DesignLead", fields: [designLeadId], references: [id])
   products        Product[]
   quotes          Quote[]
   purchaseOrders  PurchaseOrder[]

@@ -1,5 +1,16 @@
 // Shared TypeScript interfaces for the hierarchical product catalogue
 
+/** Summary of a BOM code for the flat Family → BOM Code dropdown */
+export interface BomCodeSummary {
+  id: string
+  code: string
+  name: string
+  sageStockCode: string | null
+  defaultWidth: number | null
+  defaultHeight: number | null
+  typeId: string // internal — used to load spec fields
+}
+
 export interface CatalogueFamily {
   id: string
   name: string
@@ -7,6 +18,7 @@ export interface CatalogueFamily {
   sortOrder: number
   active: boolean
   types: CatalogueType[]
+  bomCodes?: BomCodeSummary[] // flat list of all BOM codes across all types
 }
 
 export interface CatalogueType {

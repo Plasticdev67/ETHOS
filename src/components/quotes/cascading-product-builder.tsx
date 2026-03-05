@@ -37,8 +37,7 @@ type BuilderState = {
 
 const STEPS = [
   "Family",
-  "Type",
-  "Variant",
+  "BOM Code",
   "Specs",
   "Dimensions",
   "BOM Preview",
@@ -111,19 +110,20 @@ export function CascadingProductBuilder({
     }
   }, [state.typeId])
 
-  // Pre-fill dimensions from variant defaults
+  // Pre-fill dimensions from BOM code defaults
   useEffect(() => {
-    if (state.variantId && typeDetail) {
-      const variant = typeDetail.variants?.find((v: { id: string }) => v.id === state.variantId)
-      if (variant) {
+    if (state.variantId && state.familyId) {
+      const family = families.find((f) => f.id === state.familyId)
+      const bomCode = family?.bomCodes?.find((b) => b.id === state.variantId)
+      if (bomCode) {
         setState((s) => ({
           ...s,
-          width: s.width || String(variant.defaultWidth || ""),
-          height: s.height || String(variant.defaultHeight || ""),
+          width: s.width || String(bomCode.defaultWidth || ""),
+          height: s.height || String(bomCode.defaultHeight || ""),
         }))
       }
     }
-  }, [state.variantId, typeDetail])
+  }, [state.variantId, state.familyId, families])
 
   function reset() {
     setState(initialState)
@@ -167,14 +167,12 @@ export function CascadingProductBuilder({
     const qty = parseInt(state.quantity) || 1
     const mg = parseFloat(state.marginPercent) || 0
 
-    const variant = typeDetail?.variants?.find((v: { id: string }) => v.id === state.variantId)
     const family = families.find((f) => f.id === state.familyId)
-    const type = family?.types?.find((t) => t.id === state.typeId)
+    const bomCode = family?.bomCodes?.find((b) => b.id === state.variantId)
 
     const description = [
       family?.name,
-      type?.name,
-      variant?.name,
+      bomCode?.name,
       state.width && state.height ? `${state.width}×${state.height}mm` : null,
     ]
       .filter(Boolean)
@@ -216,12 +214,11 @@ export function CascadingProductBuilder({
   function canNext(): boolean {
     switch (state.step) {
       case 0: return !!state.familyId
-      case 1: return !!state.typeId
-      case 2: return !!state.variantId
-      case 3: return true // specs are optional
-      case 4: return true // dimensions pre-filled
-      case 5: return !!state.bomPreview
-      case 6: {
+      case 1: return !!state.variantId
+      case 2: return true // specs are optional
+      case 3: return true // dimensions pre-filled
+      case 4: return !!state.bomPreview
+      case 5: {
         const mg = parseFloat(state.marginPercent) || 0
         return mg > 0 || marginOverride
       }
@@ -230,7 +227,7 @@ export function CascadingProductBuilder({
   }
 
   function goNext() {
-    if (state.step === 4) {
+    if (state.step === 3) {
       // Moving to BOM Preview — fetch it
       fetchBomPreview()
     }
@@ -249,8 +246,7 @@ export function CascadingProductBuilder({
 
   // Current selections for display
   const selectedFamily = families.find((f) => f.id === state.familyId)
-  const selectedType = selectedFamily?.types?.find((t: { id: string }) => t.id === state.typeId)
-  const selectedVariant = typeDetail?.variants?.find((v: { id: string }) => v.id === state.variantId)
+  const selectedBomCode = selectedFamily?.bomCodes?.find((b) => b.id === state.variantId)
 
   // Margin calculation
   const qty = parseInt(state.quantity) || 1
@@ -324,7 +320,7 @@ export function CascadingProductBuilder({
                   >
                     <div className="text-sm font-semibold text-gray-900">{family.name}</div>
                     <div className="text-xs text-gray-500 mt-1">
-                      {family.types.length} type{family.types.length !== 1 ? "s" : ""}
+                      {(family.bomCodes || []).length} BOM code{(family.bomCodes || []).length !== 1 ? "s" : ""}
                     </div>
                     <Badge variant="secondary" className="mt-2 text-[10px]">{family.code}</Badge>
                   </button>
@@ -338,74 +334,54 @@ export function CascadingProductBuilder({
             </div>
           )}
 
-          {/* Step 1: Type */}
+          {/* Step 1: BOM Code */}
           {state.step === 1 && selectedFamily && (
             <div className="space-y-3">
               <p className="text-sm text-gray-500">
-                Select a type within <span className="font-medium text-gray-700">{selectedFamily.name}</span>:
+                Select a BOM code within <span className="font-medium text-gray-700">{selectedFamily.name}</span>:
               </p>
-              <div className="grid grid-cols-2 gap-3">
-                {selectedFamily.types.map((type) => (
+              <div className="grid grid-cols-2 gap-3 max-h-[400px] overflow-y-auto">
+                {(selectedFamily.bomCodes || []).map((bomCode) => (
                   <button
-                    key={type.id}
-                    onClick={() => setState((s) => ({ ...s, typeId: type.id, variantId: "", specSelections: {} }))}
+                    key={bomCode.id}
+                    onClick={() => setState((s) => ({
+                      ...s,
+                      variantId: bomCode.id,
+                      typeId: bomCode.typeId,
+                      specSelections: {},
+                      width: "",
+                      height: "",
+                    }))}
                     className={cn(
                       "rounded-lg border-2 p-4 text-left transition-all hover:shadow-md",
-                      state.typeId === type.id
+                      state.variantId === bomCode.id
                         ? "border-indigo-500 bg-indigo-50"
                         : "border-border hover:border-gray-300"
                     )}
                   >
-                    <div className="text-sm font-semibold text-gray-900">{type.name}</div>
-                    <Badge variant="secondary" className="mt-2 text-[10px]">{type.code}</Badge>
+                    <div className="text-sm font-semibold text-gray-900">{bomCode.name}</div>
+                    {bomCode.defaultWidth && bomCode.defaultHeight && (
+                      <div className="text-xs text-gray-500 mt-1">
+                        {bomCode.defaultWidth}mm × {bomCode.defaultHeight}mm
+                      </div>
+                    )}
+                    <Badge variant="secondary" className="mt-2 text-[10px]">{bomCode.code}</Badge>
                   </button>
                 ))}
               </div>
-            </div>
-          )}
-
-          {/* Step 2: Variant */}
-          {state.step === 2 && typeDetail && (
-            <div className="space-y-3">
-              <p className="text-sm text-gray-500">
-                Select a variant of <span className="font-medium text-gray-700">{typeDetail.name}</span>:
-              </p>
-              {loading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-3">
-                  {(typeDetail.variants || []).map((variant: { id: string; name: string; code: string; defaultWidth: number | null; defaultHeight: number | null }) => (
-                    <button
-                      key={variant.id}
-                      onClick={() => setState((s) => ({ ...s, variantId: variant.id, width: "", height: "" }))}
-                      className={cn(
-                        "rounded-lg border-2 p-4 text-left transition-all hover:shadow-md",
-                        state.variantId === variant.id
-                          ? "border-indigo-500 bg-indigo-50"
-                          : "border-border hover:border-gray-300"
-                      )}
-                    >
-                      <div className="text-sm font-semibold text-gray-900">{variant.name}</div>
-                      {variant.defaultWidth && variant.defaultHeight && (
-                        <div className="text-xs text-gray-500 mt-1">
-                          {variant.defaultWidth}mm × {variant.defaultHeight}mm
-                        </div>
-                      )}
-                      <Badge variant="secondary" className="mt-2 text-[10px]">{variant.code}</Badge>
-                    </button>
-                  ))}
+              {(selectedFamily.bomCodes || []).length === 0 && (
+                <div className="py-8 text-center text-sm text-gray-400">
+                  No BOM codes found for this family.
                 </div>
               )}
             </div>
           )}
 
-          {/* Step 3: Specs */}
-          {state.step === 3 && typeDetail && (
+          {/* Step 2: Specs */}
+          {state.step === 2 && typeDetail && (
             <div className="space-y-3">
               <p className="text-sm text-gray-500">
-                Configure specifications for <span className="font-medium text-gray-700">{selectedVariant?.name}</span>:
+                Configure specifications for <span className="font-medium text-gray-700">{selectedBomCode?.name}</span>:
               </p>
               <SpecOptionsForm
                 specFields={(typeDetail.specFields || []).map((f: CatalogueSpecField) => ({
@@ -422,11 +398,11 @@ export function CascadingProductBuilder({
             </div>
           )}
 
-          {/* Step 4: Dimensions */}
-          {state.step === 4 && (
+          {/* Step 3: Dimensions */}
+          {state.step === 3 && (
             <div className="space-y-4">
               <p className="text-sm text-gray-500">
-                Confirm or adjust dimensions for <span className="font-medium text-gray-700">{selectedVariant?.name}</span>:
+                Confirm or adjust dimensions for <span className="font-medium text-gray-700">{selectedBomCode?.name}</span>:
               </p>
               <div className="flex items-end gap-4">
                 <div className="space-y-1.5">
@@ -436,7 +412,7 @@ export function CascadingProductBuilder({
                     value={state.width}
                     onChange={(e) => setState((s) => ({ ...s, width: e.target.value }))}
                     className="w-32 rounded border border-border px-2.5 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    placeholder={String(selectedVariant?.defaultWidth || "")}
+                    placeholder={String(selectedBomCode?.defaultWidth || "")}
                   />
                 </div>
                 <span className="pb-2 text-gray-400">×</span>
@@ -447,20 +423,20 @@ export function CascadingProductBuilder({
                     value={state.height}
                     onChange={(e) => setState((s) => ({ ...s, height: e.target.value }))}
                     className="w-32 rounded border border-border px-2.5 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    placeholder={String(selectedVariant?.defaultHeight || "")}
+                    placeholder={String(selectedBomCode?.defaultHeight || "")}
                   />
                 </div>
               </div>
-              {selectedVariant?.defaultWidth && selectedVariant?.defaultHeight && (
+              {selectedBomCode?.defaultWidth && selectedBomCode?.defaultHeight && (
                 <p className="text-xs text-gray-400">
-                  Default: {selectedVariant.defaultWidth}mm × {selectedVariant.defaultHeight}mm. Costs scale proportionally.
+                  Default: {selectedBomCode.defaultWidth}mm × {selectedBomCode.defaultHeight}mm. Costs scale proportionally.
                 </p>
               )}
             </div>
           )}
 
-          {/* Step 5: BOM Preview */}
-          {state.step === 5 && (
+          {/* Step 4: BOM Preview */}
+          {state.step === 4 && (
             <div className="space-y-3">
               <p className="text-sm text-gray-500">Computed Bill of Materials:</p>
               {loading ? (
@@ -478,8 +454,8 @@ export function CascadingProductBuilder({
             </div>
           )}
 
-          {/* Step 6: Margin */}
-          {state.step === 6 && (
+          {/* Step 5: Margin */}
+          {state.step === 5 && (
             <div className="space-y-4">
               <p className="text-sm text-gray-500">Set quantity, margin and R&D options:</p>
 
@@ -600,8 +576,8 @@ export function CascadingProductBuilder({
             </div>
           )}
 
-          {/* Step 7: Review */}
-          {state.step === 7 && (
+          {/* Step 6: Review */}
+          {state.step === 6 && (
             <div className="space-y-4">
               <p className="text-sm text-gray-500">Review your configured product:</p>
               <div className="rounded-lg border border-border divide-y divide-border">
@@ -610,12 +586,8 @@ export function CascadingProductBuilder({
                   <span className="text-sm font-medium">{selectedFamily?.name}</span>
                 </div>
                 <div className="flex justify-between px-4 py-2">
-                  <span className="text-xs text-gray-500">Type</span>
-                  <span className="text-sm font-medium">{selectedType?.name}</span>
-                </div>
-                <div className="flex justify-between px-4 py-2">
-                  <span className="text-xs text-gray-500">Variant</span>
-                  <span className="text-sm font-medium">{selectedVariant?.name}</span>
+                  <span className="text-xs text-gray-500">BOM Code</span>
+                  <span className="text-sm font-medium">{selectedBomCode?.name}</span>
                 </div>
                 <div className="flex justify-between px-4 py-2">
                   <span className="text-xs text-gray-500">Dimensions</span>

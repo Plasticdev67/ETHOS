@@ -84,7 +84,7 @@ export default async function TypeDetailPage({
                   <td className="px-4 py-2 text-center text-gray-500">{v._count.baseBomItems}</td>
                   <td className="px-4 py-2 text-right">
                     <Link href={`/catalogue/variants/${v.id}`} className="text-xs text-blue-600 hover:text-blue-800">
-                      View BOM →
+                      Edit BOM →
                     </Link>
                   </td>
                 </tr>

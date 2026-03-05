@@ -39,12 +39,17 @@ export async function POST() {
       orderBy: [{ productFamily: "asc" }, { stockCode: "asc" }],
     })
 
-    if (finishedGoods.length === 0) {
+    // Filter: only generic BOM codes (start with a letter, not project-specific numbers)
+    const genericGoods = finishedGoods.filter(item => /^[A-Z]/i.test(item.stockCode))
+
+    if (genericGoods.length === 0) {
       return NextResponse.json({
-        message: "No finished goods found in Sage BOM library (productGroup starting with FG-)",
+        message: "No generic finished goods found in Sage BOM library",
         synced: { families: 0, types: 0, variants: 0, bomItems: 0 },
       })
     }
+
+    console.log(`Found ${finishedGoods.length} finished goods, ${genericGoods.length} generic (filtered ${finishedGoods.length - genericGoods.length} project-specific)`)
 
     let familyCount = 0
     let typeCount = 0
@@ -53,7 +58,7 @@ export async function POST() {
 
     // 2. Group by productFamily
     const familyGroups = groupBy(
-      finishedGoods,
+      genericGoods,
       (item) => item.productFamily || "Uncategorised"
     )
 
@@ -145,25 +150,7 @@ export async function POST() {
           bomItemCount += synced
         }
 
-        // 8. Ensure a "Custom Size" variant exists for each type
-        const customCode = `${typePrefix}-CUSTOM`
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const existing = await (prisma.productVariant as any).findUnique({
-          where: { code: customCode },
-        })
-        if (!existing) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await (prisma.productVariant as any).create({
-            data: {
-              typeId: type.id,
-              name: `${typePrefix} Custom Size`,
-              code: customCode,
-              sortOrder: 999,
-              active: true,
-            },
-          })
-          variantCount++
-        }
+        // Custom Size variants removed — ETO sizing handles bespoke dimensions
       }
     }
 

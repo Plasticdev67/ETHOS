@@ -4,6 +4,72 @@ Detailed record of changes made to the codebase, written after each piece of wor
 
 ---
 
+## 2026-03-04 — Catalogue Restructure: Family → BOM Code (2 levels)
+
+### What
+Collapsed the 3-level product hierarchy (Family → Type → Variant) to 2 user-facing levels (Family → BOM Code). ProductType remains in the schema as an internal grouping for spec fields, but is hidden from the user. Removed all project-specific and "Custom Size" placeholder entries from the catalogue.
+
+### Data Cleanup
+- Created `scripts/clean-catalogue.ts` — deletes project-specific entries (codes starting with digits) and Custom placeholders (codes ending with `-CUSTOM`)
+- Removed 160 variants, 2,048 BOM items, 26 project-specific types
+- Remaining clean catalogue: 5 families, 42 types, 48 generic BOM codes, 2,586 BOM items
+
+### API Changes
+- `sync-from-sage/route.ts` — added filter to only sync generic BOM codes (stock codes starting with a letter), removed "Custom Size" variant auto-creation
+- `families/route.ts` — now returns a flat `bomCodes` array per family (all active variants across all types)
+- `catalogue-types.ts` — added `BomCodeSummary` interface, added `bomCodes?: BomCodeSummary[]` to `CatalogueFamily`
+
+### UI Changes
+- `cascading-product-builder.tsx` — collapsed from 8 steps to 7: Family → BOM Code → Specs → Dimensions → BOM Preview → Margin → Review. Removed the Type selection step entirely. BOM code selection shows flat list from family with searchable grid.
+- `crm-product-builder.tsx` — replaced Type + Variant dropdowns with single BOM Code dropdown. On selection, typeId is derived internally for spec field loading.
+- `configured-line-row.tsx` — breadcrumb changed from `Family → Type → Variant code` to `Family → BOM Code + name`
+
+### Files Modified
+| File | Change |
+|------|--------|
+| `src/app/api/catalogue/sync-from-sage/route.ts` | Filter generic only, remove Custom creation |
+| `src/app/api/catalogue/families/route.ts` | Return flat `bomCodes` per family |
+| `src/components/quotes/cascading-product-builder.tsx` | 8→7 steps, remove Type step |
+| `src/components/crm/crm-product-builder.tsx` | Remove Type dropdown, BOM Code dropdown |
+| `src/components/quotes/configured-line-row.tsx` | Simplified breadcrumb |
+| `src/lib/catalogue-types.ts` | Added BomCodeSummary type |
+| **New:** `scripts/clean-catalogue.ts` | Delete project-specific + Custom entries |
+
+---
+
+## 2026-03-03 — Sage XLSX Import + Schema Enhancement
+
+### What
+Built new Sage XLSX import script replacing the old 22-file CSV pipeline. Added `salesLeadId` and `designLeadId` fields to the Project model. Imported all live Sage data into the production database.
+
+### Schema Changes
+- Added `salesLeadId` (String?, FK to User) and `designLeadId` (String?, FK to User) to `Project` model
+- Added reverse relations `salesLeadProjects` and `designLeadProjects` on `User` model
+- Applied via `prisma db push`
+
+### New Script: `scripts/sage-xlsx-import.ts`
+7-phase import from 6 XLSX files in `Sage Export/`:
+1. Clear staging tables (SageStockItem, SageBomHeader, SageBomComponent, SageBomOperation)
+2. Import Customers (212 rows → Customer, upsert on accountCode)
+3. Import Suppliers (534 rows → Supplier, upsert on accountCode)
+4. Import Stock Items (1,082 rows from Mega → SageStockItem)
+5. Import BOM Headers (191 rows → SageBomHeader)
+6. Import BOM Structure (5,514 rows → 5,323 SageBomComponent, stateful walk)
+7. Import Projects (59 rows → Project, with customer/PM/sales lead/design lead links)
+
+Handles: trailing spaces in Sage headers, enrichment protection for customers/suppliers, auto-stub creation for missing stock items, Excel serial date conversion, BOM item type string-to-int mapping.
+
+### Import Results
+- 212 customers, 534 suppliers, 1,082 stock items, 191 BOM headers, 5,323 components, 59 projects
+- Catalogue sync rebuilt: 7 families, 71 types, 208 variants, 4,634 BOM items
+- 3 unmatched customer names on projects (minor name differences between exports)
+
+### Files
+- `prisma/schema.prisma` — added salesLeadId, designLeadId + relations
+- `scripts/sage-xlsx-import.ts` — new import script (replaces sage-bom-import.ts)
+
+---
+
 ## 2026-03-01 — Add try/catch error handling to all unprotected API mutation handlers
 
 ### What

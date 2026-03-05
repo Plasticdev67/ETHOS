@@ -69,9 +69,8 @@ export function ConfiguredLineDetail({
           <div className="flex items-center gap-2 text-gray-600">
             <span className="font-medium">{spec.variant.type.family.name}</span>
             <span className="text-gray-300">→</span>
-            <span>{spec.variant.type.name}</span>
-            <span className="text-gray-300">→</span>
             <Badge variant="secondary" className="text-[9px]">{spec.variant.code}</Badge>
+            <span className="text-gray-500 text-[10px]">{spec.variant.name}</span>
           </div>
 
           {spec.width && spec.height && (

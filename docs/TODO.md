@@ -144,6 +144,38 @@ The passport isn't just a handover document. It's the **living operational recor
 
 ---
 
+## Relabel Variant to BOM Code + Size-Based Pricing
+*Discussed 2026-03-03*
+
+### Problem
+The configure product wizard shows "Variant" with size-specific names (SFD-900x1200, SFD-900x1500). But MME's products are bespoke — the size is different every time. What users actually need is to pick a **BOM template** (the Sage stock code that carries the base bill of materials), then enter bespoke dimensions. The current variant model already does this — it just has the wrong label and UX.
+
+### The Flow
+1. **Family** → Flood Doors
+2. **Type** → Standard Flood Door
+3. **BOM Code** → SFD-001 (dropdown of available Sage BOMs for this type — loads the template)
+4. **Enter dimensions** → bespoke width × height
+5. **System scales** BOM quantities from the reference size to the entered dimensions
+6. **Design modifies** from there — the auto-populated BOM is a starting point
+
+### Implementation Plan
+- [x] **Remove "Double Door" from handing options** — `HANDING_OPTIONS` in `product-config-types.ts` now LH/RH only
+- [ ] **Relabel "Variant" to "BOM Code" in UI** — `crm-product-builder.tsx` and `cascading-product-builder.tsx`. Dropdown shows Sage stock code prominently (e.g. `SFD-001 — Standard Flood Door`) instead of size names. The underlying `variantId` FK stays unchanged.
+- [ ] **Dimensions always manual** — width/height never pre-filled from the BOM code selection. User always types bespoke dimensions. Remove `defaultWidth`/`defaultHeight` from the dropdown display.
+- [ ] **Add `referenceWidth`/`referenceHeight` to ProductType** — the "standard" size for this type used as the scaling baseline. Set during Sage sync.
+- [ ] **Add `scalingMethod` to BaseBomItem** — replace boolean `scalesWithSize` with enum: `FIXED`, `SCALES_BY_AREA`, `SCALES_BY_PERIMETER`. Fixed items (hinges, locks) stay constant. Area items (sheet steel, paint) scale by area ratio. Perimeter items (seals, frame sections) scale by perimeter ratio.
+- [ ] **Scaling logic in configure endpoint** — `areaRatio = (W×H) / (refW×refH)`, `perimeterRatio = (W+H) / (refW+refH)`. Apply to each BOM item based on scaling method. Show estimated cost.
+- [ ] **Update sync-from-sage** — set `referenceWidth`/`referenceHeight` on each ProductType from the median variant dimensions.
+
+### Why This Works
+- No schema changes — `ProductVariant` model stays, just relabelled as "BOM Code" in the UI
+- All 16 files referencing `variantId` keep working unchanged
+- Design BOM auto-populate still works (has a variantId to look up BaseBomItems)
+- Sage BOM codes are the anchor — each variant maps to a Sage stock code with a BOM
+- Scaling gives accurate estimates for bespoke sizes without needing a variant per size
+
+---
+
 ## BOM Access & Per-Line Ordering
 *Discussed 2026-03-02*
 
@@ -254,6 +286,68 @@ Many mutative routes are missing `requireAuth()`, `requirePermission()`, `valida
 
 - [x] **Sidebar scroll lock** — body scroll locks when mobile sidebar is open (`useEffect` on `mobileOpen`). `overscroll-behavior: contain` on mobile aside. `flex flex-col` for scroll containment. Verified in code 2026-03-01.
 - [ ] **General mobile audit** — quick pass through main pages on 375px viewport. Kanban boards use horizontal scroll (intentional). Check forms, tables, modals don't overflow.
+
+---
+
+## Sage XLSX Import (Replace Old BOM Database Import)
+*Planned 2026-03-03*
+
+### Context
+MME has fresh Sage 200 exports in 6 XLSX files at `Sage Export/`. These replace the old 22-file CSV structure in `Bom Database/`. The old folder and its import script (`scripts/sage-bom-import.ts`) are obsolete. The existing downstream pipeline stays the same: `SageStockItem` staging tables → `sync-from-sage` → `ProductFamily → ProductType → ProductVariant → BaseBomItem` → `propagate-prices`.
+
+### The 6 Files
+
+| File | What | Rows | Action |
+|------|------|------|--------|
+| `...Mega.xlsx` | Stock Items (full, 23 cols) | 1,082 | **Import** → `SageStockItem` |
+| `...T17_49_43.xlsx` | BOM Headers (ref, desc, version) | 191 | **Import** → `SageBomHeader` |
+| `...T18_01_15.xlsx` | BOM Structure (flat parent+child) | 5,514 | **Import** → `SageBomHeader` + `SageBomComponent` |
+| `...Suppliers.xlsx` | Supplier accounts | 534 | **Import** → `Supplier` (upsert on accountCode) |
+| `...T17_50_18.xlsx` | Customer accounts | 212 | **Import** → `Customer` (upsert on accountCode) |
+| `...T17_42_36.xlsx` | Stock Items (slim, 4 cols) | 1,082 | **Skip** — Mega is a superset |
+
+### Implementation Plan
+- [ ] **Create `scripts/sage-xlsx-import.ts`** — single script, 5 phases:
+  1. Clear staging tables (delete sage_bom_operations, components, headers, stock_items)
+  2. Import Stock Items (Mega → SageStockItem) — 23 column mapping including ratings, composition, analysis fields
+  3. Import BOM Headers (headers file → SageBomHeader) — headerRef, description, revision
+  4. Import BOM Structure (flat file → SageBomHeader + SageBomComponent) — stateful walk: "Bill of Materials" rows set parent, "Component"/"Subassembly" rows create children. Auto-create stub SageStockItem for component codes not in Mega.
+  5. Import Customers & Suppliers (upsert on accountCode) — protect manually enriched ETHOS fields (only update if null)
+- [ ] **Post-import**: run existing `sync-from-sage` + `propagate-prices` pipeline
+- [ ] **Remove old infrastructure**: delete `Bom Database/` folder, `Bom Database/IMPORT_PROMPT.md`, and `scripts/sage-bom-import.ts`
+- [ ] **Verify**: stock items on `/bom-library`, customers on `/customers`, suppliers on `/suppliers`, BOM auto-populate on design cards
+
+*Full detailed plan: `C:\Users\JamesMorton\.claude\plans\memoized-waddling-clarke.md`*
+
+---
+
+## Production Work Logging & Operations Tracking
+*Planned 2026-03-03*
+
+### The Gap
+The production board tracks **where** a product is (which stage) but not **who is working on it** or **how long they've spent**. Labour is currently invisible in project costs.
+
+### Core Feature: Operation-Level Time Tracking
+Each product has a routing from Sage BOMs with estimated hours per operation (CUTTING 3.5h, WELDING 28h, ASSEMBLY 11h, etc). Workers log on/off specific operations on specific products. The system captures who, what operation, how long (actual vs estimated), and when.
+
+### Concurrent Multi-Operation Support
+**Key requirement:** Multiple workers must be able to log onto **different operations on the same product at the same time**. Parts of a job may be in different work areas simultaneously (e.g. one welder on frame assembly while another preps brackets, or cutting starts on panels while welding continues on the main frame).
+
+### Implementation Plan
+- [ ] **WorkLog model** — `{ id, productionCardId, operationId, userId, startTime, endTime, duration, notes }`. Links to production card + operation + user. Supports multiple concurrent open logs on the same card for different operations.
+- [ ] **ProductionOperation model** — `{ id, productionCardId, operationCode, description, estimatedHours, sortOrder }`. Auto-created from Sage BOM operations when production tasks are generated at handover. Each operation tracks its own status independently.
+- [ ] **Start/Stop API** — `POST /api/production/work-log/start` and `/stop`. Validates: user can only have one active log per operation, but CAN have active logs on multiple operations simultaneously (same or different products).
+- [ ] **Shop floor UI** — simplified touchscreen interface. Big buttons, current job displayed prominently, list of available operations in queue. One tap to start, one tap to stop. Show who's currently logged onto each operation.
+- [ ] **Dashboard view** — Production Manager sees at a glance: which operations are active on each product, who's working on what, hours logged vs estimated. Live "who's on what" board.
+- [ ] **Actual vs Estimated reporting** — compare logged hours against Sage BOM estimated hours per operation. Feed back into estimating ("Double Flood Doors actually take 32h welding, not 28").
+- [ ] **Labour costing** — actual hours × rate per operation = real labour cost flowing into project P&L.
+- [ ] **NCR cost attribution** — rework hours logged against the NCR, not the original work order. True cost of quality failures.
+- [ ] **Auto-timeout** — if a log is still open at shift end, auto-close with a flag for supervisor reconciliation next morning.
+
+### Hardware Requirements
+- Touchscreen or tablet at/near each workstation area
+- Simplified UI — not the PM's interface
+- Start with supervisors logging if individual operators resist
 
 ---
 

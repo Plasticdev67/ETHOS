@@ -13,11 +13,43 @@ export async function GET() {
         orderBy: { sortOrder: "asc" },
         include: {
           _count: { select: { variants: true } },
+          variants: {
+            where: { active: true },
+            orderBy: [{ sortOrder: "asc" }, { code: "asc" }],
+            select: {
+              id: true,
+              code: true,
+              name: true,
+              sageStockCode: true,
+              defaultWidth: true,
+              defaultHeight: true,
+              typeId: true,
+            },
+          },
         },
       },
     },
   })
-  return NextResponse.json(families)
+
+  // Add flat bomCodes array per family (all variants across all types)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const enriched = families.map((f: any) => ({
+    ...f,
+    bomCodes: f.types.flatMap((t: any) =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      t.variants.map((v: any) => ({
+        id: v.id,
+        code: v.code,
+        name: v.name,
+        sageStockCode: v.sageStockCode,
+        defaultWidth: v.defaultWidth,
+        defaultHeight: v.defaultHeight,
+        typeId: v.typeId,
+      }))
+    ),
+  }))
+
+  return NextResponse.json(enriched)
 }
 
 export async function POST(request: NextRequest) {

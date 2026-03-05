@@ -320,20 +320,21 @@ export function CrmProductBuilder({
     }
   }, [product.typeId])
 
-  // Pre-fill dimensions from variant defaults (skip in edit mode — dimensions come from editingLine)
+  // Pre-fill dimensions from BOM code defaults (skip in edit mode — dimensions come from editingLine)
   useEffect(() => {
     if (editingLine) return // Don't override edit data with defaults
-    if (product.variantId && typeDetail) {
-      const variant = typeDetail.variants?.find((v: { id: string }) => v.id === product.variantId)
-      if (variant) {
+    if (product.variantId && product.familyId) {
+      const family = families.find((f) => f.id === product.familyId)
+      const bomCode = family?.bomCodes?.find((b) => b.id === product.variantId)
+      if (bomCode) {
         setConfig((prev) => ({
           ...prev,
-          width: prev.width || variant.defaultWidth || null,
-          height: prev.height || variant.defaultHeight || null,
+          width: prev.width || bomCode.defaultWidth || null,
+          height: prev.height || bomCode.defaultHeight || null,
         }))
       }
     }
-  }, [product.variantId, typeDetail, editingLine])
+  }, [product.variantId, product.familyId, families, editingLine])
 
   // Edit mode: pre-fill state from existing quote line
   useEffect(() => {
@@ -451,8 +452,7 @@ export function CrmProductBuilder({
   // ─── Derived values ─────────────────────────────────────────────────────────
 
   const selectedFamily = families.find((f) => f.id === product.familyId)
-  const selectedType = selectedFamily?.types?.find((t: { id: string }) => t.id === product.typeId)
-  const selectedVariant = typeDetail?.variants?.find((v: { id: string }) => v.id === product.variantId)
+  const selectedBomCode = selectedFamily?.bomCodes?.find((b) => b.id === product.variantId)
 
   // Adjusted BOM total: base BOM + labour + manual prices for unpriced items + flat adjustment
   const adjustedBomTotal = useMemo(() => {
@@ -484,8 +484,7 @@ export function CrmProductBuilder({
 
     const description = [
       selectedFamily?.name,
-      selectedType?.name,
-      selectedVariant?.name,
+      selectedBomCode?.name,
       config.width && config.height
         ? `${config.width}×${config.height}mm`
         : null,
@@ -734,75 +733,45 @@ export function CrmProductBuilder({
                 </div>
               </div>
 
-              {/* Type */}
-              <div className="mb-3 space-y-1.5">
-                <Label className="text-xs">Type *</Label>
+              {/* BOM Code */}
+              <div className="space-y-1.5">
+                <Label className="text-xs">BOM Code *</Label>
                 <Select
-                  value={product.typeId || "none"}
+                  value={product.variantId || "none"}
                   onValueChange={(v) => {
-                    const tid = v === "none" ? "" : v
-                    setProduct((prev) => ({ ...prev, typeId: tid, variantId: "" }))
+                    if (v === "none") {
+                      setProduct((prev) => ({ ...prev, typeId: "", variantId: "" }))
+                      return
+                    }
+                    const bomCode = selectedFamily?.bomCodes?.find((b) => b.id === v)
+                    setProduct((prev) => ({
+                      ...prev,
+                      variantId: v,
+                      typeId: bomCode?.typeId || "",
+                    }))
                   }}
                   disabled={!product.familyId}
                 >
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select type..." />
+                    <SelectValue placeholder="Select BOM code..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">Select type...</SelectItem>
-                    {(selectedFamily?.types || []).map((t) => (
-                      <SelectItem key={t.id} value={t.id}>
+                    <SelectItem value="none">Select BOM code...</SelectItem>
+                    {(selectedFamily?.bomCodes || []).map((b) => (
+                      <SelectItem key={b.id} value={b.id}>
                         <span className="flex items-center gap-2">
-                          <span className="font-mono text-xs text-gray-500 shrink-0">{t.code}</span>
-                          <span>{t.name}</span>
+                          <span className="font-mono text-xs text-gray-500 shrink-0">{b.code}</span>
+                          <span>{b.name}</span>
+                          {b.sageStockCode && <span className="text-[10px] text-blue-600 shrink-0">Sage</span>}
                         </span>
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                {selectedType && (
+                {selectedBomCode && (
                   <div className="flex gap-1.5 mt-1">
-                    <Badge variant="secondary" className="text-[10px] font-mono">{selectedType.code}</Badge>
-                  </div>
-                )}
-              </div>
-
-              {/* Variant */}
-              <div className="space-y-1.5">
-                <Label className="text-xs">Variant *</Label>
-                {loading ? (
-                  <div className="flex items-center justify-center h-10 rounded-md border border-input">
-                    <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
-                  </div>
-                ) : (
-                  <Select
-                    value={product.variantId || "none"}
-                    onValueChange={(v) =>
-                      setProduct((prev) => ({ ...prev, variantId: v === "none" ? "" : v }))
-                    }
-                    disabled={!product.typeId}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select variant..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Select variant...</SelectItem>
-                      {(typeDetail?.variants || []).map((v: { id: string; name: string; code: string; sageStockCode?: string | null }) => (
-                        <SelectItem key={v.id} value={v.id}>
-                          <span className="flex items-center gap-2">
-                            <span className="font-mono text-xs text-gray-500 shrink-0">{v.code}</span>
-                            <span>{v.name}</span>
-                            {v.sageStockCode && <span className="text-[10px] text-blue-600 shrink-0">Sage</span>}
-                          </span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-                {selectedVariant && (
-                  <div className="flex gap-1.5 mt-1">
-                    <Badge variant="secondary" className="text-[10px] font-mono">{selectedVariant.code}</Badge>
-                    {(selectedVariant as { sageStockCode?: string | null }).sageStockCode && (
+                    <Badge variant="secondary" className="text-[10px] font-mono">{selectedBomCode.code}</Badge>
+                    {selectedBomCode.sageStockCode && (
                       <Badge variant="secondary" className="text-[10px] bg-blue-50 text-blue-700">Sage BOM</Badge>
                     )}
                   </div>
@@ -820,7 +789,7 @@ export function CrmProductBuilder({
                     type="number"
                     value={config.width ?? ""}
                     onChange={(e) => updateConfig({ width: e.target.value ? parseInt(e.target.value) : null })}
-                    placeholder={selectedVariant?.defaultWidth ? String(selectedVariant.defaultWidth) : "e.g. 2400"}
+                    placeholder={selectedBomCode?.defaultWidth ? String(selectedBomCode.defaultWidth) : "e.g. 2400"}
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -829,7 +798,7 @@ export function CrmProductBuilder({
                     type="number"
                     value={config.height ?? ""}
                     onChange={(e) => updateConfig({ height: e.target.value ? parseInt(e.target.value) : null })}
-                    placeholder={selectedVariant?.defaultHeight ? String(selectedVariant.defaultHeight) : "e.g. 2100"}
+                    placeholder={selectedBomCode?.defaultHeight ? String(selectedBomCode.defaultHeight) : "e.g. 2100"}
                   />
                 </div>
               </div>
