@@ -554,7 +554,7 @@ const ProjectDesignCard = memo(function ProjectDesignCard({ project, designers }
               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
               </svg>
-              {activating ? "Activating..." : "Activate Design"}
+              {activating ? "Accepting..." : "Accept from Sales"}
             </button>
           ) : null}
         </div>
