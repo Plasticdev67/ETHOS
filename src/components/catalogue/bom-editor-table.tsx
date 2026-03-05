@@ -227,35 +227,42 @@ export default function BomEditorTable({
     <div className="space-y-4">
       {/* Password prompt overlay */}
       {showPasswordPrompt && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
-          <Card className="w-[400px]">
-            <CardContent className="p-6 space-y-4">
-              <div className="flex items-center gap-2">
-                <Lock className="w-5 h-5 text-gray-500" />
-                <h3 className="text-lg font-semibold">Unlock BOM Editor</h3>
-              </div>
-              <p className="text-sm text-gray-500">
-                Enter your password to enable editing. The editor will remain unlocked until you lock it or refresh the page.
-              </p>
-              <Input
-                type="password"
-                placeholder="Enter your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && verifyPassword()}
-                autoFocus
-              />
-              {passwordError && (
-                <p className="text-sm text-red-500">{passwordError}</p>
-              )}
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setShowPasswordPrompt(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={verifyPassword} disabled={verifying || !password.trim()}>
-                  {verifying ? "Verifying..." : "Unlock"}
-                </Button>
-              </div>
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center" onClick={() => setShowPasswordPrompt(false)}>
+          <Card className="w-[400px]" onClick={(e) => e.stopPropagation()}>
+            <CardContent className="p-6">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  verifyPassword()
+                }}
+                className="space-y-4"
+              >
+                <div className="flex items-center gap-2">
+                  <Lock className="w-5 h-5 text-gray-500" />
+                  <h3 className="text-lg font-semibold">Unlock BOM Editor</h3>
+                </div>
+                <p className="text-sm text-gray-500">
+                  Enter your password to enable editing. The editor will remain unlocked until you lock it or refresh the page.
+                </p>
+                <Input
+                  type="password"
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoFocus
+                />
+                {passwordError && (
+                  <p className="text-sm text-red-500">{passwordError}</p>
+                )}
+                <div className="flex justify-end gap-2">
+                  <Button type="button" variant="outline" onClick={() => setShowPasswordPrompt(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={verifying || !password.trim()}>
+                    {verifying ? "Verifying..." : "Unlock"}
+                  </Button>
+                </div>
+              </form>
             </CardContent>
           </Card>
         </div>
@@ -274,15 +281,15 @@ export default function BomEditorTable({
           <span className="text-sm font-mono font-semibold">{formatCurrency(totalCost)}</span>
           {unlocked ? (
             <>
-              <Button size="sm" onClick={handleAddClick} disabled={adding}>
+              <Button type="button" size="sm" onClick={handleAddClick} disabled={adding}>
                 <Plus className="w-4 h-4 mr-1" /> Add Item
               </Button>
-              <Button size="sm" variant="outline" onClick={lockEditor} className="text-amber-600 border-amber-300 hover:bg-amber-50">
+              <Button type="button" size="sm" variant="outline" onClick={lockEditor} className="text-amber-600 border-amber-300 hover:bg-amber-50">
                 <Unlock className="w-4 h-4 mr-1" /> Lock
               </Button>
             </>
           ) : (
-            <Button size="sm" variant="outline" onClick={requestUnlock}>
+            <Button type="button" size="sm" variant="outline" onClick={requestUnlock}>
               <Lock className="w-4 h-4 mr-1" /> Unlock to Edit
             </Button>
           )}
@@ -368,10 +375,10 @@ export default function BomEditorTable({
                       </td>
                       <td className="px-3 py-1.5 text-right">
                         <div className="flex items-center justify-end gap-1">
-                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={saveEdit} disabled={saving}>
+                          <Button type="button" size="icon" variant="ghost" className="h-7 w-7" onClick={saveEdit} disabled={saving}>
                             <Check className="w-4 h-4 text-green-600" />
                           </Button>
-                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={cancelEdit}>
+                          <Button type="button" size="icon" variant="ghost" className="h-7 w-7" onClick={cancelEdit}>
                             <X className="w-4 h-4 text-gray-400" />
                           </Button>
                         </div>
@@ -401,10 +408,10 @@ export default function BomEditorTable({
                       {unlocked && (
                         <td className="px-3 py-2 text-right">
                           <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => startEdit(item)}>
+                            <Button type="button" size="icon" variant="ghost" className="h-7 w-7" onClick={() => startEdit(item)}>
                               <Pencil className="w-3.5 h-3.5 text-gray-400" />
                             </Button>
-                            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => deleteItem(item.id)}>
+                            <Button type="button" size="icon" variant="ghost" className="h-7 w-7" onClick={() => deleteItem(item.id)}>
                               <Trash2 className="w-3.5 h-3.5 text-red-400" />
                             </Button>
                           </div>
@@ -476,10 +483,10 @@ export default function BomEditorTable({
                     </td>
                     <td className="px-3 py-1.5 text-right">
                       <div className="flex items-center justify-end gap-1">
-                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={addItem} disabled={saving}>
+                        <Button type="button" size="icon" variant="ghost" className="h-7 w-7" onClick={addItem} disabled={saving}>
                           <Save className="w-4 h-4 text-green-600" />
                         </Button>
-                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setAdding(false)}>
+                        <Button type="button" size="icon" variant="ghost" className="h-7 w-7" onClick={() => setAdding(false)}>
                           <X className="w-4 h-4 text-gray-400" />
                         </Button>
                       </div>

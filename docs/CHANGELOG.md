@@ -4,6 +4,25 @@ Detailed record of changes made to the codebase, written after each piece of wor
 
 ---
 
+## 2026-03-05 — Flood Door Operations Import
+
+### What
+Imported manufacturing operations for all 20 flood door BOM codes from Sage CSV export into the `SageBomOperation` table.
+
+### Data
+- **Source:** `operations/OperationStockItems CSV MME Jan26 (Flood Door).csv`
+- **120 operations** across 20 BOM codes (6 operations each: Cutting, Welding, Assembly, Preparation, Painting, Packing)
+- Single doors (SFD): 51–75h total run time per door
+- Double doors (DFD): 71.5–101h total run time per door
+- Includes labour references, run times, delay times for each operation
+
+### Files
+| File | Change |
+|------|--------|
+| `scripts/import-operations.ts` | New — parses Sage operations CSV and inserts into SageBomOperation |
+
+---
+
 ## 2026-03-04 — Catalogue Restructure: Family → BOM Code (2 levels)
 
 ### What
