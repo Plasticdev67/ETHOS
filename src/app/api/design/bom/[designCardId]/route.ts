@@ -8,37 +8,52 @@ import { requireAuth, requirePermission } from "@/lib/api-auth"
 /**
  * Auto-populate BOM from catalogue variant data.
  *
- * Tries two paths:
- *   1. Product → catalogueItem → variants → baseBomItems (direct link)
- *   2. Product description → keyword match to ProductType → first variant with baseBomItems
+ * Tries three paths (in order):
+ *   1. Product → variantId → baseBomItems (direct BOM code link)
+ *   2. Product → catalogueItem → variants → baseBomItems (legacy)
+ *   3. Product description → keyword match to ProductType → first variant with baseBomItems
  *
- * If no catalogue BOM data exists, the BOM starts empty — the designer
- * adds lines manually or data is imported from Sage 200.
+ * Costs are set from Sage stock item cost prices where available.
  */
 async function autoPopulateBom(designCardId: string, productId: string): Promise<void> {
   const product = await prisma.product.findUnique({
     where: { id: productId },
-    select: { catalogueItemId: true, description: true },
+    select: { variantId: true, catalogueItemId: true, description: true },
   })
   if (!product) return
 
   let baseBomItems: Array<{ description: string; category: string; stockCode: string | null; unitCost: unknown; quantity: unknown; sortOrder: number }> = []
 
-  // 1. Try catalogue path: product → catalogueItem → variants → baseBomItems
-  if (product.catalogueItemId) {
+  // 1. Direct variant path (preferred — set via Add Product dialog)
+  if (product.variantId) {
+    const variant = await prisma.productVariant.findUnique({
+      where: { id: product.variantId },
+      select: {
+        baseBomItems: {
+          orderBy: { sortOrder: "asc" },
+          select: { description: true, category: true, stockCode: true, unitCost: true, quantity: true, sortOrder: true },
+        },
+      },
+    })
+    if (variant && variant.baseBomItems.length > 0) {
+      baseBomItems = variant.baseBomItems
+    }
+  }
+
+  // 2. Legacy catalogue path
+  if (baseBomItems.length === 0 && product.catalogueItemId) {
     const variants = await findVariantsWithBom(product.catalogueItemId, 1)
     if (variants.length > 0 && variants[0].baseBomItems.length > 0) {
       baseBomItems = variants[0].baseBomItems
     }
   }
 
-  // 2. Try keyword match to ProductType → first variant with baseBomItems
+  // 3. Keyword match fallback
   if (baseBomItems.length === 0) {
     const desc = product.description.toLowerCase()
     const types = await prisma.productType.findMany({
       select: { id: true, name: true, code: true },
     })
-    // Score each type by how many of its name words appear in the product description
     let bestMatch: { id: string; score: number } | null = null
     for (const t of types) {
       const words = t.name.toLowerCase().split(" ").filter((w: string) => w.length > 2)
@@ -55,22 +70,37 @@ async function autoPopulateBom(designCardId: string, productId: string): Promise
     }
   }
 
-  // If we found catalogue BOM data, create the design BOM lines
   if (baseBomItems.length > 0) {
-    const lineData = baseBomItems.map((item, i) => ({
-      designCardId,
-      description: item.description,
-      category: item.category as BomCategory,
-      partNumber: item.stockCode || null,
-      quantity: Number(item.quantity) || 1,
-      unitCost: Number(item.unitCost) || 0,
-      unit: "each" as const,
-      sortOrder: i,
-    }))
+    // Bulk-fetch Sage cost prices for all stock codes
+    const stockCodes = baseBomItems
+      .map(item => item.stockCode)
+      .filter((code): code is string => code !== null)
+    const sagePrices = stockCodes.length > 0
+      ? await prisma.sageStockItem.findMany({
+          where: { stockCode: { in: stockCodes } },
+          select: { stockCode: true, costPrice: true },
+        })
+      : []
+    const costMap = new Map(sagePrices.map(s => [s.stockCode, Number(s.costPrice) || 0]))
+
+    const lineData = baseBomItems.map((item, i) => {
+      const sageCost = item.stockCode ? costMap.get(item.stockCode) ?? null : null
+      const unitCost = sageCost ?? (Number(item.unitCost) || 0)
+      return {
+        designCardId,
+        description: item.description,
+        category: item.category as BomCategory,
+        partNumber: item.stockCode || null,
+        quantity: Number(item.quantity) || 1,
+        unitCost,
+        sageCostPrice: sageCost,
+        unit: "each" as const,
+        sortOrder: i,
+      }
+    })
 
     await prisma.designBomLine.createMany({ data: lineData })
   }
-  // If no catalogue data exists, BOM starts empty — designer adds lines manually
 }
 
 // GET /api/design/bom/:designCardId — Get all BOM lines for a design card
@@ -203,9 +233,9 @@ export async function PATCH(
   if (body.supplier !== undefined) data.supplier = body.supplier || null
   if (body.quantity !== undefined) data.quantity = body.quantity
   if (body.unit !== undefined) data.unit = body.unit
-  if (body.unitCost !== undefined) data.unitCost = body.unitCost
   if (body.notes !== undefined) data.notes = body.notes || null
   if (body.sortOrder !== undefined) data.sortOrder = body.sortOrder
+  // unitCost is read-only for designers — auto-set from Sage cost prices
 
   try {
     const updated = await prisma.designBomLine.update({

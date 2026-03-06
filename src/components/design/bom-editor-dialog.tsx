@@ -12,6 +12,8 @@ type BomLine = {
   quantity: number
   unit: string
   unitCost: number
+  sageCostPrice: number | null
+  costOverridden: boolean
   notes: string | null
   sortOrder: number
 }
@@ -299,17 +301,14 @@ function BomLineRow({
         </select>
       </td>
       <td className="py-1.5 pr-2">
-        <input
-          type="number"
-          className={`${inputClass} text-right`}
-          defaultValue={Number(line.unitCost)}
-          step="0.01"
-          min="0"
-          onBlur={(e) => {
-            const val = parseFloat(e.target.value)
-            if (!isNaN(val) && val !== Number(line.unitCost)) onUpdate("unitCost", val)
-          }}
-        />
+        <div className="flex items-center justify-end gap-1 rounded border border-gray-100 bg-gray-50 px-2 py-1 text-sm text-gray-600">
+          {line.sageCostPrice !== null && (
+            <svg className="w-3 h-3 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+          )}
+          <span>{Number(line.unitCost).toFixed(2)}</span>
+        </div>
       </td>
       <td className="py-1.5 pr-2 text-right text-sm font-medium text-gray-700">
         £{lineTotal.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}

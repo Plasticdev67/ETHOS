@@ -19,6 +19,7 @@ export async function POST(
       data: {
         projectId,
         catalogueItemId: body.catalogueItemId || null,
+        variantId: body.variantId || null,
         partCode: body.partCode,
         description: body.description,
         additionalDetails: body.additionalDetails || null,

@@ -47,6 +47,7 @@ export async function POST(request: NextRequest) {
         projectId: data.projectId || null,
         quoteNumber,
         subject: data.subject || null,
+        workStream: data.workStream || null,
         notes: data.notes || null,
         createdById: data.createdById || null,
       },

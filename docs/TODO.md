@@ -351,6 +351,201 @@ Each product has a routing from Sage BOMs with estimated hours per operation (CU
 
 ---
 
+## Drawing Register / Vault Lite
+*Discussed 2026-03-05*
+
+### The Problem
+Designers use Inventor with files on OneDrive/SharePoint. There's no formal tracking of which drawing revision is current, who approved it, or what changed between revisions. GA approval is informal (verbal/email). No way to link drawings to ETHOS projects or reconcile drawing BOMs against design BOMs.
+
+### Core Feature: Drawing Metadata Tracking
+ETHOS tracks the **metadata** — not the files themselves. Files stay on OneDrive/SharePoint where they are. ETHOS becomes the single source of truth for "what's the current revision of GA-2401-001, who approved it, and when?"
+
+### Drawing Model
+- `drawingNumber` — e.g. "GA-2401-001"
+- `title`, `fileType` (GA / DETAIL / FABRICATION / INSTALLATION)
+- `revision` — "A", "B", "C"
+- `status` — DRAFT → FOR_REVIEW → APPROVED → RELEASED → SUPERSEDED
+- `filePath` — OneDrive/SharePoint URL or path
+- `productId` + `designCardId` — links to project product and design card
+- `approvedBy` / `approvedAt` — approval tracking
+- `checkedOutBy` / `checkedOutAt` — soft advisory lock (not file-level)
+
+### Drawing Revision History
+- `DrawingRevision` model — audit trail of every revision
+- Each revision records: revision letter, change description, file path, who created it, when
+- Full history visible on the drawing detail view
+
+### Implementation Plan
+- [ ] **Drawing + DrawingRevision models** — schema, API routes (CRUD + status transitions + revision creation)
+- [ ] **Drawing register on project detail page** — tab showing all drawings for the project, grouped by product, with status/revision/approval info
+- [ ] **Approval workflow** — designer marks "For Review", lead reviews and approves/rejects with comments
+- [ ] **GA sign-off integration** — design card "Signed Off" status could require all GAs to be APPROVED
+- [ ] **Soft check-out** — shows "James is editing this" advisory, prevents accidental parallel work
+- [ ] **Search** — find drawings across all projects by number, description, status, revision
+
+### BOM Reconciliation (Phase 2)
+- [ ] **CSV/Excel upload from Inventor** — designer exports parts list from active assembly, uploads to ETHOS
+- [ ] **"Compare to Drawing BOM" button** — parses upload, diffs against design BOM, highlights: items in drawing but not in BOM, items in BOM but not in drawing, quantity mismatches
+- [ ] **Reconciliation report** — designer reviews differences and can accept/reject each
+
+### What This Does NOT Do
+- No file-level version control (OneDrive handles that)
+- No Inventor plugin or add-in
+- No geometry interpretation or structural analysis
+- No hard file locking (check-out is advisory only)
+
+---
+
+## AI Spec Extraction & Compliance Checking
+*Discussed 2026-03-05 — expanded from Passport Phase 2/3*
+
+### What AI Can Do Now (Reliably)
+**Text-vs-text checking** works well with current LLMs:
+- Spec says S355 steel, BOM says S275 — flagged
+- Spec says HDG 85μm, paint schedule says 2-pack epoxy — flagged
+- Spec says EXC3, drawing notes say EXC2 — flagged
+- Sub-contract says max 7.5t vehicle, dispatch plan has 12m trailer — flagged
+- Required documentation not yet produced — flagged
+
+**Title block / drawing notes extraction** via vision models:
+- Extract drawing number, revision, title, scale, material notes, finish notes from PDF
+- Pull parts list / BOM table from a GA drawing PDF
+- Read general notes sections
+- Feeds Drawing model metadata and BOM reconciliation
+
+### What AI Can Sort-of Do (With Human Review)
+- Read dimension annotations from PDF drawings (~80-90% reliable)
+- Identify dimensional non-compliance (panel shown at 1850mm vs spec max 1800mm)
+- Count items in parts lists
+- Identify weld symbols, coating callouts
+- Good enough for "flags for review", not automated pass/fail
+
+### What AI Cannot Do (Yet)
+- Verify geometric fit (will this assembly fit in the opening?)
+- Check structural adequacy
+- Interpret complex assembly relationships from 2D drawings
+- Reliably read all GD&T or complex weld symbols
+
+### Implementation Phasing
+
+**Step 1 — Spec Extraction (no AI needed for basic version):**
+- [ ] Upload client spec PDF to project
+- [ ] Manual structured checklist: material grades, coating spec, execution class, testing requirements, documentation deliverables
+- [ ] This becomes the compliance checklist for the project
+- [ ] Each item tracked as compliant / non-compliant / pending
+
+**Step 2 — AI-Assisted Extraction:**
+- [ ] AI reads uploaded spec PDF, extracts key requirements into structured fields
+- [ ] Human reviews and confirms/edits extracted data
+- [ ] Same structured checklist, just pre-filled by AI instead of manual entry
+- [ ] Pattern: document in → AI extracts → human confirms
+
+**Step 3 — Automated Cross-Referencing:**
+- [ ] ETHOS compares extracted spec requirements against design BOM (material grades, stock codes)
+- [ ] Compares against drawing notes (extracted from PDF title blocks via vision)
+- [ ] Compares against documentation tracker (what's been produced vs what's required)
+- [ ] Flags mismatches as advisory alerts — "X items need review"
+- [ ] Position as "flags for review" not "automated pass/fail" — human judgement stays in the loop
+
+**Step 4 — Drawing Content Review (future):**
+- [ ] Upload GA PDF, AI reads dimensions, parts lists, notes
+- [ ] Compares against spec requirements
+- [ ] "Your drawing shows 1850mm panel height but spec says max 1800mm"
+- [ ] Still advisory — vision AI not reliable enough for pass/fail on engineering drawings
+
+### Key Design Principles
+- Advisory flags, not hard gates — human review required for all compliance decisions
+- Start with text-vs-text (most reliable, highest value)
+- Drawing interpretation is supplementary, not primary
+- Build Step 1 (manual checklist) first — delivers value with zero AI dependency
+- Each step adds intelligence on top of the previous step's data structure
+
+---
+
+## Quality Management & ISO 9001 Compliance
+*Discussed 2026-03-05*
+
+### Document Control
+- [ ] **Document register** — controlled documents (SOPs, work instructions, inspection forms, quality manual sections) with revision control, approval workflow, review dates. ISO 9001 requires "documented information shall be controlled."
+- [ ] **Document review reminders** — auto-flag when a controlled document is due for periodic review (annual, bi-annual). Tracks who reviewed, when, and any changes.
+- [ ] **Training matrix** — which staff are trained on which SOPs/procedures. Person + document + date trained + next refresher. ISO 9001 requires evidence of competence.
+
+### Audit & CAPA
+- [ ] **Internal audit schedule & findings tracker** — audits planned, conducted, findings logged, corrective actions assigned, closure tracked. ISO 9001 clause 9.2.
+- [ ] **CAPA (Corrective/Preventive Actions)** — linked to NCRs, audit findings, customer complaints. Root cause analysis, corrective action, verification of effectiveness. ISO 9001 clause 10.2.
+- [ ] **Management review inputs** — auto-generate data ISO 9001 requires: NCR trends, audit results, customer feedback, process performance, supplier performance. Currently compiled manually from Sage + spreadsheets.
+
+### Supplier Performance & Approval
+- [ ] **Approved supplier list** — approved for what (steel, surface treatment, fixings), approval date, next review date, conditions. ISO 9001 requires evaluation of external providers.
+- [ ] **Supplier scorecards** — auto-calculated from ETHOS data: on-time delivery % (receipt date vs PO expected date), quality (NCRs attributed to supplier), price accuracy (quoted vs invoiced).
+- [ ] **Supplier audit schedule** — when last audited, when next due.
+
+---
+
+## Product Compliance & Spec Intelligence
+*Discussed 2026-03-05*
+
+### Product Certification Matrix
+- [ ] **Per-ProductType certification rules** — which standards apply (BS EN 1627 security, PAS 1188 flood, BS 476 fire, EN 1090 structural steelwork). When a product is added to a project, ETHOS auto-shows which certifications are required.
+- [ ] **Test evidence register** — per product type, link to fire test reports, flood test evidence, blast test certificates. Auto-attach relevant evidence when quoting. Auto-generate documentation pack when delivering.
+
+### Fire Door Intelligence
+- [ ] **Fire-rated component tagging** — tag BOM items as fire-rated. Intumescent seals must be specific type, glazing must match fire rating, ironmongery must be tested to same standard.
+- [ ] **Component substitution warnings** — if someone swaps a component on the design BOM, flag if the replacement isn't fire-rated. "You replaced the closer with XYZ — this isn't listed on the fire test evidence."
+- [ ] **Fire rating rules engine** — per fire rating level (FD30/FD60/FD90/FD120), define required component types. System validates BOM against rules.
+
+### Material Traceability
+- [ ] **Mill cert / 3.1 cert linking** — for EXC3/EXC4 steelwork, link material certificates to specific PO lines, which link to specific products. "Show me the 3.1 cert for the steel in gate 3 on project 2451."
+- [ ] **Weld procedure tracking** — which WPS apply to which product types, which welders are qualified to which WPS, expiry dates on qualifications. ISO 3834 / EN 1090 requirement.
+
+---
+
+## Inspection & Test Plans (ITPs)
+*Discussed 2026-03-05*
+
+### ITP Templates
+- [ ] **ITP template per product type** — standard inspection checkpoints: incoming material inspection, in-process checks (dimensional, weld visual, NDT), final inspection, FAT/SAT. Each checkpoint has accept/reject criteria.
+- [ ] **ITP execution during production** — as a product moves through stages, inspectors sign off each checkpoint. Fails create an NCR automatically. ITP becomes the quality record for that product.
+- [ ] **Hold/witness points** — some inspections require client or third-party witness. Flag in production schedule: "Client witness required at FAT for gate 3 — notify 5 days in advance."
+
+---
+
+## Handover Documentation & O&M Packs
+*Discussed 2026-03-05*
+
+### Auto-Generated Documentation Packs
+- [ ] **O&M pack compilation** — at project REVIEW/COMPLETE, ETHOS compiles: product datasheets, test certificates, material certs, installation instructions, maintenance schedules, warranty information, as-built drawings list, ITP records. Currently someone manually assembles these from multiple sources.
+- [ ] **Documentation checklist per project** — tracks what's been produced vs what's required (driven by contract requirements in passport). Flags gaps before close-out. "Missing: installation manual for item 3, fire test evidence for item 5."
+- [ ] **Progressive tracking** — documents logged throughout the project, not just at the end. As each cert/record is produced, it's ticked off. Close-out shows completion status.
+
+---
+
+## Workflow Improvements
+*Discussed 2026-03-05*
+
+### Quote-to-Cash Visibility
+- [ ] **End-to-end cost tracking** — Quote → Project → Design BOM (Sage costs) → PO spend → Production labour → Invoice. At any point: "we quoted £45k, spent £38k, invoiced £40k, £2k ahead."
+- [ ] **Estimating accuracy feedback** — quoted BOM cost vs design BOM cost vs actual PO spend. Quoted labour hours vs actual logged hours. Per product type trending: "we consistently under-estimate welding on double flood doors by 25%."
+
+### Invoice Matching & Cost Control
+- [ ] **Three-way matching** — PO → Goods Receipt → Invoice. Did we order it? Did we receive it? Does the invoice match? Discrepancies flagged automatically. Finance doesn't pay until all three align.
+
+### Customer Live Tracking
+- [ ] **Enhanced customer portal** — client logs in and sees real-time production status per product. "Your flood door is in painting, expected dispatch Friday." Configurable visibility levels per customer.
+- [ ] **Automated status notifications** — email/SMS to client when their product moves to key stages (e.g. enters production, dispatched, ready for install). Opt-in per project.
+- [ ] **Delivery tracking** — dispatch date, carrier details, expected arrival. Client sees it in the portal without needing to call.
+
+### Warranty & Defect Tracking
+- [ ] **Warranty register** — products delivered, warranty period, expiry date. When a claim comes in, link to original project, product, BOM, materials, fabricator, installer.
+- [ ] **Customer satisfaction tracking** — log feedback per project (formal or informal). ISO 9001 clause 9.1.2.
+- [ ] **Defect trending** — across all projects: which product types have the most NCRs? Which failure modes repeat? Which production stage causes most issues? Feeds back into design and estimating.
+
+### Competence & Training Records
+- [ ] **Qualification tracking per person** — welder qualifications (EN 1090), NDT operator certs, specific procedure sign-offs. Expiry dates with auto-reminders. "Dave's welder qualification expires in 30 days."
+- [ ] **Training evidence** — linked to document register. Auditor asks "show me Dave is qualified to weld to WPS-007" — pull it up in 10 seconds.
+
+---
+
 ## Architecture Notes
 *Identified 2026-02-28*
 

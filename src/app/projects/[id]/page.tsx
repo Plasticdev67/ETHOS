@@ -180,10 +180,20 @@ export default async function ProjectDetailPage({
   const { id } = await params
   const [project, catalogueItems, users, auditEntries] = await Promise.all([
     getProject(id),
-    prisma.productCatalogue.findMany({
-      orderBy: { partCode: "asc" },
-      select: { id: true, partCode: true, description: true },
-    }),
+    prisma.productVariant.findMany({
+      where: { active: true },
+      orderBy: { code: "asc" },
+      select: {
+        id: true,
+        code: true,
+        name: true,
+        type: { select: { name: true, family: { select: { name: true } } } },
+      },
+    }).then(variants => variants.map(v => ({
+      id: v.id,
+      partCode: v.code,
+      description: `${v.type.family.name} › ${v.name}`,
+    }))),
     prisma.user.findMany({
       orderBy: { name: "asc" },
       select: { id: true, name: true },

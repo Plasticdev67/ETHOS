@@ -95,6 +95,7 @@ export const quoteCreateSchema = z.object({
   projectId: optionalString,
   subject: optionalString,
   notes: optionalString,
+  workStream: z.enum(["UTILITIES", "BESPOKE", "COMMUNITY", "BLAST", "BUND_CONTAINMENT", "REFURBISHMENT"]).nullish(),
   createdById: optionalString,
 })
 

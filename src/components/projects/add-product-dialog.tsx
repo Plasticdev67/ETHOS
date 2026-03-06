@@ -55,7 +55,7 @@ export function AddProductDialog({
       quantity: parseInt(formData.get("quantity") as string) || 1,
       allocatedDesignerId: formData.get("allocatedDesignerId") || null,
       coordinatorId: formData.get("coordinatorId") || null,
-      catalogueItemId: selectedCatalogue || null,
+      variantId: selectedCatalogue || null,
       requiredCompletionDate: formData.get("requiredCompletionDate") || null,
     }
 

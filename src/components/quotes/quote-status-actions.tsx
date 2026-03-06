@@ -26,6 +26,7 @@ export function QuoteStatusActions({
     customerId: string
     customerName: string
     totalSell: number
+    workStream: string | null
   }
 }) {
   const router = useRouter()
@@ -64,6 +65,7 @@ export function QuoteStatusActions({
           customerId: quoteSummary.customerId,
           salesStage: "ORDER",
           projectStatus: "DESIGN",
+          workStream: quoteSummary.workStream || "BESPOKE",
           estimatedValue: quoteSummary.totalSell,
           quoteId: quoteId,
         }),
@@ -146,6 +148,10 @@ export function QuoteStatusActions({
               <div className="flex justify-between">
                 <span className="text-gray-500">Customer:</span>
                 <span className="font-medium">{quoteSummary?.customerName}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Work Stream:</span>
+                <span className="font-medium">{quoteSummary?.workStream ? quoteSummary.workStream.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase()).replace(/\bAnd\b/g, "and") : "Bespoke"}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-500">Sales Stage:</span>

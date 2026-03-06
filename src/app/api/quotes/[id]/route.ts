@@ -73,6 +73,7 @@ export async function PATCH(
     if (body.status !== undefined) data.status = body.status
     if (body.notes !== undefined) data.notes = body.notes
     if (body.subject !== undefined) data.subject = body.subject
+    if (body.workStream !== undefined) data.workStream = body.workStream || null
     if (body.validUntil !== undefined) data.validUntil = body.validUntil ? new Date(body.validUntil) : null
     if (body.status === "SUBMITTED") data.dateSubmitted = new Date()
 

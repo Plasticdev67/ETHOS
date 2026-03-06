@@ -72,6 +72,7 @@ export default async function QuotesPage() {
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Quote No.</th>
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Customer</th>
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Subject</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Work Stream</th>
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Project</th>
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Status</th>
                   <th className="px-6 py-3 text-center text-xs font-medium uppercase text-gray-500">Lines</th>
@@ -94,6 +95,9 @@ export default async function QuotesPage() {
                     </td>
                     <td className="px-6 py-3 text-gray-600 max-w-[200px] truncate">
                       {quote.subject || "—"}
+                    </td>
+                    <td className="px-6 py-3 text-xs text-gray-600">
+                      {quote.workStream ? prettifyEnum(quote.workStream) : "—"}
                     </td>
                     <td className="px-6 py-3">
                       {quote.project ? (
@@ -121,7 +125,7 @@ export default async function QuotesPage() {
                 ))}
                 {quotes.length === 0 && (
                   <tr>
-                    <td colSpan={10} className="px-6 py-12 text-center text-gray-500">
+                    <td colSpan={11} className="px-6 py-12 text-center text-gray-500">
                       No quotes yet. Create your first quote to get started.
                     </td>
                   </tr>

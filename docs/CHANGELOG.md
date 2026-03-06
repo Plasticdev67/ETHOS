@@ -4,6 +4,54 @@ Detailed record of changes made to the codebase, written after each piece of wor
 
 ---
 
+## 2026-03-05 — Lock Design BOM Costs (Sage Price Auto-Population)
+
+### What
+Designers can no longer edit unit costs on the design BOM. Costs are auto-populated from Sage stock item cost prices when the BOM is first created (copy-on-assign). The unit cost column is now read-only with a lock icon indicating the price came from Sage. This enables accurate quote-vs-actual cost variance tracking — the quoted BOM cost stays fixed while the design BOM reflects real Sage costs.
+
+### Changes
+| File | Change |
+|------|--------|
+| `prisma/schema.prisma` | Added `sageCostPrice Decimal?` and `costOverridden Boolean` to DesignBomLine |
+| `src/app/api/design/bom/[designCardId]/route.ts` | `autoPopulateBom` now fetches Sage cost prices and sets both `unitCost` and `sageCostPrice`; PATCH endpoint no longer accepts `unitCost` changes |
+| `src/components/design/bom-editor-dialog.tsx` | Replaced editable unit cost input with read-only display showing lock icon for Sage-sourced prices |
+
+---
+
+## 2026-03-05 — Add Product Dialog: Wire to BOM Codes (ProductVariant)
+
+### What
+The "Add Product to Project" dialog's catalogue dropdown was querying the empty `ProductCatalogue` table (0 rows). Rewired it to query `ProductVariant` (48 active BOM codes with 2,586 base BOM items). Added `variantId` FK to the `Product` model so products link directly to their BOM code.
+
+### Changes
+| File | Change |
+|------|--------|
+| `prisma/schema.prisma` | Added `variantId String?` and `variant` relation to Product; added reverse `products` on ProductVariant |
+| `src/app/projects/[id]/page.tsx` | Changed catalogue query from `ProductCatalogue` to `ProductVariant` with family/type labels |
+| `src/components/projects/add-product-dialog.tsx` | Sends `variantId` instead of `catalogueItemId` |
+| `src/app/api/projects/[id]/products/route.ts` | Accepts and stores `variantId` on product creation |
+
+---
+
+## 2026-03-05 — Work Stream on Quotes
+
+### What
+Added work stream selection to the quote flow. Sales now picks the work stream (Utilities, Bespoke, Community, Blast, Bund Containment, Refurbishment) when creating a quote. The work stream carries through to the project when converting an accepted quote.
+
+### Changes
+| File | Change |
+|------|--------|
+| `prisma/schema.prisma` | Added `workStream WorkStream?` to Quote model |
+| `src/lib/api-validation.ts` | Added `workStream` to `quoteCreateSchema` |
+| `src/components/quotes/new-quote-dialog.tsx` | Added work stream dropdown to create form |
+| `src/app/api/quotes/route.ts` | Save workStream on quote creation |
+| `src/app/api/quotes/[id]/route.ts` | Allow workStream in PATCH endpoint |
+| `src/app/quotes/[id]/page.tsx` | Display work stream in info cards, pass to conversion |
+| `src/app/quotes/page.tsx` | Added Work Stream column to quotes list table |
+| `src/components/quotes/quote-status-actions.tsx` | Pass workStream through to project creation, show in convert dialog |
+
+---
+
 ## 2026-03-05 — Flood Door Operations Import
 
 ### What

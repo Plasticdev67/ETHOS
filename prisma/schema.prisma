@@ -738,6 +738,7 @@ model ProductVariant {
   baseBomItems  BaseBomItem[]
   quoteLineSpecs QuoteLineSpec[]
   opportunityQuoteLines OpportunityQuoteLine[]
+  products      Product[] @relation("ProductBomCode")
 
   @@index([typeId])
   @@map("product_variants")
@@ -862,6 +863,7 @@ model Product {
   id                String  @id @default(cuid())
   projectId         String
   catalogueItemId   String?
+  variantId         String?
   partCode          String
   description       String
   additionalDetails String?
@@ -937,6 +939,7 @@ model Product {
   // Relations
   project       Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
   catalogueItem ProductCatalogue? @relation(fields: [catalogueItemId], references: [id])
+  variant       ProductVariant?  @relation("ProductBomCode", fields: [variantId], references: [id])
   designer      User?            @relation("ProductDesigner", fields: [allocatedDesignerId], references: [id])
   coordinator   User?            @relation("ProductCoordinator", fields: [coordinatorId], references: [id])
   quoteLines    QuoteLine[]
@@ -1003,6 +1006,7 @@ model Quote {
   totalSell       Decimal?    @db.Decimal(12, 2)
   overallMargin   Decimal?    @db.Decimal(5, 2)
   notes           String?
+  workStream      WorkStream?
   createdById     String?
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
@@ -1686,6 +1690,8 @@ model DesignBomLine {
   quantity        Decimal           @default(1) @db.Decimal(10, 2)
   unit            String            @default("each")
   unitCost        Decimal           @default(0) @db.Decimal(10, 2)
+  sageCostPrice   Decimal?          @db.Decimal(10, 2)
+  costOverridden  Boolean           @default(false)
   notes           String?
   sortOrder       Int               @default(0)
   createdAt       DateTime          @default(now())

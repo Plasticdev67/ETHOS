@@ -9,7 +9,7 @@ import { formatCurrency, formatDate, prettifyEnum } from "@/lib/utils"
 import { QuoteLineForm, QuoteLineRow } from "@/components/quotes/quote-line-form"
 import { QuoteStatusActions } from "@/components/quotes/quote-status-actions"
 import { CascadingProductBuilder } from "@/components/quotes/cascading-product-builder"
-import { ArrowLeft, Building2, User, Calendar, FolderKanban, Download } from "lucide-react"
+import { ArrowLeft, Building2, User, Calendar, FolderKanban, Download, Layers } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 type QuoteLine = {
@@ -54,6 +54,7 @@ type Quote = {
   totalSell: string | number | null
   overallMargin: string | number | null
   notes: string | null
+  workStream: string | null
   customer: { id: string; name: string }
   project: {
     id: string
@@ -214,13 +215,14 @@ export default function QuoteDetailPage() {
               customerId: quote.customer.id,
               customerName: quote.customer.name,
               totalSell: totalSell,
+              workStream: quote.workStream,
             }}
           />
         </div>
       </div>
 
       {/* Quote Info Cards */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-5 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
@@ -228,6 +230,16 @@ export default function QuoteDetailPage() {
             </div>
             <div className="text-sm font-medium text-gray-900">
               {quote.customer.name}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
+              <Layers className="h-3.5 w-3.5" /> Work Stream
+            </div>
+            <div className="text-sm font-medium text-gray-900">
+              {quote.workStream ? prettifyEnum(quote.workStream) : <span className="text-gray-400">Not set</span>}
             </div>
           </CardContent>
         </Card>

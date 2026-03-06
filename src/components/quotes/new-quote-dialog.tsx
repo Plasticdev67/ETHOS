@@ -28,6 +28,7 @@ export function NewQuoteDialog({
   const [customerId, setCustomerId] = useState("")
   const [projectId, setProjectId] = useState("")
   const [subject, setSubject] = useState("")
+  const [workStream, setWorkStream] = useState("")
 
   // Filter projects to selected customer
   const filteredProjects = customerId
@@ -54,6 +55,7 @@ export function NewQuoteDialog({
           customerId,
           projectId: projectId || null,
           subject: subject || null,
+          workStream: workStream || null,
           notes: formData.get("notes") || null,
         }),
       })
@@ -104,6 +106,24 @@ export function NewQuoteDialog({
               onChange={(e) => setSubject(e.target.value)}
               placeholder="e.g. Flood gates supply & install"
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="workStream">Work Stream</Label>
+            <select
+              id="workStream"
+              value={workStream}
+              onChange={(e) => setWorkStream(e.target.value)}
+              className="w-full rounded-lg border border-border bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            >
+              <option value="">Select work stream...</option>
+              <option value="UTILITIES">Utilities</option>
+              <option value="BESPOKE">Bespoke</option>
+              <option value="COMMUNITY">Community</option>
+              <option value="BLAST">Blast</option>
+              <option value="BUND_CONTAINMENT">Bund Containment</option>
+              <option value="REFURBISHMENT">Refurbishment</option>
+            </select>
           </div>
 
           <div className="space-y-2">
