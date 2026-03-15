@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils"
 import { usePermissions } from "@/hooks/use-permissions"
 import { AssignJobsDialog } from "./assign-jobs-dialog"
 import { HandoverSelectDialog } from "./handover-select-dialog"
+import { AwaitingResponseDialog, ResumeFromWaitButton } from "./wait-event-dialog"
 
 type JobCard = {
   id: string
@@ -15,10 +16,21 @@ type JobCard = {
   assignedToId: string | null
 }
 
+type WaitEvent = {
+  id: string
+  reason: string
+  notes: string | null
+  externalParty: string | null
+  triggeredAt: string
+  resolvedAt: string | null
+  triggeredBy: { id: string; name: string } | null
+}
+
 type DesignCard = {
   id: string
   status: string
   targetEndDate: string | null
+  updatedAt: string
   product: {
     id: string
     description: string
@@ -28,6 +40,7 @@ type DesignCard = {
   }
   assignedDesigner: { id: string; name: string } | null
   jobCards: JobCard[]
+  waitEvents?: WaitEvent[]
 }
 
 type ProductInfo = {
@@ -64,6 +77,7 @@ type Designer = { id: string; name: string }
 function getProductStage(card: DesignCard): string {
   if (card.status === "COMPLETE") return "COMPLETE"
   if (card.status === "QUEUED") return "QUEUED"
+  if (card.status === "AWAITING_RESPONSE") return "AWAITING_RESPONSE"
 
   const activeJob = card.jobCards.find(
     (j) => j.status === "IN_PROGRESS" || j.status === "SUBMITTED" || j.status === "REJECTED"
@@ -92,8 +106,8 @@ function getProjectDesignStage(project: ProjectGroup): string {
   const activeCards = cards.filter((c) => c.status !== "COMPLETE")
   const stages = activeCards.map((c) => getProductStage(c))
 
-  // If any card is in REVIEW status or has jobs in DESIGN_REVIEW/BOM_FINALISATION submitted
-  const hasReviewStage = activeCards.some((c) => c.status === "REVIEW") ||
+  // If any card is in REVIEW status, AWAITING_RESPONSE, or has jobs in DESIGN_REVIEW/BOM_FINALISATION submitted
+  const hasReviewStage = activeCards.some((c) => c.status === "REVIEW" || c.status === "AWAITING_RESPONSE") ||
     stages.some((s) => s === "DESIGN_REVIEW" || s === "BOM_FINALISATION")
 
   // If any card is in early work stages → IN_PROGRESS
@@ -126,6 +140,7 @@ const STAGE_LABELS: Record<string, string> = {
   PRODUCTION_DRAWINGS: "Prod",
   BOM_FINALISATION: "BOM",
   DESIGN_REVIEW: "Review",
+  AWAITING_RESPONSE: "Waiting",
   COMPLETE: "Done",
 }
 
@@ -135,7 +150,34 @@ const STAGE_COLORS: Record<string, string> = {
   PRODUCTION_DRAWINGS: "bg-indigo-400",
   BOM_FINALISATION: "bg-amber-400",
   DESIGN_REVIEW: "bg-purple-400",
+  AWAITING_RESPONSE: "bg-orange-400",
   COMPLETE: "bg-green-500",
+}
+
+const WAIT_REASON_LABELS: Record<string, string> = {
+  CALCS_FROM_SUB: "Calcs (Sub)",
+  CLIENT_REVIEW: "Client Review",
+  CONSULTANT_REVIEW: "Consultant",
+  STRUCTURAL_ENGINEER: "Structural Eng.",
+  ARCHITECT_REVIEW: "Architect",
+  THIRD_PARTY_APPROVAL: "3rd Party",
+  OTHER: "Other",
+}
+
+function getIdleDays(updatedAt: string): number {
+  return Math.floor((Date.now() - new Date(updatedAt).getTime()) / (1000 * 60 * 60 * 24))
+}
+
+function getWaitDuration(triggeredAt: string): string {
+  const ms = Date.now() - new Date(triggeredAt).getTime()
+  const days = Math.floor(ms / (1000 * 60 * 60 * 24))
+  if (days === 0) return "today"
+  if (days === 1) return "1 day"
+  if (days < 7) return `${days} days`
+  const weeks = Math.floor(days / 7)
+  const remainDays = days % 7
+  if (remainDays === 0) return `${weeks}w`
+  return `${weeks}w ${remainDays}d`
 }
 
 // Single shared timer — avoids N intervals for N cards
@@ -283,6 +325,7 @@ export function DesignBoard({ projects, designers }: { projects: ProjectGroup[];
 const ProjectDesignCard = memo(function ProjectDesignCard({ project, designers }: { project: ProjectGroup; designers: Designer[]; columnId: string }) {
   const [assignOpen, setAssignOpen] = useState(false)
   const [handoverOpen, setHandoverOpen] = useState(false)
+  const [waitOpen, setWaitOpen] = useState(false)
   const [activating, setActivating] = useState(false)
   const [localHandoverStatus, setLocalHandoverStatus] = useState(project.handover?.status || null)
   const [activated, setActivated] = useState(false)
@@ -310,6 +353,23 @@ const ProjectDesignCard = memo(function ProjectDesignCard({ project, designers }
   )
   const hasHandoverable = handoverableProducts.length > 0
 
+  // Cards currently awaiting external response
+  const awaitingCards = project.designCards.filter((c) => c.status === "AWAITING_RESPONSE")
+  const hasAwaitingCards = awaitingCards.length > 0
+
+  // Cards eligible for "Awaiting Response" action
+  const waitableCards = project.designCards.filter(
+    (c) => c.status === "IN_PROGRESS" || c.status === "REVIEW"
+  )
+  const hasWaitableCards = waitableCards.length > 0
+
+  // Stale cards — active cards with no activity for 3+ days (excluding waits)
+  const staleCards = project.designCards.filter((c) => {
+    if (c.status === "COMPLETE" || c.status === "QUEUED" || c.status === "AWAITING_RESPONSE" || c.status === "ON_HOLD") return false
+    return getIdleDays(c.updatedAt) >= 3
+  })
+  const maxIdleDays = staleCards.length > 0 ? Math.max(...staleCards.map((c) => getIdleDays(c.updatedAt))) : 0
+
   const designerNames = [...new Set(
     project.designCards
       .map((c) => c.assignedDesigner?.name?.split(" ")[0])
@@ -320,9 +380,30 @@ const ProjectDesignCard = memo(function ProjectDesignCard({ project, designers }
   const handoverStatus = localHandoverStatus
 
   async function handleActivateDesign() {
+    // Prompt for design completion estimate
+    const estimate = prompt("Estimated design completion date (DD/MM/YYYY):\n\nInclude expected client review time.")
+    if (estimate === null) return // cancelled
+
+    let designEstimatedCompletion: string | undefined
+    if (estimate.trim()) {
+      // Parse DD/MM/YYYY
+      const parts = estimate.trim().split(/[\/\-]/)
+      if (parts.length === 3) {
+        const [d, m, y] = parts
+        const parsed = new Date(`${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`)
+        if (!isNaN(parsed.getTime())) {
+          designEstimatedCompletion = parsed.toISOString()
+        }
+      }
+    }
+
     setActivating(true)
     try {
-      const res = await fetch(`/api/projects/${project.id}/activate-design`, { method: "POST" })
+      const res = await fetch(`/api/projects/${project.id}/activate-design`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ designEstimatedCompletion }),
+      })
       if (res.ok) {
         setActivated(true)
       }
@@ -367,6 +448,19 @@ const ProjectDesignCard = memo(function ProjectDesignCard({ project, designers }
                 {project.priority && project.priority !== "NORMAL" && (
                   <Badge variant="secondary" className={cn("text-[8px] px-1 py-0", priorityBadge[project.priority] || "")}>
                     {project.priority}
+                  </Badge>
+                )}
+                {staleCards.length > 0 && (
+                  <Badge variant="secondary" className={cn(
+                    "text-[8px] px-1 py-0",
+                    maxIdleDays >= 7 ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"
+                  )}>
+                    {staleCards.length} idle ({maxIdleDays}d)
+                  </Badge>
+                )}
+                {hasAwaitingCards && (
+                  <Badge variant="secondary" className="text-[8px] px-1 py-0 bg-orange-100 text-orange-700">
+                    {awaitingCards.length} waiting
                   </Badge>
                 )}
               </div>
@@ -414,8 +508,10 @@ const ProjectDesignCard = memo(function ProjectDesignCard({ project, designers }
                   const stage = getProductStage(card)
                   const isComplete = card.status === "COMPLETE"
                   const inProduction = !!card.product.productionStatus
+                  const idle = !isComplete && !inProduction && stage !== "AWAITING_RESPONSE" && stage !== "QUEUED" ? getIdleDays(card.updatedAt) : 0
                   return (
-                    <div key={card.id} className="flex items-center gap-1.5">
+                    <div key={card.id} className="flex flex-col gap-0.5">
+                      <div className="flex items-center gap-1.5">
                       {isComplete ? (
                         inProduction ? (
                           <svg className="w-3.5 h-3.5 text-blue-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -426,22 +522,34 @@ const ProjectDesignCard = memo(function ProjectDesignCard({ project, designers }
                             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                           </svg>
                         )
+                      ) : stage === "AWAITING_RESPONSE" ? (
+                        <svg className="w-3.5 h-3.5 text-orange-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
                       ) : (
                         <span className={`w-1.5 h-1.5 rounded-full shrink-0 ml-1 ${STAGE_COLORS[stage] || "bg-gray-300"}`} />
                       )}
                       <span className={cn(
                         "text-[10px] truncate flex-1",
-                        inProduction ? "text-blue-600" : isComplete ? "text-green-700" : "text-gray-600"
+                        inProduction ? "text-blue-600" : isComplete ? "text-green-700" : stage === "AWAITING_RESPONSE" ? "text-orange-700" : "text-gray-600"
                       )}>
                         {card.product.productJobNumber || card.product.partCode}
                       </span>
                       <span className={cn(
                         "text-[9px] shrink-0",
-                        inProduction ? "text-blue-500 font-medium" : "text-gray-400"
+                        inProduction ? "text-blue-500 font-medium" : stage === "AWAITING_RESPONSE" ? "text-orange-600 font-medium" : idle >= 3 ? "text-red-500 font-medium" : "text-gray-400"
                       )}>
                         {inProduction ? "In Production" : isComplete ? "Done" : (STAGE_LABELS[stage] || stage)}
                       </span>
-                      {!isComplete && (
+                      {idle >= 3 && (
+                        <span className={cn(
+                          "text-[8px] px-1 py-0 rounded font-semibold shrink-0",
+                          idle >= 7 ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"
+                        )}>
+                          {idle}d idle
+                        </span>
+                      )}
+                      {!isComplete && stage !== "AWAITING_RESPONSE" && (
                         <Link
                           href={`/design/bom/${card.id}`}
                           onClick={(e) => e.stopPropagation()}
@@ -453,6 +561,23 @@ const ProjectDesignCard = memo(function ProjectDesignCard({ project, designers }
                           </svg>
                         </Link>
                       )}
+                      </div>
+                      {/* Wait reason tag */}
+                      {stage === "AWAITING_RESPONSE" && card.waitEvents && card.waitEvents.length > 0 && (() => {
+                        const activeWait = card.waitEvents.find((w) => !w.resolvedAt)
+                        if (!activeWait) return null
+                        return (
+                          <div className="flex items-center gap-1 ml-5 text-[9px]">
+                            <span className="px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 font-medium">
+                              {WAIT_REASON_LABELS[activeWait.reason] || activeWait.reason}
+                            </span>
+                            {activeWait.externalParty && (
+                              <span className="text-orange-500 truncate max-w-[80px]">{activeWait.externalParty}</span>
+                            )}
+                            <span className="text-orange-400">{getWaitDuration(activeWait.triggeredAt)}</span>
+                          </div>
+                        )
+                      })()}
                     </div>
                   )
                 })}
@@ -557,7 +682,46 @@ const ProjectDesignCard = memo(function ProjectDesignCard({ project, designers }
               {activating ? "Accepting..." : "Accept from Sales"}
             </button>
           ) : null}
+
+          {/* Awaiting Response button — show when cards are in progress and user can manage */}
+          {hasWaitableCards && canManageDesign && !hasHandoverable && (
+            <button
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                setWaitOpen(true)
+              }}
+              className="inline-flex items-center gap-1 rounded-md bg-orange-50 px-2 py-1 text-[10px] font-medium text-orange-600 hover:bg-orange-100 transition-colors"
+            >
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Awaiting Response
+            </button>
+          )}
         </div>
+
+        {/* Resume buttons for cards that are awaiting response */}
+        {hasAwaitingCards && (
+          <div className="mt-1.5 space-y-1">
+            {awaitingCards.map((card) => {
+              const activeWait = card.waitEvents?.find((w) => !w.resolvedAt)
+              return (
+                <div key={card.id} className="flex items-center justify-between gap-2 px-1">
+                  <span className="text-[9px] text-orange-600 truncate">
+                    {card.product.productJobNumber || card.product.partCode}
+                    {activeWait && (
+                      <span className="ml-1 text-orange-400">
+                        — {WAIT_REASON_LABELS[activeWait.reason] || activeWait.reason}
+                      </span>
+                    )}
+                  </span>
+                  <ResumeFromWaitButton designCardId={card.id} />
+                </div>
+              )
+            })}
+          </div>
+        )}
 
         {project.targetCompletion && (
           <CountdownTimer targetDate={project.targetCompletion} />
@@ -582,6 +746,14 @@ const ProjectDesignCard = memo(function ProjectDesignCard({ project, designers }
         projectName={project.name}
         products={handoverProductList}
         onSubmitted={() => setLocalHandoverStatus("SUBMITTED")}
+      />
+
+      <AwaitingResponseDialog
+        open={waitOpen}
+        onOpenChange={setWaitOpen}
+        cards={project.designCards}
+        projectNumber={project.projectNumber}
+        projectName={project.name}
       />
 
     </>

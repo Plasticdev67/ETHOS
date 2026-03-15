@@ -3,6 +3,7 @@ import { DesignBoard } from "@/components/design/design-board"
 import { DesignerWorkloadBoard } from "@/components/design/designer-workload-board"
 import { DesignTimeline } from "@/components/design/design-timeline"
 import { HandoverTrackingPanel } from "@/components/design/handover-tracking-panel"
+import { ProductionFeedStrip } from "@/components/design/production-feed-strip"
 
 export const dynamic = 'force-dynamic'
 
@@ -24,6 +25,7 @@ async function getDesignDashboardData() {
         projectNumber: true,
         name: true,
         targetCompletion: true,
+        designEstimatedCompletion: true,
         priority: true,
         contractValue: true,
         customer: { select: { name: true } },
@@ -40,6 +42,16 @@ async function getDesignDashboardData() {
             jobCards: {
               select: { id: true, jobType: true, status: true, assignedToId: true },
               orderBy: { sortOrder: "asc" },
+            },
+            waitEvents: {
+              where: { resolvedAt: null },
+              select: {
+                id: true, reason: true, notes: true, externalParty: true,
+                triggeredAt: true, resolvedAt: true,
+                triggeredBy: { select: { id: true, name: true } },
+              },
+              orderBy: { triggeredAt: "desc" },
+              take: 1,
             },
           },
         },
@@ -154,6 +166,70 @@ export default async function DesignPage() {
     }
   })
 
+  // ── Production Feed data ──
+  // Count design cards across all projects by status
+  const allDesignCardsFlat = projects.flatMap((p) => p.designCards)
+  const IDLE_THRESHOLD_MS = 3 * 24 * 60 * 60 * 1000
+  const now = Date.now()
+
+  const readyForProduction = allDesignCardsFlat.filter(
+    (c) => c.status === "COMPLETE" && !c.product.productionStatus
+  ).length
+
+  const activeInDesign = allDesignCardsFlat.filter(
+    (c) => (c.status === "IN_PROGRESS" || c.status === "REVIEW") &&
+      (now - new Date(c.updatedAt).getTime()) < IDLE_THRESHOLD_MS
+  ).length
+
+  const idleInDesign = allDesignCardsFlat.filter(
+    (c) => (c.status === "IN_PROGRESS" || c.status === "REVIEW") &&
+      (now - new Date(c.updatedAt).getTime()) >= IDLE_THRESHOLD_MS
+  ).length
+
+  const awaitingResponse = allDesignCardsFlat.filter(
+    (c) => c.status === "AWAITING_RESPONSE"
+  ).length
+
+  const queued = allDesignCardsFlat.filter(
+    (c) => c.status === "QUEUED"
+  ).length
+
+  // Timeline — projects with active design work
+  const projectsInDesign = projects.filter((p) =>
+    p.designCards.some((c) => c.status !== "COMPLETE" && c.status !== "ON_HOLD")
+  )
+
+  type TimelineEntry = {
+    projectId: string
+    projectNumber: string
+    projectName: string
+    customerName: string | null
+    productCount: number
+    designEstimatedCompletion: string | null
+    designCardsComplete: number
+    designCardsTotal: number
+  }
+
+  const timeline: TimelineEntry[] = projectsInDesign.map((p) => ({
+    projectId: p.id,
+    projectNumber: p.projectNumber,
+    projectName: p.name,
+    customerName: p.customer?.name || null,
+    productCount: p.designCards.length,
+    designEstimatedCompletion: p.designEstimatedCompletion ? new Date(p.designEstimatedCompletion).toISOString() : null,
+    designCardsComplete: p.designCards.filter((c) => c.status === "COMPLETE").length,
+    designCardsTotal: p.designCards.length,
+  }))
+
+  const feedData = {
+    readyForProduction,
+    activeInDesign,
+    idleInDesign,
+    awaitingResponse,
+    queued,
+    timeline,
+  }
+
   const serializedProjects = JSON.parse(JSON.stringify(projectsWithHandovers))
   const serializedCards = JSON.parse(JSON.stringify(allCards))
   const serializedTimeline = JSON.parse(JSON.stringify(timelineCards))
@@ -167,6 +243,9 @@ export default async function DesignPage() {
           {projects.length} project{projects.length !== 1 ? "s" : ""} in design workflow
         </p>
       </div>
+
+      {/* Production Feed Strip */}
+      <ProductionFeedStrip data={feedData} />
 
       {/* Project-level board */}
       <DesignBoard projects={serializedProjects} designers={designers} />

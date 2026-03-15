@@ -4,7 +4,7 @@ import { useState, memo } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
-import { STAGE_DISPLAY_NAMES } from "@/lib/production-utils"
+import { STAGE_DISPLAY_NAMES, ALL_STAGE_DISPLAY_NAMES, PLANNING_ROUTE_LABELS } from "@/lib/production-utils"
 import { ProductActionRow } from "./product-action-row"
 import { ProjectScheduleDialog } from "./project-schedule-dialog"
 
@@ -67,6 +67,8 @@ type ProducingProject = {
     partCode: string
     description: string
     quantity: number
+    planningRoute: string
+    productionPlanningEnabled: boolean
     productionStatus: string | null
     productionPlannedStart: string | null
     productionTargetDate: string | null
@@ -544,13 +546,14 @@ const ProducingProjectCard = memo(function ProducingProjectCard({ project, onCom
             product.productionStatus === "FITTING" ? "bg-yellow-500" :
             product.productionStatus === "FABRICATION" ? "bg-amber-500" :
             product.productionStatus === "CUTTING" ? "bg-orange-500" :
+            product.productionStatus === "SUB_CONTRACT" ? "bg-violet-500" :
             "bg-gray-200"
 
           return (
             <div
               key={product.id}
               className={`h-2 flex-1 rounded-full ${stageColor}`}
-              title={`${product.description}: ${STAGE_DISPLAY_NAMES[product.productionStatus || ""] || product.productionStatus || "Awaiting"}`}
+              title={`${product.description}: ${ALL_STAGE_DISPLAY_NAMES[product.productionStatus || ""] || product.productionStatus || "Awaiting"}`}
             />
           )
         })}
@@ -572,8 +575,9 @@ const ProducingProjectCard = memo(function ProducingProjectCard({ project, onCom
       {expanded && (
         <div className="mt-2 pt-2 border-t border-gray-100 space-y-2.5">
           {project.products.map((product) => {
-            const stageName = STAGE_DISPLAY_NAMES[product.productionStatus || ""] || product.productionStatus || "Awaiting"
+            const stageName = ALL_STAGE_DISPLAY_NAMES[product.productionStatus || ""] || product.productionStatus || "Awaiting"
             const stageColor =
+              product.productionStatus === "SUB_CONTRACT" ? "bg-violet-100 text-violet-700" :
               product.productionStatus === "PACKING" ? "bg-cyan-100 text-cyan-700" :
               product.productionStatus === "PAINTING" ? "bg-teal-100 text-teal-700" :
               product.productionStatus === "SHOTBLASTING" ? "bg-lime-100 text-lime-700" :
@@ -583,12 +587,22 @@ const ProducingProjectCard = memo(function ProducingProjectCard({ project, onCom
               FINISHED_STAGES.includes(product.productionStatus || "") ? "bg-green-100 text-green-700" :
               "bg-gray-100 text-gray-600"
 
+            const routeLabel = PLANNING_ROUTE_LABELS[product.planningRoute as keyof typeof PLANNING_ROUTE_LABELS] || product.planningRoute
+
             return (
               <div key={product.id}>
                 <div className="flex items-center justify-between gap-2 text-[10px]">
                   <div className="min-w-0 flex-1">
                     <span className="text-gray-700 truncate block">{product.description}</span>
-                    <span className="text-gray-400 font-mono">{product.partCode}</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-gray-400 font-mono">{product.partCode}</span>
+                      <span className={`px-1 py-0 rounded text-[8px] font-medium ${
+                        product.planningRoute === "CTO" ? "bg-blue-50 text-blue-600" :
+                        product.planningRoute === "ETO" ? "bg-purple-50 text-purple-600" :
+                        product.planningRoute === "SUBCONTRACT" ? "bg-orange-50 text-orange-600" :
+                        "bg-gray-50 text-gray-400"
+                      }`}>{routeLabel}</span>
+                    </div>
                   </div>
                   <span className={`shrink-0 px-1.5 py-0.5 rounded text-[9px] font-medium ${stageColor}`}>
                     {stageName}
@@ -598,6 +612,7 @@ const ProducingProjectCard = memo(function ProducingProjectCard({ project, onCom
                   productId={product.id}
                   projectId={project.id}
                   currentStage={product.productionStatus}
+                  planningRoute={product.planningRoute}
                 />
               </div>
             )

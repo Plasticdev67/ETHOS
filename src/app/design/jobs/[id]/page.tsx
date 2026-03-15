@@ -31,6 +31,13 @@ export default async function JobCardPage({ params }: { params: Promise<{ id: st
           assignedDesigner: {
             select: { id: true, name: true },
           },
+          waitEvents: {
+            orderBy: { triggeredAt: "desc" },
+            include: {
+              triggeredBy: { select: { id: true, name: true } },
+              resolvedBy: { select: { id: true, name: true } },
+            },
+          },
         },
       },
       assignedTo: {

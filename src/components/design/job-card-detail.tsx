@@ -64,6 +64,17 @@ type JobCardData = {
       customer: { name: string } | null
     }
     assignedDesigner: { id: string; name: string } | null
+    waitEvents?: Array<{
+      id: string
+      reason: string
+      notes: string | null
+      externalParty: string | null
+      triggeredAt: string
+      resolvedAt: string | null
+      resolutionNotes: string | null
+      triggeredBy: { id: string; name: string } | null
+      resolvedBy: { id: string; name: string } | null
+    }>
   }
   assignedTo: { id: string; name: string } | null
   reviewer: { id: string; name: string } | null
@@ -292,6 +303,68 @@ export function JobCardDetail({
             >
               {isSubmitting ? "Rejecting..." : "Reject"}
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Wait Events History */}
+      {designCard.waitEvents && designCard.waitEvents.length > 0 && (
+        <div className="border border-orange-200 rounded-lg bg-orange-50/50 p-4">
+          <h2 className="text-sm font-medium text-orange-800 mb-3">External Wait History</h2>
+          <div className="space-y-3">
+            {designCard.waitEvents.map((event) => {
+              const isActive = !event.resolvedAt
+              const duration = event.resolvedAt
+                ? Math.ceil((new Date(event.resolvedAt).getTime() - new Date(event.triggeredAt).getTime()) / (1000 * 60 * 60 * 24))
+                : Math.ceil((Date.now() - new Date(event.triggeredAt).getTime()) / (1000 * 60 * 60 * 24))
+
+              const reasonLabels: Record<string, string> = {
+                CALCS_FROM_SUB: "Calcs from Subcontractor",
+                CLIENT_REVIEW: "Client Review",
+                CONSULTANT_REVIEW: "Consultant Review",
+                STRUCTURAL_ENGINEER: "Structural Engineer",
+                ARCHITECT_REVIEW: "Architect Review",
+                THIRD_PARTY_APPROVAL: "Third Party Approval",
+                OTHER: "Other",
+              }
+
+              return (
+                <div key={event.id} className={`rounded-md border p-3 ${isActive ? "border-orange-300 bg-orange-50" : "border-gray-200 bg-white"}`}>
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <div className="flex items-center gap-2">
+                      <Badge className={isActive ? "bg-orange-100 text-orange-700" : "bg-gray-100 text-gray-600"}>
+                        {reasonLabels[event.reason] || event.reason}
+                      </Badge>
+                      {isActive && (
+                        <span className="text-[10px] font-semibold text-orange-600 animate-pulse">ACTIVE</span>
+                      )}
+                    </div>
+                    <span className="text-xs text-gray-500 font-mono">{duration}d</span>
+                  </div>
+                  {event.externalParty && (
+                    <p className="text-xs text-gray-600 mt-1">Party: {event.externalParty}</p>
+                  )}
+                  {event.notes && (
+                    <p className="text-xs text-gray-500 mt-1">{event.notes}</p>
+                  )}
+                  <div className="flex items-center gap-4 mt-2 text-[10px] text-gray-400">
+                    <span>
+                      Started: {formatDate(event.triggeredAt)}
+                      {event.triggeredBy && ` by ${event.triggeredBy.name}`}
+                    </span>
+                    {event.resolvedAt && (
+                      <span>
+                        Resolved: {formatDate(event.resolvedAt)}
+                        {event.resolvedBy && ` by ${event.resolvedBy.name}`}
+                      </span>
+                    )}
+                  </div>
+                  {event.resolutionNotes && (
+                    <p className="text-xs text-green-700 mt-1 italic">Resolution: {event.resolutionNotes}</p>
+                  )}
+                </div>
+              )
+            })}
           </div>
         </div>
       )}

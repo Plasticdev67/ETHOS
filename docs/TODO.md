@@ -240,6 +240,61 @@ BOMs are currently only accessible from the Design Board (`/design/bom/[designCa
 
 ---
 
+## DXF-Based Drawing Engine for Quote PDFs
+*Discussed 2026-03-06 — plan saved at `.claude/plans/cheeky-wiggling-stroustrup.md`*
+
+### Problem
+Current quote PDF drawing page uses hand-coded SVG rectangles — looks amateur. Design team draws in Inventor and can export DXF files.
+
+### Approach
+- Design team exports DXF per view per product type (front elevation, end view, sections, threshold)
+- Engine parses DXF → renders as crisp vector SVG with proper line weights
+- **No scaling needed** — sections/threshold/end view are standard per product type, front elevation proportions close enough across sizes
+- Dimension text swapped to show quoted values, handing via SVG mirror
+- Static views reused as-is, title block generated dynamically
+
+### Status: Waiting on DXF files from design team
+- [ ] **Get SFDC5 DXF exports** — front elevation, end view, section-aa, section-bb (no dims, no border, no title block)
+- [ ] **Get SFDC5 3D isometric PNG** — clean white background
+- [ ] **Phase 1:** DXF → SVG proof of concept (parse one file, render as SVG, validate)
+- [ ] **Phase 2:** Multi-view layout + title block + dimension overlay + handing
+- [ ] **Phase 3:** PDF integration (replace hand-coded SVGs in quote PDF)
+- [ ] **Phase 4:** API route + database integration
+- [ ] **Phase 5:** All flood door types (DFD, FG, FGW, Blast)
+
+---
+
+## Design Board — Dual Lane Capacity Planning
+*Discussed 2026-03-06*
+
+### Problem
+Design team (7 people) works a single queue. Fast workstreams (Utilities/Standard — type approval, repeatable) compete with slow workstreams (Bespoke/Community/Blast — complex, weeks of design). When a big bespoke job lands, all attention goes there. Standard jobs queue up. Production starves. Then bespoke finishes and 15 standard jobs need design yesterday.
+
+### Solution: Two design lanes with dedicated capacity
+
+| Lane | Designers | Workstreams | Target |
+|------|-----------|-------------|--------|
+| **Standard** | 2-3 fixed | Utilities, Standard CTO | 3-5 jobs/week — steady production feed |
+| **Bespoke** | 3-4 fixed | Community, Bespoke, Blast | 1-2 jobs/month |
+| **Flex** | 1 | Overflow from either | Buffer capacity |
+
+### Features needed
+- [ ] **Two swim lanes on design board** — Standard | Bespoke, auto-assigned by workstream
+- [ ] **WIP limits per lane** — maximum jobs in progress, new jobs wait in queue when full
+- [ ] **Designer lane assignment** — tag each designer to a lane (with flex designer visible in both)
+- [ ] **Production runway metric** — dashboard widget: "X design-complete jobs = Y weeks of production capacity". Green/amber/red thresholds.
+- [ ] **Lane pressure alerts** — when production runway drops below threshold, standard lane gets priority, flex designer auto-suggested to move
+- [ ] **Capacity planning view** — see both lanes side by side with queue depth, WIP, throughput rate
+
+### Why this works
+- Production always has work because the standard lane always has dedicated designers
+- Bespoke jobs get focused attention without pulling standard resources
+- The flex designer provides buffer for peaks in either lane
+- WIP limits prevent overloading — jobs queue instead of creating chaos
+- The production runway metric makes the problem visible BEFORE it hits the shop floor
+
+---
+
 ## API Hardening (Code Review Follow-up)
 *Identified 2026-03-01 — from code review scoring 6/10*
 
@@ -482,6 +537,63 @@ ETHOS tracks the **metadata** — not the files themselves. Files stay on OneDri
 
 ---
 
+## EXC3 Traceability & Evidence Management
+*Discussed 2026-03-13*
+
+### The Problem
+Marc (Production Manager) links evidence to jobs today — welder certs, weld procedure specs (WPS/WPQR), material certs — but dumps them into a folder. The certs exist. The pain is **proving the link**: when an auditor or client asks "show me full traceability for Product X", Marc has to manually prove which cert goes with which product. The folder doesn't prove anything — the linkage is in his head.
+
+The ITP (Inspection & Test Plan) varies by work stream: Utility has a light ITP, Community/Blast have heavy ITPs with full evidence packs.
+
+### What ETHOS Does That a Folder Can't
+
+**1. Product-Level Evidence Register**
+- [ ] **Evidence attachments on each product** — not a project folder, attached to the actual product record. "SFD-0045 on Project P-2026-031" → material cert #MC-4521 → welder cert (John Smith, BS EN 9606-1) → WPS-003
+- [ ] **Evidence types**: Material certs (mill/test certs with batch, grade, mechanical properties), Welder qualification certs (BS EN 9606), Weld procedure specs (WPS/WPQR), Equipment calibration certs, DFT readings, paint system certs, inspection records, FAT/SAT records
+
+**2. Traceability Chain — System-Enforced Links**
+- [ ] **Material batch → PO line → BOM line → Product** — which steel went into which product. Auditor asks, you click the product and see it.
+- [ ] **Welder → Production task → Product** — who welded what, when, with what qualification
+- [ ] **WPS → Product** — which welding procedure was used on this product
+- [ ] **Calibration cert → Equipment → Production task** — what kit was used, was it in calibration at the time
+
+**3. ITP-Driven Evidence Checklist (Work Stream Templates)**
+- [ ] **ITP template per work stream** — Utility (light: material certs, DFT readings), Community/Blast (heavy: material certs, welder certs, WPS, calibration, inspection hold points, FAT records, DFT, paint certs)
+- [ ] **Per-product checklist generated from template** — each line shows: required / uploaded / missing
+- [ ] **Real-time completeness dashboard** — at any point see what evidence is still outstanding before handover. No more discovering missing certs at the last minute.
+
+**4. Completeness Enforcement**
+- [ ] **Block dispatch if evidence incomplete** — product can't move to DISPATCHED if required evidence per its ITP is missing. Catches gaps early, not at handover.
+- [ ] **Warning at stage transitions** — "3 items still need material certs before this product can move to painting"
+
+**5. One-Click Handover Pack**
+- [ ] **Auto-assemble evidence pack** — at project close-out, ETHOS pulls all linked evidence for each product into a structured document: material certs, welder certs, WPS, inspection records, DFT readings, paint certs. Replaces manual O&M pack compilation.
+- [ ] **Structured by product** — each product's evidence pack separately identifiable, not one big pile
+
+**6. Welder & Equipment Registers**
+- [ ] **Welder register** — qualifications (BS EN 9606-1 etc.), expiry dates, which products they've worked on. Alert when a qualification is expiring. Block assignment to EXC3 work if expired.
+- [ ] **Equipment register** — weld kit, DFT gauges, torque wrenches. Calibration dates, next due date. Alert when calibration due. Block use on EXC3 work if out of calibration.
+
+### What Sets ETHOS Apart from a Folder
+
+| Folder Approach | ETHOS Approach |
+|---|---|
+| Certs exist somewhere near the job | Certs **linked to the specific product** |
+| Manual proof of which cert goes where | **System-enforced traceability chain** |
+| Discover missing certs at handover | **Real-time completeness dashboard** |
+| Assemble handover packs manually | **One-click pack generation** |
+| Hope the welder was qualified | **System checks welder cert validity** |
+| Hope the kit was calibrated | **System checks calibration status** |
+
+### Implementation Priority
+- **Phase 1:** Evidence register on products + ITP checklist per work stream (delivers 80% of value)
+- **Phase 2:** Traceability chain links (material → product, welder → product)
+- **Phase 3:** Completeness enforcement + dispatch blocking
+- **Phase 4:** Welder/equipment registers with expiry alerts
+- **Phase 5:** One-click handover pack generation
+
+---
+
 ## Product Compliance & Spec Intelligence
 *Discussed 2026-03-05*
 
@@ -530,10 +642,39 @@ ETHOS tracks the **metadata** — not the files themselves. Files stay on OneDri
 ### Invoice Matching & Cost Control
 - [ ] **Three-way matching** — PO → Goods Receipt → Invoice. Did we order it? Did we receive it? Does the invoice match? Discrepancies flagged automatically. Finance doesn't pay until all three align.
 
-### Customer Live Tracking
-- [ ] **Enhanced customer portal** — client logs in and sees real-time production status per product. "Your flood door is in painting, expected dispatch Friday." Configurable visibility levels per customer.
-- [ ] **Automated status notifications** — email/SMS to client when their product moves to key stages (e.g. enters production, dispatched, ready for install). Opt-in per project.
-- [ ] **Delivery tracking** — dispatch date, carrier details, expected arrival. Client sees it in the portal without needing to call.
+### Client Portal — Live Product Tracking
+*Updated 2026-03-13 — every client gets this as standard, full visibility*
+
+Every project gets a client login. The client sees where their products are — production stage, design progress, expected dates, photos, evidence. This is standard for all clients, all work streams. It differentiates MME.
+
+**What the client sees:**
+
+- [ ] **Production stage per product** — "Your double flood gate is in Fabrication." Visual pipeline showing CUTTING → FABRICATION → FITTING → SHOTBLASTING → PAINTING → PACKING → DISPATCHED. Live, updated as products move through the workshop.
+- [ ] **Design progress per product** — GA submitted / in review / approved / production drawings complete / design freeze. Client can see where the design is without calling the project team.
+- [ ] **Expected dates** — expected dispatch date, expected delivery date, expected install date. Updated by the project team as the programme evolves.
+- [ ] **Photos** — production photos of their product at key stages. Workshop takes a photo at fabrication complete, painting complete, packing. Client sees their actual product, not a generic image.
+- [ ] **Evidence & documentation** — test certs, inspection records, material certs, DFT readings. As evidence is uploaded to the product in ETHOS, it becomes visible in the portal. Client doesn't need to ask for certs — they're there.
+- [ ] **Drawing access** — approved GA drawings viewable/downloadable from the portal. No more emailing PDFs back and forth.
+
+**Notifications:**
+
+- [ ] **Automated status emails** — email to client when their product moves to key stages (enters production, dispatched, ready for install, evidence uploaded). Configurable per project — PM can turn specific notifications on/off.
+- [ ] **Dispatch notification** — carrier details, expected arrival date, delivery instructions. Client sees it in the portal and gets an email.
+
+**Access & security:**
+
+- [ ] **Token-based login** — simple link sent to client contact, no password to manage. Token scoped to their project(s) only.
+- [ ] **Multi-project view** — clients with multiple projects (e.g. DNO frameworks with 20 sites) see all their projects in one dashboard.
+- [ ] **Read-only** — clients cannot edit anything, only view.
+- [ ] **Audit trail** — log when clients access the portal and what they view.
+
+**Why this matters:**
+
+- Clients stop calling the project team asking "where's my door?" — they can see for themselves
+- Builds trust — transparency on progress, evidence available without asking
+- Reduces admin — no manual status update emails, no emailing certs, no chasing photos
+- Professional image — most competitors don't offer this. It's a differentiator in tenders.
+- For Community/Blast clients with weekly collaboration calls — the portal replaces half the agenda ("where are we with X?"). The information is already there.
 
 ### Warranty & Defect Tracking
 - [ ] **Warranty register** — products delivered, warranty period, expiry date. When a claim comes in, link to original project, product, BOM, materials, fabricator, installer.
@@ -543,6 +684,20 @@ ETHOS tracks the **metadata** — not the files themselves. Files stay on OneDri
 ### Competence & Training Records
 - [ ] **Qualification tracking per person** — welder qualifications (EN 1090), NDT operator certs, specific procedure sign-offs. Expiry dates with auto-reminders. "Dave's welder qualification expires in 30 days."
 - [ ] **Training evidence** — linked to document register. Auditor asks "show me Dave is qualified to weld to WPS-007" — pull it up in 10 seconds.
+
+---
+
+## Permissions Management UI
+*Discussed 2026-03-15*
+
+Currently permissions are hardcoded in `src/lib/permissions.ts` per role (23 roles, each with a fixed set of permission strings). No UI to view or adjust them — any change requires a code edit.
+
+- [ ] **Permissions settings page** — `/settings/permissions` (or tab within `/settings`). Table showing all roles vs all permissions. Admins can see at a glance who can do what.
+- [ ] **Editable permissions** — allow MD/Admin to toggle permissions per role without code changes. Store overrides in DB (e.g. `RolePermissionOverride` model) so the hardcoded defaults remain as fallback but can be customised per deployment.
+- [ ] **Permission audit log** — track when permissions are changed, by whom, what was added/removed.
+- [ ] **Permission groups** — group related permissions (e.g. "Design" = design:manage, design:assign, design:handover-create) for easier bulk assignment.
+
+**Why:** As roles evolve (e.g. no engineering manager currently), the business needs to reassign capabilities without developer involvement. Also useful for onboarding — "what can this person actually do in the system?"
 
 ---
 

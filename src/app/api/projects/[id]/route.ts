@@ -72,7 +72,7 @@ export async function PATCH(
     // Handle ragStatus empty
     if (data.ragStatus === "") data.ragStatus = null
 
-    const dateFields = ["enquiryReceived", "quoteSubmitted", "orderReceived", "targetCompletion", "actualCompletion", "p0Date", "p1Date", "p2Date", "p3Date", "p4Date", "p5Date"]
+    const dateFields = ["enquiryReceived", "quoteSubmitted", "orderReceived", "targetCompletion", "actualCompletion", "designEstimatedCompletion", "p0Date", "p1Date", "p2Date", "p3Date", "p4Date", "p5Date"]
     for (const field of dateFields) {
       if (body[field] !== undefined) data[field] = body[field] ? new Date(body[field]) : null
     }

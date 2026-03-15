@@ -87,6 +87,7 @@ export function getDesignCardStatusColor(status: DesignCardStatus | string): str
     QUEUED: "bg-gray-100 text-gray-700",
     IN_PROGRESS: "bg-blue-100 text-blue-700",
     REVIEW: "bg-amber-100 text-amber-700",
+    AWAITING_RESPONSE: "bg-orange-100 text-orange-700",
     COMPLETE: "bg-green-100 text-green-700",
     ON_HOLD: "bg-red-100 text-red-700",
   }
@@ -113,6 +114,7 @@ export function getDesignCardStatusLabel(status: string): string {
     QUEUED: "Queued",
     IN_PROGRESS: "In Progress",
     REVIEW: "In Review",
+    AWAITING_RESPONSE: "Awaiting Response",
     COMPLETE: "Complete",
     ON_HOLD: "On Hold",
   }

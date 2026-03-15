@@ -87,11 +87,14 @@ async function getBoardData() {
         customer: { select: { id: true, name: true } },
         coordinator: { select: { id: true, name: true } },
         products: {
+          where: { productionPlanningEnabled: true },
           select: {
             id: true,
             partCode: true,
             description: true,
             quantity: true,
+            planningRoute: true,
+            productionPlanningEnabled: true,
             productionStatus: true,
             productionPlannedStart: true,
             productionTargetDate: true,

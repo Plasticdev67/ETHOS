@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache"
 import { requireAuth, requirePermission } from "@/lib/api-auth"
 
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const user = await requireAuth()
@@ -15,6 +15,17 @@ export async function POST(
   if (denied) return denied
 
   const { id } = await params
+
+  // Parse optional body (designEstimatedCompletion)
+  let designEstimatedCompletion: Date | null = null
+  try {
+    const body = await request.json()
+    if (body.designEstimatedCompletion) {
+      designEstimatedCompletion = new Date(body.designEstimatedCompletion)
+    }
+  } catch {
+    // No body or invalid JSON — that's fine, field is optional
+  }
 
   // Fetch project with products and any existing design cards
   try {
@@ -84,6 +95,14 @@ export async function POST(
           productId: product.id,
           jobCardsCreated: designCard.jobCards.length,
         }),
+      })
+    }
+
+    // Save design estimate on the project if provided
+    if (designEstimatedCompletion) {
+      await prisma.project.update({
+        where: { id },
+        data: { designEstimatedCompletion },
       })
     }
 

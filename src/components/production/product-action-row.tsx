@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { ALL_PRODUCTION_STAGES, ALL_STAGE_DISPLAY_NAMES, STAGE_WORKER_ROLES } from "@/lib/production-utils"
+import { ALL_PRODUCTION_STAGES, ALL_STAGE_DISPLAY_NAMES, STAGE_WORKER_ROLES, ROUTE_STAGE_SEQUENCES } from "@/lib/production-utils"
 
 type Worker = {
   id: string
@@ -14,10 +14,11 @@ type ProductActionRowProps = {
   productId: string
   projectId: string
   currentStage: string | null
+  planningRoute?: string
   onStageChange?: (newStage: string) => void
 }
 
-export function ProductActionRow({ productId, projectId, currentStage, onStageChange }: ProductActionRowProps) {
+export function ProductActionRow({ productId, projectId, currentStage, planningRoute, onStageChange }: ProductActionRowProps) {
   const [stage, setStage] = useState(currentStage || "AWAITING")
   const [workers, setWorkers] = useState<Worker[]>([])
   const [selectedWorker, setSelectedWorker] = useState("")
@@ -89,9 +90,12 @@ export function ProductActionRow({ productId, projectId, currentStage, onStageCh
         disabled={updatingStage}
         className="text-[10px] border border-gray-200 rounded px-1.5 py-1 bg-white text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-400 disabled:opacity-50 min-w-[90px]"
       >
-        {ALL_PRODUCTION_STAGES.map((s) => (
+        {(planningRoute && ROUTE_STAGE_SEQUENCES[planningRoute as keyof typeof ROUTE_STAGE_SEQUENCES]
+          ? ROUTE_STAGE_SEQUENCES[planningRoute as keyof typeof ROUTE_STAGE_SEQUENCES]
+          : ALL_PRODUCTION_STAGES
+        ).map((s) => (
           <option key={s} value={s}>
-            {ALL_STAGE_DISPLAY_NAMES[s]}
+            {ALL_STAGE_DISPLAY_NAMES[s] || s}
           </option>
         ))}
       </select>

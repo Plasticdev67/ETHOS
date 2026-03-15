@@ -1,5 +1,7 @@
 // Production Module — shared utilities and constants
 
+import type { PlanningRoute } from "@/generated/prisma/client"
+
 // All production stages in order (for manual progress updates)
 export const ALL_PRODUCTION_STAGES = [
   "AWAITING",
@@ -12,6 +14,59 @@ export const ALL_PRODUCTION_STAGES = [
   "COMPLETED",
 ] as const
 
+// ═══════════════════ Planning Routes ═══════════════════
+
+// Stage sequences per planning route — determines which production stages
+// appear for a product based on its route
+export const ROUTE_STAGE_SEQUENCES: Record<PlanningRoute, readonly string[]> = {
+  CTO: ["AWAITING", "CUTTING", "FABRICATION", "FITTING", "SHOTBLASTING", "PAINTING", "PACKING", "COMPLETED"],
+  ETO: ["AWAITING", "CUTTING", "FABRICATION", "FITTING", "SHOTBLASTING", "PAINTING", "PACKING", "COMPLETED"],
+  SUBCONTRACT: ["AWAITING", "SUB_CONTRACT", "FITTING", "SHOTBLASTING", "PAINTING", "PACKING", "COMPLETED"],
+  HOLD: [],
+}
+
+// Workshop stages per route (excludes AWAITING/COMPLETED — just the active work stages)
+export const ROUTE_WORKSHOP_STAGES: Record<PlanningRoute, readonly string[]> = {
+  CTO: ["CUTTING", "FABRICATION", "FITTING", "SHOTBLASTING", "PAINTING", "PACKING"],
+  ETO: ["CUTTING", "FABRICATION", "FITTING", "SHOTBLASTING", "PAINTING", "PACKING"],
+  SUBCONTRACT: ["SUB_CONTRACT", "FITTING", "SHOTBLASTING", "PAINTING", "PACKING"],
+  HOLD: [],
+}
+
+export const PLANNING_ROUTE_LABELS: Record<PlanningRoute, string> = {
+  CTO: "CTO",
+  ETO: "ETO",
+  SUBCONTRACT: "Subcontract",
+  HOLD: "Hold",
+}
+
+export const PLANNING_ROUTE_DESCRIPTIONS: Record<PlanningRoute, string> = {
+  CTO: "Configured to order — BOM complete from sales",
+  ETO: "Engineered to order — full design workflow",
+  SUBCONTRACT: "Fabrication subcontracted, MME finishes",
+  HOLD: "Tracked but not scheduled",
+}
+
+export const PLANNING_ROUTE_COLORS: Record<PlanningRoute, string> = {
+  CTO: "bg-blue-100 text-blue-700",
+  ETO: "bg-purple-100 text-purple-700",
+  SUBCONTRACT: "bg-orange-100 text-orange-700",
+  HOLD: "bg-gray-100 text-gray-500",
+}
+
+// Get the production stages for a given route
+export function getStagesForRoute(route: PlanningRoute): readonly string[] {
+  return ROUTE_STAGE_SEQUENCES[route]
+}
+
+// Get the next stage for a product considering its route
+export function getNextStageForRoute(current: string, route: PlanningRoute): string | null {
+  const stages = ROUTE_STAGE_SEQUENCES[route]
+  const idx = stages.indexOf(current)
+  if (idx < 0 || idx >= stages.length - 1) return null
+  return stages[idx + 1]
+}
+
 export const ALL_STAGE_DISPLAY_NAMES: Record<string, string> = {
   AWAITING: "Awaiting",
   CUTTING: "Cutting",
@@ -20,6 +75,7 @@ export const ALL_STAGE_DISPLAY_NAMES: Record<string, string> = {
   SHOTBLASTING: "Shotblast",
   PAINTING: "Painting",
   PACKING: "Packing",
+  SUB_CONTRACT: "At Subcontractor",
   COMPLETED: "Completed",
 }
 

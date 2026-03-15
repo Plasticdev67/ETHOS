@@ -36,6 +36,8 @@ model User {
   designCards          ProductDesignCard[] @relation("DesignCardDesigner")
   assignedJobCards     DesignJobCard[]     @relation("JobCardAssignee")
   reviewedJobCards     DesignJobCard[]     @relation("JobCardReviewer")
+  triggeredWaitEvents  DesignWaitEvent[]   @relation("WaitEventTriggeredBy")
+  resolvedWaitEvents   DesignWaitEvent[]   @relation("WaitEventResolvedBy")
   initiatedHandovers   DesignHandover[]    @relation("HandoverInitiator")
   receivedHandovers    DesignHandover[]    @relation("HandoverReceiver")
 
@@ -448,6 +450,8 @@ model Project {
   isICUFlag       Boolean                @default(false)
   classification  ProjectClassification  @default(NORMAL)
   ragStatus       RagStatus?
+  schedulingStatus SchedulingStatus @default(FORECASTED)
+  signedOffAt      DateTime?
   projectSubStatus String?
 
   // Financial values
@@ -466,8 +470,9 @@ model Project {
   enquiryReceived   DateTime?
   quoteSubmitted    DateTime?
   orderReceived     DateTime?
-  targetCompletion  DateTime?
-  actualCompletion  DateTime?
+  targetCompletion            DateTime?
+  actualCompletion            DateTime?
+  designEstimatedCompletion   DateTime?     // Engineering manager's estimate for when design will be done (incl. client reviews)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -578,6 +583,12 @@ enum RagStatus {
   GREEN
   AMBER
   RED
+}
+
+enum SchedulingStatus {
+  FORECASTED
+  QUEUED
+  SIGNED_OFF
 }
 
 enum LifecycleStage {
@@ -874,6 +885,10 @@ model Product {
   allocatedDesignerId String?
   coordinatorId       String?
 
+  // Planning route and production toggle
+  planningRoute             PlanningRoute @default(ETO)
+  productionPlanningEnabled Boolean       @default(false)
+
   // Current status tracking (maps to Excel tracker columns)
   currentDepartment       Department       @default(PLANNING)
   currentOperationalStatus String?
@@ -959,7 +974,16 @@ model Product {
   @@index([productionStatus])
   @@index([requiredCompletionDate])
   @@index([projectId, productionStatus])
+  @@index([planningRoute])
+  @@index([productionPlanningEnabled])
   @@map("products")
+}
+
+enum PlanningRoute {
+  CTO           // Configured to order — BOM complete from sales, minimal design
+  ETO           // Engineered to order — full design workflow
+  SUBCONTRACT   // Fabrication subcontracted out, MME finishes
+  HOLD          // Tracked but not scheduled anywhere
 }
 
 enum Department {
@@ -1261,6 +1285,13 @@ model SubContractorWork {
   invoicedToDate Decimal?           @db.Decimal(12, 2)
   status         SubContractStatus  @default(IN_PROGRESS)
   notes          String?
+
+  // Subcontract fabrication tracking
+  sentDate        DateTime?   // When materials sent to subcontractor
+  expectedReturn  DateTime?   // When sub should return fabricated product
+  actualReturn    DateTime?   // When it actually came back
+  bomItemsSent    Json?       // Which BOM items went to the sub (e.g. leaf, frame)
+
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
 
@@ -1275,7 +1306,9 @@ model SubContractorWork {
 
 enum SubContractStatus {
   PENDING
+  SENT          // Materials sent to subcontractor
   IN_PROGRESS
+  RETURNED      // Fabricated product returned to MME
   COMPLETE
   DISPUTED
 }
@@ -1574,8 +1607,19 @@ enum DesignCardStatus {
   QUEUED
   IN_PROGRESS
   REVIEW
+  AWAITING_RESPONSE
   COMPLETE
   ON_HOLD
+}
+
+enum DesignWaitReason {
+  CALCS_FROM_SUB
+  CLIENT_REVIEW
+  CONSULTANT_REVIEW
+  STRUCTURAL_ENGINEER
+  ARCHITECT_REVIEW
+  THIRD_PARTY_APPROVAL
+  OTHER
 }
 
 enum DesignJobType {
@@ -1629,6 +1673,7 @@ model ProductDesignCard {
   assignedDesigner   User?            @relation("DesignCardDesigner", fields: [assignedDesignerId], references: [id])
   jobCards           DesignJobCard[]
   bomLines           DesignBomLine[]
+  waitEvents         DesignWaitEvent[]
 
   @@index([projectId])
   @@index([assignedDesignerId])
@@ -1703,6 +1748,35 @@ model DesignBomLine {
 
   @@index([designCardId])
   @@map("design_bom_lines")
+}
+
+model DesignWaitEvent {
+  id              String            @id @default(cuid())
+  designCardId    String
+  reason          DesignWaitReason
+  notes           String?
+  externalParty   String?           // e.g. sub name, consultant name, client contact
+
+  // Who triggered the wait
+  triggeredById   String?
+  triggeredAt     DateTime          @default(now())
+
+  // Resolution
+  resolvedById    String?
+  resolvedAt      DateTime?
+  resolutionNotes String?
+
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  // Relations
+  designCard      ProductDesignCard @relation(fields: [designCardId], references: [id], onDelete: Cascade)
+  triggeredBy     User?             @relation("WaitEventTriggeredBy", fields: [triggeredById], references: [id])
+  resolvedBy      User?             @relation("WaitEventResolvedBy", fields: [resolvedById], references: [id])
+
+  @@index([designCardId])
+  @@index([reason])
+  @@map("design_wait_events")
 }
 
 enum BomCategory {

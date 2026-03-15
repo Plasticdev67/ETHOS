@@ -26,6 +26,7 @@ import {
   getSalesStageColor,
   getDepartmentColor,
   getProductionStageColor,
+  getRouteColor,
   prettifyEnum,
   calculateScheduleRag,
   getRagColor,
@@ -36,6 +37,8 @@ import { RaiseNcrDialog } from "@/components/projects/raise-ncr-dialog"
 import { DocumentManager } from "@/components/projects/document-manager"
 import { ProjectActivityLog } from "@/components/projects/project-activity-log"
 import { ProductHandoverButton } from "@/components/projects/product-handover-button"
+import { ProductPlanningToggle } from "@/components/projects/product-planning-toggle"
+import { PLANNING_ROUTE_LABELS } from "@/lib/production-utils"
 
 export const dynamic = 'force-dynamic'
 
@@ -430,6 +433,8 @@ export default async function ProjectDetailPage({
                       <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Description</th>
                       <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Details</th>
                       <th className="px-4 py-3 text-center text-xs font-medium uppercase text-gray-500">Qty</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Route</th>
+                      <th className="px-4 py-3 text-center text-xs font-medium uppercase text-gray-500" title="Production Planning Enabled">Prod</th>
                       <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Department</th>
                       <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Production</th>
                       <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">Designer</th>
@@ -448,6 +453,17 @@ export default async function ProjectDetailPage({
                           <td className="px-4 py-3 font-medium text-gray-900">{product.description}</td>
                           <td className="px-4 py-3 text-gray-500 max-w-[200px] truncate">{product.additionalDetails || "—"}</td>
                           <td className="px-4 py-3 text-center font-mono">{product.quantity}</td>
+                          <td className="px-4 py-3">
+                            <Badge variant="outline" className={getRouteColor(product.planningRoute)}>
+                              {PLANNING_ROUTE_LABELS[product.planningRoute as keyof typeof PLANNING_ROUTE_LABELS] || product.planningRoute}
+                            </Badge>
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <ProductPlanningToggle
+                              productId={product.id}
+                              enabled={product.productionPlanningEnabled}
+                            />
+                          </td>
                           <td className="px-4 py-3">
                             <ProductStatusActions
                               productId={product.id}
@@ -482,7 +498,7 @@ export default async function ProjectDetailPage({
                     })}
                     {project.products.length === 0 && (
                       <tr>
-                        <td colSpan={11} className="px-4 py-12 text-center text-gray-500">
+                        <td colSpan={13} className="px-4 py-12 text-center text-gray-500">
                           No products added to this project yet.
                         </td>
                       </tr>

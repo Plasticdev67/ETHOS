@@ -4,6 +4,85 @@ Detailed record of changes made to the codebase, written after each piece of wor
 
 ---
 
+## 2026-03-15 — Production Feed Strip & Design Completion Estimates
+
+### What
+Added a "Production Feed" strip to the top of the design board that answers the key question: "Is design feeding production fast enough?" Shows four metrics — products ready for factory, active in design, not progressing (idle + external waits), and queued. Also shows a timeline forecast grouping projects by estimated design completion date (2 weeks, 2-6 weeks, 6+ weeks, no estimate). The engineering manager sets the design completion estimate when accepting a project from sales, and it can be updated via the project edit API.
+
+### Changes
+| File | Change |
+|------|--------|
+| `prisma/schema.prisma` | Added `designEstimatedCompletion DateTime?` to Project model |
+| `src/components/design/production-feed-strip.tsx` | **New** — Production Feed strip component showing ready/active/idle/waiting/queued counts and timeline forecast by estimated completion period |
+| `src/app/design/page.tsx` | Added `designEstimatedCompletion` to project query; computes feed data from design cards (active vs idle vs waiting vs queued); renders `ProductionFeedStrip` above the board |
+| `src/app/api/projects/[id]/activate-design/route.ts` | Accepts `designEstimatedCompletion` in POST body; saves to project on design activation |
+| `src/app/api/projects/[id]/route.ts` | Added `designEstimatedCompletion` to PATCH date fields so estimates can be updated |
+| `src/components/design/design-board.tsx` | "Accept from Sales" button now prompts for estimated design completion date (DD/MM/YYYY) before activating |
+
+---
+
+## 2026-03-15 — Design Card Idle Detection
+
+### What
+Added automatic staleness detection to design board cards. Cards that are IN_PROGRESS or REVIEW but haven't been updated in 3+ days show an "idle" badge — amber for 3-6 days, red for 7+. Per-product idle indicators show on the expanded view, and a project-level summary badge shows count of stale cards and max idle days. Also shows "X waiting" badge for cards in AWAITING_RESPONSE. Zero effort from designers — uses existing `updatedAt` timestamps.
+
+### Changes
+| File | Change |
+|------|--------|
+| `src/components/design/design-board.tsx` | Added `updatedAt` to DesignCard type, `getIdleDays()` helper, per-product idle badge (3d+ amber, 7d+ red), project-level stale card count badge, "X waiting" badge for awaiting response cards |
+
+---
+
+## 2026-03-15 — Design Wait Events: Awaiting Response Tracking
+
+### What
+Added the ability to mark design cards as "Awaiting Response" when work is blocked by an external party (subcontractor calcs, client review, consultant feedback, structural engineer, architect, third-party approval). Every wait event records the reason, external party name, who triggered it, timestamps, and resolution notes. This builds a dataset over time showing where design time is lost to external dependencies — average wait times by reason, which parties are slowest, which projects have the most wait events.
+
+### Changes
+| File | Change |
+|------|--------|
+| `prisma/schema.prisma` | Added `AWAITING_RESPONSE` to `DesignCardStatus` enum; new `DesignWaitReason` enum (7 reasons); new `DesignWaitEvent` model with reason, external party, triggered/resolved timestamps, notes, user relations |
+| `src/app/api/design/cards/[id]/wait/route.ts` | **New** — GET (fetch wait events), POST (start wait, moves card to AWAITING_RESPONSE), PATCH (resolve wait, moves card back to IN_PROGRESS). Auth + permission guarded, audit logged |
+| `src/components/design/wait-event-dialog.tsx` | **New** — `AwaitingResponseDialog` (product selector, reason dropdown, external party, notes) and `ResumeFromWaitButton` (resolve with optional notes) |
+| `src/components/design/design-board.tsx` | Added `WaitEvent` type, `AWAITING_RESPONSE` to stage labels/colors, wait reason labels with duration display, orange clock icon for waiting products, "Awaiting Response" button in card footer, "Response Received" resume buttons per waiting card |
+| `src/app/design/page.tsx` | Design board query now includes active `waitEvents` on design cards |
+| `src/app/design/jobs/[id]/page.tsx` | Job card detail query includes all wait events with user relations |
+| `src/components/design/job-card-detail.tsx` | Added "External Wait History" section showing all wait events with reason, external party, duration, resolution notes, active/resolved state |
+| `src/lib/design-utils.ts` | Added `AWAITING_RESPONSE` to status color and label maps |
+
+### Data Model
+```
+DesignWaitEvent {
+  designCardId    → links to ProductDesignCard
+  reason          → CALCS_FROM_SUB | CLIENT_REVIEW | CONSULTANT_REVIEW | STRUCTURAL_ENGINEER | ARCHITECT_REVIEW | THIRD_PARTY_APPROVAL | OTHER
+  externalParty   → free text (sub name, consultant name)
+  notes           → context when triggering
+  triggeredById   → who marked it
+  triggeredAt     → when wait started
+  resolvedById    → who resolved it
+  resolvedAt      → when response received
+  resolutionNotes → context when resolving
+}
+```
+
+---
+
+## 2026-03-15 — Planning Routes: Finish Toggle, Route-Aware Stages & Board Filtering
+
+### What
+Completed the planning route feature that was left partially wired. Products now have a working `productionPlanningEnabled` toggle on the project detail page, the production board only shows products with the toggle enabled, the stage dropdown respects route-specific stage sequences (e.g. SUBCONTRACT route skips Cutting/Fabrication and shows "At Subcontractor"), and route labels display as friendly names instead of raw enums.
+
+### Changes
+| File | Change |
+|------|--------|
+| `src/components/production/product-action-row.tsx` | Accepts `planningRoute` prop; stage dropdown now shows route-specific stages via `ROUTE_STAGE_SEQUENCES` instead of fixed `ALL_PRODUCTION_STAGES` |
+| `src/components/production/production-board-view.tsx` | Passes `planningRoute` to `ProductActionRow` |
+| `src/components/projects/product-planning-toggle.tsx` | **New** — client toggle component for `productionPlanningEnabled`, calls `PATCH /api/products/[id]/status` |
+| `src/app/projects/[id]/page.tsx` | Added "Prod" column with `ProductPlanningToggle`; route badge shows friendly label via `PLANNING_ROUTE_LABELS`; colspan updated to 13 |
+| `src/app/production/page.tsx` | Added `where: { productionPlanningEnabled: true }` filter on products query so only enabled products appear on the board |
+
+---
+
 ## 2026-03-05 — Lock Design BOM Costs (Sage Price Auto-Population)
 
 ### What
