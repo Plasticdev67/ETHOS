@@ -4,6 +4,19 @@ Detailed record of changes made to the codebase, written after each piece of wor
 
 ---
 
+## 2026-03-15 — Factory Feed Tab: Product-Level Design Pipeline View
+
+### What
+Added a "Factory Feed" tab to the design page that shows every product in the design pipeline as a flat, sortable table — not grouped by project. Products are classified into four landing groups: **Landing Soon** (3/4 jobs done, actively progressing), **On Track** (progressing, on schedule), **At Risk** (idle, blocked on external, or behind estimate), and **Not Started** (queued). Each row shows progress blocks, remaining jobs, designer, status (active/idle/waiting with reason), and estimated landing date. Filters by planning route and designer. Also reorganised the design page into tabs (Board / Factory Feed / Workload) with the Production Feed strip always visible above.
+
+### Changes
+| File | Change |
+|------|--------|
+| `src/components/design/factory-feed.tsx` | **New** — Factory Feed component with landing group classification, progress blocks, remaining jobs display, idle/wait status, estimated landing, route/designer filters |
+| `src/app/design/page.tsx` | Added `planningRoute` to design card product query; builds factory feed product data; reorganised page into Board/Factory Feed/Workload tabs |
+
+---
+
 ## 2026-03-15 — Production Feed Strip & Design Completion Estimates
 
 ### What

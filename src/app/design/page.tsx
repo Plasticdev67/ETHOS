@@ -4,6 +4,8 @@ import { DesignerWorkloadBoard } from "@/components/design/designer-workload-boa
 import { DesignTimeline } from "@/components/design/design-timeline"
 import { HandoverTrackingPanel } from "@/components/design/handover-tracking-panel"
 import { ProductionFeedStrip } from "@/components/design/production-feed-strip"
+import { FactoryFeed } from "@/components/design/factory-feed"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 export const dynamic = 'force-dynamic'
 
@@ -36,7 +38,7 @@ async function getDesignDashboardData() {
         designCards: {
           include: {
             product: {
-              select: { id: true, description: true, partCode: true, productJobNumber: true, productionStatus: true },
+              select: { id: true, description: true, partCode: true, productJobNumber: true, productionStatus: true, planningRoute: true },
             },
             assignedDesigner: { select: { id: true, name: true } },
             jobCards: {
@@ -230,6 +232,41 @@ export default async function DesignPage() {
     timeline,
   }
 
+  // ── Factory Feed data ──
+  // Flatten all design cards into product-level rows
+  const factoryFeedProducts = projects.flatMap((p) =>
+    p.designCards
+      .filter((c) => c.status !== "COMPLETE" || !c.product.productionStatus) // exclude products already in production
+      .map((c) => {
+        const activeWait = c.waitEvents?.find((w: { resolvedAt: string | null }) => !w.resolvedAt) || null
+        return {
+          designCardId: c.id,
+          designCardStatus: c.status,
+          designCardUpdatedAt: new Date(c.updatedAt).toISOString(),
+          productId: c.product.id,
+          partCode: c.product.partCode,
+          description: c.product.description,
+          productJobNumber: c.product.productJobNumber,
+          productionStatus: c.product.productionStatus,
+          projectId: p.id,
+          projectNumber: p.projectNumber,
+          projectName: p.name,
+          customerName: p.customer?.name || null,
+          planningRoute: c.product.planningRoute || "ETO",
+          designEstimatedCompletion: p.designEstimatedCompletion ? new Date(p.designEstimatedCompletion).toISOString() : null,
+          designerName: c.assignedDesigner?.name || null,
+          jobCards: c.jobCards.map((j) => ({ id: j.id, jobType: j.jobType, status: j.status })),
+          activeWait: activeWait ? {
+            id: (activeWait as Record<string, unknown>).id as string,
+            reason: (activeWait as Record<string, unknown>).reason as string,
+            externalParty: (activeWait as Record<string, unknown>).externalParty as string | null,
+            triggeredAt: new Date((activeWait as Record<string, unknown>).triggeredAt as string).toISOString(),
+            resolvedAt: null,
+          } : null,
+        }
+      })
+  )
+
   const serializedProjects = JSON.parse(JSON.stringify(projectsWithHandovers))
   const serializedCards = JSON.parse(JSON.stringify(allCards))
   const serializedTimeline = JSON.parse(JSON.stringify(timelineCards))
@@ -247,17 +284,34 @@ export default async function DesignPage() {
       {/* Production Feed Strip */}
       <ProductionFeedStrip data={feedData} />
 
-      {/* Project-level board */}
-      <DesignBoard projects={serializedProjects} designers={designers} />
+      {/* Tabbed views */}
+      <Tabs defaultValue="board" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="board">Board</TabsTrigger>
+          <TabsTrigger value="factory-feed">Factory Feed</TabsTrigger>
+          <TabsTrigger value="workload">Workload</TabsTrigger>
+        </TabsList>
 
-      {/* Handover tracking panel */}
-      <HandoverTrackingPanel handovers={serializedHandovers} />
+        <TabsContent value="board" className="space-y-6">
+          {/* Project-level board */}
+          <DesignBoard projects={serializedProjects} designers={designers} />
 
-      {/* Designer timeline */}
-      <DesignTimeline cards={serializedTimeline} />
+          {/* Handover tracking panel */}
+          <HandoverTrackingPanel handovers={serializedHandovers} />
 
-      {/* Designer workload board */}
-      <DesignerWorkloadBoard cards={serializedCards} designers={designers} />
+          {/* Designer timeline */}
+          <DesignTimeline cards={serializedTimeline} />
+        </TabsContent>
+
+        <TabsContent value="factory-feed">
+          <FactoryFeed products={factoryFeedProducts} />
+        </TabsContent>
+
+        <TabsContent value="workload">
+          {/* Designer workload board */}
+          <DesignerWorkloadBoard cards={serializedCards} designers={designers} />
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }
